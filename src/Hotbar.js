@@ -152,7 +152,7 @@ export default class Hotbar {
       if (document.getElementById('modal-instructions')?.classList.contains('active')) return;
       if (document.getElementById('dev-mode-panel')?.style.display !== 'none') return;
       if (document.getElementById('building-selector-modal')?.style.display !== 'none') return;
-      if (e.shiftKey || e.altKey) return; // Shift+Wheel is reserved for camera zoom
+      if (e.ctrlKey || e.shiftKey || e.altKey) return; // Ctrl/Shift+Wheel is reserved for camera zoom
 
       const now = performance.now();
       if (now - lastWheelTime < 140) return;

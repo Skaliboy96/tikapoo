@@ -554,12 +554,14 @@ export default class Player {
       }
     });
 
-    // Mouse wheel zoom in third person (hold Shift+Wheel to adjust camera distance)
+    // Mouse wheel zoom in third person (hold CTRL, Shift, or Alt + Wheel to adjust camera distance)
     window.addEventListener('wheel', (e) => {
-      if (this.isThirdPerson && this.controls.isLocked && (e.shiftKey || e.altKey)) {
-        this.targetCameraDistance = Math.max(1.8, Math.min(6.5, this.targetCameraDistance + (e.deltaY > 0 ? 0.35 : -0.35)));
+      if (this.isThirdPerson && (e.ctrlKey || e.shiftKey || e.altKey)) {
+        e.preventDefault();
+        const zoomDelta = e.deltaY > 0 ? 0.45 : -0.45;
+        this.targetCameraDistance = Math.max(1.4, Math.min(8.5, this.targetCameraDistance + zoomDelta));
       }
-    }, { passive: true });
+    }, { passive: false });
 
     window.addEventListener('keyup', (e) => {
       switch (e.code) {

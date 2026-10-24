@@ -28,6 +28,13 @@ import MobileControls from './MobileControls.js';
 import Localization from './Localization.js';
 import DevMode from './DevMode.js';
 
+window.addEventListener('error', (event) => {
+  console.warn('Recovered from unhandled runtime error:', event.message, event.filename, event.lineno);
+});
+window.addEventListener('unhandledrejection', (event) => {
+  console.warn('Recovered from unhandled promise rejection:', event.reason);
+});
+
 async function init() {
   // --- Loading Screen Preload ---
   const loadingScreen = document.getElementById('loading-screen');
@@ -737,25 +744,42 @@ async function init() {
       }
 
       if (nearbyChest) {
-        nearbyChest.isOpened = true;
-        if (nearbyChest.glowLight) {
-          scene.remove(nearbyChest.glowLight);
+        try {
+          nearbyChest.isOpened = true;
+          if (nearbyChest.glowLight) {
+            scene.remove(nearbyChest.glowLight);
+            if (nearbyChest.glowLight.dispose) nearbyChest.glowLight.dispose();
+            nearbyChest.glowLight = null;
+          }
+          if (audioManager && audioManager.playLevelUp) {
+            audioManager.playLevelUp();
+          }
+          // Visual chest lid opening animation!
+          if (nearbyChest.mesh) {
+            nearbyChest.mesh.traverse(child => {
+              if (child.name === 'Chest_Wood_Lid' || child.name === 'Chest_Top') {
+                child.rotation.x = -Math.PI * 0.45;
+              }
+            });
+          }
+          // Generous treasure rewards
+          const chestRewards = [
+            { item: 'bronze', count: 2 },
+            { item: 'iron', count: 2 },
+            { item: 'cookedMeat', count: 3 },
+            { item: 'leather', count: 3 },
+            { item: 'wood', count: 14 },
+            { item: 'stone', count: 10 }
+          ];
+          chestRewards.forEach(r => {
+            if (inventory && inventory.add) inventory.add(r.item, r.count);
+          });
+          if (hud && hud.showNotification) {
+            hud.showNotification(Localization.t('chest_opened', '🎁 You opened a treasure chest and found valuable resources!'), 3500);
+          }
+        } catch (err) {
+          console.error('Chest opening error handled:', err);
         }
-        audioManager.playLevelUp();
-        // Generous treasure rewards
-        const chestRewards = [
-          { item: 'bronze', count: 2 },
-          { item: 'iron', count: 2 },
-          { item: 'cookedMeat', count: 3 },
-          { item: 'leather', count: 3 },
-          { item: 'wood', count: 14 },
-          { item: 'stone', count: 10 }
-        ];
-        chestRewards.forEach(r => inventory.add(r.item, r.count));
-        if (lootManager) {
-          lootManager.spawnLoot(nearbyChest.position, 'walker', false, { bronze: 2, meat: 2 });
-        }
-        hud.showNotification(Localization.t('chest_opened', '🎁 Avasit aarrearkun ja löysit arvokkaita aarteita!'), 3500);
         return;
       }
 

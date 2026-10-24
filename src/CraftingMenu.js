@@ -727,6 +727,64 @@ export default class CraftingMenu {
     return false;
   }
 
+  getRecipeName(recipe, isFi) {
+    if (recipe.nameEn && !isFi) return recipe.nameEn;
+    if (recipe.nameFi && isFi) return recipe.nameFi;
+    const match = recipe.name.match(/^([^\s]+)\s+([^\(]+)\s*\((.+)\)$/);
+    if (match) {
+      const icon = match[1];
+      const fiName = match[2].trim();
+      const enName = match[3].trim();
+      return isFi ? `${icon} ${fiName}` : `${icon} ${enName}`;
+    }
+    return recipe.name;
+  }
+
+  getRecipeDesc(recipe, isFi) {
+    if (recipe.descEn && !isFi) return recipe.descEn;
+    if (recipe.descFi && isFi) return recipe.descFi;
+    if (!isFi) {
+      const descMap = {
+        stoneAxe: 'Essential tool for chopping trees! Cuts down birch and pine trees. Deals 25 damage.',
+        pickaxe: 'Essential tool for mining rock and ore veins! Deals 22 damage.',
+        hammer: 'Enables placing walls, floors, campfires, and crafting stations [B].',
+        huntingBow: 'Ranged weapon. Shoots arrows with high accuracy. Deals 60 damage.',
+        arrow: 'Quiver of 10 sharp arrows for bow combat.',
+        runicStaff: 'Ancient mystical staff. Fires bolts of magical runic energy.',
+        fishingRod: 'Enables fishing from river piers and lakeshores [Press E on pier].',
+        torch: 'Illuminates the dark wilderness and wards off nocturnal beasts. Deals fire damage!',
+        stoneSpear: 'Sharp throwing & thrusting spear. Great reach and quick attacks.',
+        bronzeAxe: 'Forged bronze woodcutting axe. Chops hard timber trees faster. Deals 36 damage.',
+        bronzePickaxe: 'Forged bronze pickaxe. Mines copper, tin, and rock veins easily.',
+        bronzeSword: 'Forged bronze blade. Deals 48 damage with rapid swings.',
+        shield: 'Sturdy wooden shield. Blocks up to 35% incoming enemy damage.',
+        ironAxe: 'Heavy iron battleaxe. Crushes wood and armored foes alike.',
+        ironPickaxe: 'Forged iron pickaxe. Able to breach deep iron and silver ore nodes.',
+        ironSword: 'Razor-sharp tempered iron longsword. Deals 68 damage.',
+        steelSword: 'Master-forged Nordic steel blade. Deals 95 damage.',
+        silverSword: 'Glacier silver sword forged with frost runes. Deals 110 damage.',
+        titanHammer: 'Massive granite-reinforced warhammer. High stagger and 130 damage.',
+        blackMetalSword: 'Dark otherworldly blackmetal blade. Deals 145 damage.',
+        runeblade: 'Ancient runic blade pulsing with primordial arcane energy. Deals 175 damage.',
+        dragonSlayer: 'Mythical greatsword forged in dragonfire. Supreme endgame weapon (250 DMG).',
+        leatherArmor: 'Supple leather armor. Grants 18% physical damage resistance.',
+        bronzeArmor: 'Tempered bronze armor. Grants 32% physical damage resistance.',
+        beastArmor: 'Heavy beast hide vest. Grants 40% physical damage resistance.',
+        ironArmor: 'Chainmail & iron plate cuirass. Grants 52% physical damage resistance.',
+        scaleArmor: 'Glittering serpent scale coat. Grants 62% physical damage resistance.',
+        steelArmor: 'Knightly forged steel full plate. Grants 70% physical damage resistance.',
+        plateArmor: 'Granite-infused heavy bulwark armor. Grants 78% physical damage resistance.',
+        runicArmor: 'Archmage runic infused vestment. Grants 85% physical damage resistance.',
+        dragonArmor: 'Supreme God-King Dragonplate Armor. Grants 92% physical damage resistance.',
+        bandage: 'Herbal wound dressing. Restores 35 Health over 4 seconds.',
+        cookedMeat: 'Roast raw beast meat into a delicious steak (+50 Hunger, +35 HP).',
+        bread: 'Bake harvested wheat into fresh rye bread (+45 Hunger, +25 HP).'
+      };
+      if (descMap[recipe.id]) return descMap[recipe.id];
+    }
+    return recipe.desc;
+  }
+
   render() {
     if (!this.recipeListEl) return;
 
@@ -794,8 +852,8 @@ export default class CraftingMenu {
       html += `
         <div class="recipe-card ${wbMissing ? 'workbench-locked' : ''}">
           <div>
-            <div class="recipe-title">${recipe.name}</div>
-            <div class="recipe-desc">${recipe.desc}</div>
+            <div class="recipe-title">${this.getRecipeName(recipe, isFi)}</div>
+            <div class="recipe-desc">${this.getRecipeDesc(recipe, isFi)}</div>
             <div class="recipe-reqs">
               ${needsWb ? `<span class="req-pill ${nearWorkbench ? 'met' : 'unmet'}">${wbLabel}</span>` : ''}
               ${Object.entries(cost).map(([itemKey, amount]) => {

@@ -216,25 +216,26 @@
       <div class="backpack-body">
         <!-- Left: character equipment & vitals -->
         <div class="backpack-char-panel">
-          <div class="backpack-char-title">🛡️ VARUSTEET &amp; OMINAISUUDET</div>
+          <div class="backpack-char-title" data-i18n="bp_char_title">🛡️ EQUIPMENT &amp; ATTRIBUTES</div>
           <div id="bp-equipment" class="bp-equipment-grid"></div>
           <div class="bp-stats-card">
-            <div class="bp-stat-row"><span>⚔️ Hyökkäysvoima:</span><span id="bp-stat-atk">15 DMG</span></div>
-            <div class="bp-stat-row"><span>🛡️ Suojaus:</span><span id="bp-stat-def">0%</span></div>
-            <div class="bp-stat-row"><span>❤️ Terveys:</span><span id="bp-stat-hp">100/100</span></div>
-            <div class="bp-stat-row"><span>🍗 Nälkä:</span><span id="bp-stat-hunger">100/100</span></div>
-            <div class="bp-stat-row"><span>⚖️ Paino:</span><span id="bp-stat-weight">18 / 300 kg</span></div>
+            <div class="bp-stat-row"><span data-i18n="bp_atk">⚔️ Attack Power:</span><span id="bp-stat-atk">15 DMG</span></div>
+            <div class="bp-stat-row"><span data-i18n="bp_def">🛡️ Defense:</span><span id="bp-stat-def">0%</span></div>
+            <div class="bp-stat-row"><span data-i18n="bp_hp">❤️ Health:</span><span id="bp-stat-hp">100/100</span></div>
+            <div class="bp-stat-row"><span data-i18n="bp_hunger">🍗 Hunger:</span><span id="bp-stat-hunger">100/100</span></div>
+            <div class="bp-stat-row"><span data-i18n="bp_weight">⚖️ Carry Weight:</span><span id="bp-stat-weight">18 / 300 kg</span></div>
           </div>
         </div>
         <!-- Right: items -->
         <div class="backpack-items-panel">
-          <div class="bp-section-title">🎒 TAVARAT (24 PAIKKAA)</div>
+          <div class="bp-section-title" data-i18n="bp_items_title">🎒 INVENTORY (24 SLOTS)</div>
           <div id="bp-items-grid" class="bp-items-grid"></div>
           <div class="bp-hints">
-            <span>[1-8] Pikapalkin valinnat</span>
-            <span>[V] Kamera (1st/3rd person)</span>
-            <span>[C/TAB] Valmistus</span>
-            <span>[B] Reppu</span>
+            <span data-i18n="hint_hotbar">[1-8] Hotbar</span>
+            <span data-i18n="hint_cam">[V] Camera View</span>
+            <span data-i18n="hint_zoom">[CTRL+Wheel] Camera Zoom</span>
+            <span data-i18n="hint_craft">[C] Crafting</span>
+            <span data-i18n="hint_build">[B] Build</span>
           </div>
         </div>
       </div>
@@ -392,45 +393,48 @@
   <div id="modal-instructions" class="menu-modal">
       <div class="modal-box">
         <div class="modal-header">
-          <h2>📜 Peliohjeet ja Näppäimet</h2>
+          <h2 data-i18n="guide_title">📜 Game Controls & Guide</h2>
           <button class="modal-close" data-close="modal-instructions">✕</button>
         </div>
         <div class="modal-body">
           <div class="guide-grid">
             <div class="guide-card">
-              <h3>🎮 Liikkuminen</h3>
+              <h3 data-i18n="guide_move_title">🎮 Movement & Camera</h3>
               <ul>
-                <li><strong>W, A, S, D</strong> : Liiku eteen, taakse, sivuille</li>
-                <li><strong>Shift</strong> : Sprintti (kuluttaa kestävyyttä)</li>
-                <li><strong>Space</strong> : Hyppy</li>
-                <li><strong>V</strong> : Vaihda kuvakulmaa (3rd person / 1st person)</li>
-                <li><strong>Hiiri</strong> : Katso ympärille</li>
+                <li data-i18n="guide_move_wasd"><strong>W, A, S, D</strong> : Move forward, backward, strafe</li>
+                <li data-i18n="guide_move_shift"><strong>Shift</strong> : Sprint (consumes stamina)</li>
+                <li data-i18n="guide_move_space"><strong>Space</strong> : Jump</li>
+                <li data-i18n="guide_move_v"><strong>V</strong> : Toggle camera view (3rd person / 1st person)</li>
+                <li data-i18n="guide_move_zoom"><strong>CTRL + Mouse Wheel</strong> : Adjust camera distance (Zoom in/out)</li>
+                <li data-i18n="guide_move_mouse"><strong>Mouse</strong> : Look around</li>
               </ul>
             </div>
             <div class="guide-card">
-              <h3>⚔️ Toiminnot & Työkalut</h3>
+              <h3 data-i18n="guide_action_title">⚔️ Actions & Tools</h3>
               <ul>
-                <li><strong>1 – 8</strong> : Pikapalkin esineet (Aseet, Onki, Vasara, Ruoka)</li>
-                <li><strong>Vasen hiiri (pohjassa)</strong> : Kerää puuta, kiveä tai marjoja</li>
-                <li><strong>Vasen hiiri</strong> : Iske miekalla tai heitä onki veteen</li>
-                <li><strong>E</strong> : Puhu kyläläisille tai paista ruokaa leiritulella</li>
+                <li data-i18n="guide_act_hotbar"><strong>1 – 8</strong> : Hotbar equipment (Weapons, Rod, Hammer, Food)</li>
+                <li data-i18n="guide_act_harvest"><strong>Left Click (Hold)</strong> : Harvest trees, rocks, crops</li>
+                <li data-i18n="guide_act_attack"><strong>Left Click</strong> : Attack enemies or cast fishing rod</li>
+                <li data-i18n="guide_act_e"><strong>E</strong> : Interact (Talk to NPCs, open chests, campfire cooking)</li>
               </ul>
             </div>
             <div class="guide-card">
-              <h3>🎒 Valikot & Hallinta</h3>
+              <h3 data-i18n="guide_menu_title">🎒 Menus & Inventory</h3>
               <ul>
-                <li><strong>C / Tab</strong> : Valmistusvalikko (Aseet, työkalut, varusteet)</li>
-                <li><strong>B</strong> : Reppu & hahmon varusteet</li>
-                <li><strong>M</strong> : Koko maailmankartta ja maamerkit</li>
-                <li><strong>Esc</strong> : Pysäytä peli / Taukovalikko</li>
+                <li data-i18n="guide_menu_c"><strong>C</strong> : Crafting Menu (Weapons, tools, armor, food)</li>
+                <li data-i18n="guide_menu_b"><strong>B</strong> : Building Mode & Structures</li>
+                <li data-i18n="guide_menu_tab"><strong>I / Tab</strong> : Backpack & Character Equipment</li>
+                <li data-i18n="guide_menu_m"><strong>M</strong> : World Map & Landmarks</li>
+                <li data-i18n="guide_menu_o"><strong>O</strong> : Skill Tree & Special Abilities</li>
+                <li data-i18n="guide_menu_esc"><strong>Esc</strong> : Pause Menu / Settings</li>
               </ul>
             </div>
             <div class="guide-card">
-              <h3>🔥 Selviytymissäännöt</h3>
+              <h3 data-i18n="guide_rules_title">🔥 Survival Rules</h3>
               <ul>
-                <li>Syö marjoja, paistettua lihaa ja kalaa pysyäksesi kylläisenä.</li>
-                <li>Leirituli tuo lämpöä, valoa ja paistaa raa'an lihan ja kalan herkulliseksi!</li>
-                <li>Yöllä pimeys tuo vaarallisia varjopetoja — pysy kylän tai tulien suojassa!</li>
+                <li data-i18n="guide_rule_food">Eat berries, cooked meat, and fish to restore health & stamina.</li>
+                <li data-i18n="guide_rule_fire">Campfires grant warmth, rested buffs, and cook raw food!</li>
+                <li data-i18n="guide_rule_night">Dangerous night beasts roam in the dark — stay near light!</li>
               </ul>
             </div>
           </div>

@@ -191,7 +191,42 @@ class LocalizationManager {
         quest_accept: 'Accept Quest',
         quest_complete: 'Claim Reward',
         quest_completed: 'Completed',
-        quest_reward: 'Reward'
+        quest_reward: 'Reward',
+
+        // Guide Modal
+        guide_title: '📜 Game Controls & Guide',
+        guide_move_title: '🎮 Movement & Camera',
+        guide_move_wasd: '<strong>W, A, S, D</strong> : Move forward, backward, strafe',
+        guide_move_shift: '<strong>Shift</strong> : Sprint (consumes stamina)',
+        guide_move_space: '<strong>Space</strong> : Jump',
+        guide_move_v: '<strong>V</strong> : Toggle camera view (3rd person / 1st person)',
+        guide_move_zoom: '<strong>CTRL + Mouse Wheel</strong> : Adjust camera distance (Zoom in/out)',
+        guide_move_mouse: '<strong>Mouse</strong> : Look around',
+        guide_action_title: '⚔️ Actions & Tools',
+        guide_act_hotbar: '<strong>1 – 8</strong> : Hotbar equipment (Weapons, Rod, Hammer, Food)',
+        guide_act_harvest: '<strong>Left Click (Hold)</strong> : Harvest trees, rocks, crops',
+        guide_act_attack: '<strong>Left Click</strong> : Attack enemies or cast fishing rod',
+        guide_act_e: '<strong>E</strong> : Interact (Talk to NPCs, open chests, campfire cooking)',
+        guide_menu_title: '🎒 Menus & Inventory',
+        guide_menu_c: '<strong>C</strong> : Crafting Menu (Weapons, tools, armor, food)',
+        guide_menu_b: '<strong>B</strong> : Building Mode & Structures',
+        guide_menu_tab: '<strong>I / Tab</strong> : Backpack & Character Equipment',
+        guide_menu_m: '<strong>M</strong> : World Map & Landmarks',
+        guide_menu_o: '<strong>O</strong> : Skill Tree & Special Abilities',
+        guide_menu_esc: '<strong>Esc</strong> : Pause Menu / Settings',
+        guide_rules_title: '🔥 Survival Rules',
+        guide_rule_food: 'Eat berries, cooked meat, and fish to restore health & stamina.',
+        guide_rule_fire: 'Campfires grant warmth, rested buffs, and cook raw food!',
+        guide_rule_night: 'Dangerous night beasts roam in the dark — stay near light!',
+
+        // Backpack
+        bp_char_title: '🛡️ EQUIPMENT & ATTRIBUTES',
+        bp_atk: '⚔️ Attack Power:',
+        bp_def: '🛡️ Defense:',
+        bp_hp: '❤️ Health:',
+        bp_hunger: '🍗 Hunger:',
+        bp_weight: '⚖️ Carry Weight:',
+        bp_items_title: '🎒 INVENTORY (24 SLOTS)'
       },
 
       fi: {
@@ -377,7 +412,42 @@ class LocalizationManager {
         quest_accept: 'Ota tehtävä',
         quest_complete: 'Lunasta palkkio',
         quest_completed: 'Suoritettu',
-        quest_reward: 'Palkkio'
+        quest_reward: 'Palkkio',
+
+        // Guide Modal
+        guide_title: '📜 Peliohjeet ja Näppäimet',
+        guide_move_title: '🎮 Liikkuminen & Kamera',
+        guide_move_wasd: '<strong>W, A, S, D</strong> : Liiku eteen, taakse, sivuille',
+        guide_move_shift: '<strong>Shift</strong> : Juokse (kuluttaa kestävyyttä)',
+        guide_move_space: '<strong>Space</strong> : Hyppy',
+        guide_move_v: '<strong>V</strong> : Vaihda kuvakulmaa (3rd person / 1st person)',
+        guide_move_zoom: '<strong>CTRL + Hiiren rulla</strong> : Kameran etäisyyden säätö (Zoom in/out)',
+        guide_move_mouse: '<strong>Hiiri</strong> : Katso ympärille',
+        guide_action_title: '⚔️ Toiminnot & Työkalut',
+        guide_act_hotbar: '<strong>1 – 8</strong> : Pikapalkin esineet (Aseet, Onki, Vasara, Ruoka)',
+        guide_act_harvest: '<strong>Vasen hiiri (pohjassa)</strong> : Kerää puuta, kiveä, marjoja',
+        guide_act_attack: '<strong>Vasen hiiri</strong> : Lyö aseella tai heitä siima veteen',
+        guide_act_e: '<strong>E</strong> : Vuorovaikuta (Puhu hahmoille, avaa arkkua, paista ruokaa)',
+        guide_menu_title: '🎒 Valikot & Hallinta',
+        guide_menu_c: '<strong>C</strong> : Valmistusvalikko (Aseet, työkalut, varusteet)',
+        guide_menu_b: '<strong>B</strong> : Rakennustila & Kalusteet',
+        guide_menu_tab: '<strong>I / Tab</strong> : Reppu & Varusteet',
+        guide_menu_m: '<strong>M</strong> : Maailmankartta & Maamerkit',
+        guide_menu_o: '<strong>O</strong> : Taitopuu & Erikoisliikkeet',
+        guide_menu_esc: '<strong>Esc</strong> : Taukovalikko / Asetukset',
+        guide_rules_title: '🔥 Selviytymissäännöt',
+        guide_rule_food: 'Syö marjoja, paistettua lihaa ja kalaa pysyäksesi kylläisenä.',
+        guide_rule_fire: 'Leiritulet antavat lämpöä, levännyt-bonuksen ja paistavat ruuan!',
+        guide_rule_night: 'Yöllä vaanii vaarallisia varjopetoja — pysy tulen valossa!',
+
+        // Backpack
+        bp_char_title: '🛡️ VARUSTEET & OMINAISUUDET',
+        bp_atk: '⚔️ Hyökkäysvoima:',
+        bp_def: '🛡️ Suojaus:',
+        bp_hp: '❤️ Terveys:',
+        bp_hunger: '🍗 Nälkä:',
+        bp_weight: '⚖️ Kantopaino:',
+        bp_items_title: '🎒 REPPU (24 PAIKKAA)'
       }
     };
 
@@ -415,6 +485,8 @@ class LocalizationManager {
       if (val) {
         if (el.tagName === 'INPUT' && el.getAttribute('placeholder')) {
           el.setAttribute('placeholder', val);
+        } else if (typeof val === 'string' && val.includes('<') && val.includes('>')) {
+          el.innerHTML = val;
         } else {
           el.textContent = val;
         }

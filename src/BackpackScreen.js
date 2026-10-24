@@ -1,3 +1,5 @@
+import Localization from './Localization.js';
+
 /**
  * BackpackScreen – Valheim-inspired RPG equipment and inventory grid screen.
  * Displays character paperdoll equipment slots, RPG vitals & attributes,
@@ -23,6 +25,10 @@ export default class BackpackScreen {
     this.statHpEl = document.getElementById('bp-stat-hp');
     this.statHungerEl = document.getElementById('bp-stat-hunger');
     this.statWeightEl = document.getElementById('bp-stat-weight');
+
+    window.addEventListener('languageChanged', () => {
+      if (this.isOpen) this.render();
+    });
 
     this._setupListeners();
   }
@@ -76,9 +82,10 @@ export default class BackpackScreen {
 
   _renderEquipment() {
     if (!this.equipEl) return;
+    const isFi = Localization.lang === 'fi';
 
     const equipped = this.inventory ? this.inventory.equippedTool : null;
-    let weaponName = 'Paljaat kädet';
+    let weaponName = isFi ? 'Paljaat kädet' : 'Bare Hands';
     let weaponIcon = '✊';
     if (this.inventory && this.inventory.getItemName && equipped) {
       weaponName = this.inventory.getItemName(equipped);
@@ -87,16 +94,16 @@ export default class BackpackScreen {
     const hasShield = this.inventory && this.inventory.tools.shield;
     const armorKey = this.inventory ? this.inventory.equippedArmor : 'none';
     const armorNames = {
-      none: 'Ei haarniskaa (0% suojaus)',
-      leatherArmor: '🥋 Nahkahaarniska (-18%)',
-      bronzeArmor: '🪙 Pronssipanssari (-32%)',
-      beastArmor: '🫀 Hirvitaljanen Haarniska (-40%)',
-      ironArmor: '⚔️ Rautapanssari (-52%)',
-      scaleArmor: '🐉 Suomupanssari (-62%)',
-      steelArmor: '🛡️ Taottu Teräshaarniska (-70%)',
-      plateArmor: '💎 Graniittilevyhaarniska (-78%)',
-      runicArmor: '✨ Riimumestarin Haarniska (-85%)',
-      dragonArmor: '👑 Pohjolan Kuninkaan Jumalhaarniska (-92%)'
+      none: isFi ? 'Ei haarniskaa (0% suojaus)' : 'No Armor (0% protection)',
+      leatherArmor: isFi ? '🥋 Nahkahaarniska (-18%)' : '🥋 Leather Armor (-18%)',
+      bronzeArmor: isFi ? '🪙 Pronssipanssari (-32%)' : '🪙 Bronze Armor (-32%)',
+      beastArmor: isFi ? '🫀 Hirvitaljanen Haarniska (-40%)' : '🫀 Beast Hide Armor (-40%)',
+      ironArmor: isFi ? '⚔️ Rautapanssari (-52%)' : '⚔️ Iron Armor (-52%)',
+      scaleArmor: isFi ? '🐉 Suomupanssari (-62%)' : '🐉 Scale Armor (-62%)',
+      steelArmor: isFi ? '🛡️ Taottu Teräshaarniska (-70%)' : '🛡️ Forged Steel Armor (-70%)',
+      plateArmor: isFi ? '💎 Graniittilevyhaarniska (-78%)' : '💎 Granite Plate Armor (-78%)',
+      runicArmor: isFi ? '✨ Riimumestarin Haarniska (-85%)' : '✨ Runic Archmage Armor (-85%)',
+      dragonArmor: isFi ? '👑 Pohjolan Kuninkaan Jumalhaarniska (-92%)' : '👑 Godly Dragon Armor (-92%)'
     };
 
     const armorIcons = {
@@ -113,11 +120,11 @@ export default class BackpackScreen {
     };
 
     const equipSlots = [
-      { slot: 'Kypärä & Pää', icon: '🧕', name: this.player?.charConfig?.headStyle === 'hood' ? 'Eränkävijän Huppu' : 'Pohjolan Viikinki', desc: 'Pohjoinen hahmon päähine' },
-      { slot: 'Rintapanssari', icon: armorIcons[armorKey] || '🥋', name: armorNames[armorKey] || 'Peruspanssari', desc: 'Vähentää vihollisten aiheuttamaa vahinkoa' },
-      { slot: 'Pääase / Työkalu', icon: weaponIcon, name: weaponName, desc: `Aktiivinen esine (Vahinko: ${this.inventory ? this.inventory.getWeaponDamage() : 15} DMG)` },
-      { slot: 'Kilpi / Sivukäsi', icon: hasShield ? '🛡️' : '⚪', name: hasShield ? 'Tamminen Puukilpi' : 'Tyhjä käsi', desc: hasShield ? '-35% Vahingonesto' : 'Ei kilpeä' },
-      { slot: 'Vyö & Työkalut', icon: '🔨', name: 'Rakennusvasara', desc: 'Valheim-rakentaminen [B]' }
+      { slot: isFi ? 'Kypärä & Pää' : 'Helmet & Head', icon: '🧕', name: this.player?.charConfig?.headStyle === 'hood' ? (isFi ? 'Eränkävijän Huppu' : 'Ranger Hood') : (isFi ? 'Pohjolan Viikinki' : 'Nordic Helm'), desc: isFi ? 'Päähine' : 'Headgear' },
+      { slot: isFi ? 'Rintapanssari' : 'Chest Armor', icon: armorIcons[armorKey] || '🥋', name: armorNames[armorKey] || (isFi ? 'Peruspanssari' : 'Basic Armor'), desc: isFi ? 'Vähentää vihollisten aiheuttamaa vahinkoa' : 'Reduces damage taken from enemies' },
+      { slot: isFi ? 'Pääase / Työkalu' : 'Main Weapon / Tool', icon: weaponIcon, name: weaponName, desc: `${isFi ? 'Vahinko' : 'Damage'}: ${this.inventory ? this.inventory.getWeaponDamage() : 15} DMG` },
+      { slot: isFi ? 'Kilpi / Sivukäsi' : 'Shield / Offhand', icon: hasShield ? '🛡️' : '⚪', name: hasShield ? (isFi ? 'Tamminen Puukilpi' : 'Oak Wood Shield') : (isFi ? 'Tyhjä käsi' : 'Empty Hand'), desc: hasShield ? (isFi ? '-35% Vahingonesto' : '-35% Damage Blocked') : (isFi ? 'Ei kilpeä' : 'No shield') },
+      { slot: isFi ? 'Vyö & Työkalut' : 'Belt & Utilities', icon: '🔨', name: isFi ? 'Rakennusvasara' : 'Building Hammer', desc: isFi ? 'Valheim-rakentaminen [B]' : 'Construction [B]' }
     ];
 
     let html = '';
@@ -139,10 +146,11 @@ export default class BackpackScreen {
 
   _renderStats() {
     if (!this.player) return;
+    const isFi = Localization.lang === 'fi';
 
     const atk = `${this.inventory ? this.inventory.getWeaponDamage() : 15} DMG`;
     const defPct = this.inventory ? Math.round(this.inventory.getDamageReduction() * 100) : 0;
-    const def = `${defPct}% (Panssari & Kilpi)`;
+    const def = `${defPct}% (${isFi ? 'Panssari & Kilpi' : 'Armor & Shield'})`;
     const hp = `${Math.round(this.player.health)} / ${this.player.maxHealth}`;
     const hunger = `${Math.round(this.player.hunger)}%`;
 
@@ -164,59 +172,60 @@ export default class BackpackScreen {
 
   _renderGrid() {
     if (!this.itemsGridEl || !this.inventory) return;
+    const isFi = Localization.lang === 'fi';
 
     const itemMeta = {
-      wood:           { name: 'Puu', icon: '🪵', type: 'Resurssi' },
-      stone:          { name: 'Kivi', icon: '🪨', type: 'Resurssi' },
-      berry:          { name: 'Villimarja', icon: '🫐', type: 'Ruoka', usable: true },
-      blueberry:      { name: 'Metsämustikka', icon: '🫐', type: 'Ruoka', usable: true },
-      raspberry:      { name: 'Villivadelma', icon: '🍓', type: 'Ruoka', usable: true },
-      mushroom:       { name: 'Kantarelli', icon: '🍄', type: 'Ruoka', usable: true },
-      honey:          { name: 'Villihunaja', icon: '🍯', type: 'Ruoka', usable: true },
-      mushroomSoup:   { name: 'Sienikeitto', icon: '🍲', type: 'Ruoka', usable: true },
-      meatStew:       { name: 'Riistapata', icon: '🥘', type: 'Ruoka', usable: true },
-      honeyBread:     { name: 'Hunajaleipä', icon: '🍞', type: 'Ruoka', usable: true },
-      apple:          { name: 'Tunturiomena', icon: '🍎', type: 'Ruoka', usable: true },
-      carrot:         { name: 'Porkkana', icon: '🥕', type: 'Ruoka', usable: true },
-      meat:           { name: 'Raaka petoliha', icon: '🥩', type: 'Ruoka', usable: true },
-      cookedMeat:     { name: 'Paistettu liha', icon: '🍖', type: 'Ruoka', usable: true },
-      trout:          { name: 'Purotaimen', icon: '🐟', type: 'Kala', usable: true },
-      pike:           { name: 'Jokihauki', icon: '🦈', type: 'Kala', usable: true },
-      salmon:         { name: 'Kultainen lohi', icon: '🐠', type: 'Kala', usable: true },
-      cookedFish:     { name: 'Paistettu kala', icon: '🍲', type: 'Ruoka', usable: true },
-      wheat:          { name: 'Pellon vilja', icon: '🌾', type: 'Raaka-aine' },
-      bread:          { name: 'Tuore ruisleipä', icon: '🍞', type: 'Ruoka', usable: true },
-      bandage:        { name: 'Yrttiside', icon: '🩹', type: 'Lääkintä', usable: true },
-      leather:        { name: 'Petonahka', icon: '🥋', type: 'Materiaali' },
-      fang:           { name: 'Petohammas', icon: '🦷', type: 'Materiaali' },
-      resin:          { name: 'Havupuu-hartsi', icon: '🌲', type: 'Polttoaine' },
-      coal:           { name: 'Puuhiili', icon: '⚫', type: 'Polttoaine' },
-      copperOre:      { name: 'Kuparimalmi', icon: '🥉', type: 'Malmi' },
-      tinOre:         { name: 'Tinamalmi', icon: '🪙', type: 'Malmi' },
-      bronze:         { name: 'Pronssiharkko', icon: '🪙', type: 'Metalli' },
-      ironOre:        { name: 'Rautamalmi', icon: '🪨', type: 'Malmi' },
-      iron:           { name: 'Rautaharkko', icon: '⚔️', type: 'Metalli' },
-      steel:          { name: 'Teräsharkko', icon: '🛡️', type: 'Metalli' },
-      silverOre:      { name: 'Hopeamalmi', icon: '❄️', type: 'Malmi' },
-      silver:         { name: 'Hopeaharkko', icon: '✨', type: 'Metalli' },
-      blackMetalScrap:{ name: 'Mustametallijäte', icon: '🔮', type: 'Malmi' },
-      blackMetal:     { name: 'Mustametalliharkko', icon: '🌌', type: 'Metalli' },
-      flametalOre:    { name: 'Tulimalmi', icon: '🌋', type: 'Malmi' },
-      dragonSteel:    { name: 'Lohikäärmeteräs', icon: '👑', type: 'Legendaarinen' },
-      hardAntler:     { name: 'Kova Sarvi', icon: '🔱', type: 'Pomoavain' },
-      swampKey:       { name: 'Suoavain', icon: '🗝️', type: 'Pomoavain' },
-      wishbone:       { name: 'Maan Sydän', icon: '🦴', type: 'Pomoavain' },
-      artisanCore:    { name: 'Riimumestarin Kide', icon: '💠', type: 'Pomoavain' },
-      dragonTears:    { name: 'Varjokyynel', icon: '💧', type: 'Pomoavain' },
-      bone:           { name: 'Kirottu luu', icon: '🦴', type: 'Materiaali' },
-      slime:          { name: 'Suoliejua', icon: '🧪', type: 'Materiaali' },
-      wolfPelt:       { name: 'Sudentalja', icon: '🐺', type: 'Materiaali' },
-      shadow_essence: { name: 'Varjoesanssi', icon: '🔮', type: 'Harvinainen' },
-      beastHeart:     { name: 'Sarvisydän', icon: '🫀', type: 'Pomomateriaali' },
-      swampScale:     { name: 'Vesipedon Suomu', icon: '🐉', type: 'Pomomateriaali' },
-      graniteCore:    { name: 'Graniittiydin', icon: '💎', type: 'Pomomateriaali' },
-      runeCore:       { name: 'Riimuydin', icon: '💠', type: 'Pomomateriaali' },
-      dragonCrown:    { name: 'Varjokruunu', icon: '👑', type: 'Pomomateriaali' }
+      wood:           { name: isFi ? 'Puu' : 'Wood', icon: '🪵', type: isFi ? 'Resurssi' : 'Resource' },
+      stone:          { name: isFi ? 'Kivi' : 'Stone', icon: '🪨', type: isFi ? 'Resurssi' : 'Resource' },
+      berry:          { name: isFi ? 'Villimarja' : 'Wild Berry', icon: '🫐', type: isFi ? 'Ruoka' : 'Food', usable: true },
+      blueberry:      { name: isFi ? 'Metsämustikka' : 'Forest Blueberry', icon: '🫐', type: isFi ? 'Ruoka' : 'Food', usable: true },
+      raspberry:      { name: isFi ? 'Villivadelma' : 'Wild Raspberry', icon: '🍓', type: isFi ? 'Ruoka' : 'Food', usable: true },
+      mushroom:       { name: isFi ? 'Kantarelli' : 'Chanterelle', icon: '🍄', type: isFi ? 'Ruoka' : 'Food', usable: true },
+      honey:          { name: isFi ? 'Villihunaja' : 'Wild Honey', icon: '🍯', type: isFi ? 'Ruoka' : 'Food', usable: true },
+      mushroomSoup:   { name: isFi ? 'Sienikeitto' : 'Mushroom Soup', icon: '🍲', type: isFi ? 'Ruoka' : 'Food', usable: true },
+      meatStew:       { name: isFi ? 'Riistapata' : 'Meat Stew', icon: '🥘', type: isFi ? 'Ruoka' : 'Food', usable: true },
+      honeyBread:     { name: isFi ? 'Hunajaleipä' : 'Honey Bread', icon: '🍞', type: isFi ? 'Ruoka' : 'Food', usable: true },
+      apple:          { name: isFi ? 'Tunturiomena' : 'Mountain Apple', icon: '🍎', type: isFi ? 'Ruoka' : 'Food', usable: true },
+      carrot:         { name: isFi ? 'Porkkana' : 'Carrot', icon: '🥕', type: isFi ? 'Ruoka' : 'Food', usable: true },
+      meat:           { name: isFi ? 'Raaka petoliha' : 'Raw Meat', icon: '🥩', type: isFi ? 'Ruoka' : 'Food', usable: true },
+      cookedMeat:     { name: isFi ? 'Paistettu liha' : 'Cooked Meat', icon: '🍖', type: isFi ? 'Ruoka' : 'Food', usable: true },
+      trout:          { name: isFi ? 'Purotaimen' : 'Stream Trout', icon: '🐟', type: isFi ? 'Kala' : 'Fish', usable: true },
+      pike:           { name: isFi ? 'Jokihauki' : 'River Pike', icon: '🦈', type: isFi ? 'Kala' : 'Fish', usable: true },
+      salmon:         { name: isFi ? 'Kultainen lohi' : 'Golden Salmon', icon: '🐠', type: isFi ? 'Kala' : 'Fish', usable: true },
+      cookedFish:     { name: isFi ? 'Paistettu kala' : 'Cooked Fish', icon: '🍲', type: isFi ? 'Ruoka' : 'Food', usable: true },
+      wheat:          { name: isFi ? 'Pellon vilja' : 'Wheat', icon: '🌾', type: isFi ? 'Raaka-aine' : 'Material' },
+      bread:          { name: isFi ? 'Tuore ruisleipä' : 'Fresh Bread', icon: '🍞', type: isFi ? 'Ruoka' : 'Food', usable: true },
+      bandage:        { name: isFi ? 'Yrttiside' : 'Herbal Bandage', icon: '🩹', type: isFi ? 'Lääkintä' : 'Medicine', usable: true },
+      leather:        { name: isFi ? 'Petonahka' : 'Leather Hide', icon: '🥋', type: isFi ? 'Materiaali' : 'Material' },
+      fang:           { name: isFi ? 'Petohammas' : 'Sharp Fang', icon: '🦷', type: isFi ? 'Materiaali' : 'Material' },
+      resin:          { name: isFi ? 'Havupuu-hartsi' : 'Resin', icon: '🌲', type: isFi ? 'Polttoaine' : 'Fuel' },
+      coal:           { name: isFi ? 'Puuhiili' : 'Charcoal', icon: '⚫', type: isFi ? 'Polttoaine' : 'Fuel' },
+      copperOre:      { name: isFi ? 'Kuparimalmi' : 'Copper Ore', icon: '🥉', type: isFi ? 'Malmi' : 'Ore' },
+      tinOre:         { name: isFi ? 'Tinamalmi' : 'Tin Ore', icon: '🪙', type: isFi ? 'Malmi' : 'Ore' },
+      bronze:         { name: isFi ? 'Pronssiharkko' : 'Bronze Bar', icon: '🪙', type: isFi ? 'Metalli' : 'Metal' },
+      ironOre:        { name: isFi ? 'Rautamalmi' : 'Iron Ore', icon: '🪨', type: isFi ? 'Malmi' : 'Ore' },
+      iron:           { name: isFi ? 'Rautaharkko' : 'Iron Bar', icon: '⚔️', type: isFi ? 'Metalli' : 'Metal' },
+      steel:          { name: isFi ? 'Teräsharkko' : 'Steel Bar', icon: '🛡️', type: isFi ? 'Metalli' : 'Metal' },
+      silverOre:      { name: isFi ? 'Hopeamalmi' : 'Silver Ore', icon: '❄️', type: isFi ? 'Malmi' : 'Ore' },
+      silver:         { name: isFi ? 'Hopeaharkko' : 'Silver Bar', icon: '✨', type: isFi ? 'Metalli' : 'Metal' },
+      blackMetalScrap:{ name: isFi ? 'Mustametallijäte' : 'Blackmetal Scrap', icon: '🔮', type: isFi ? 'Malmi' : 'Ore' },
+      blackMetal:     { name: isFi ? 'Mustametalliharkko' : 'Blackmetal Bar', icon: '🌌', type: isFi ? 'Metalli' : 'Metal' },
+      flametalOre:    { name: isFi ? 'Tulimalmi' : 'Flametal Ore', icon: '🌋', type: isFi ? 'Malmi' : 'Ore' },
+      dragonSteel:    { name: isFi ? 'Lohikäärmeteräs' : 'Dragonsteel', icon: '👑', type: isFi ? 'Legendaarinen' : 'Legendary' },
+      hardAntler:     { name: isFi ? 'Kova Sarvi' : 'Hard Antler', icon: '🔱', type: isFi ? 'Pomoavain' : 'Boss Key' },
+      swampKey:       { name: isFi ? 'Suoavain' : 'Swamp Key', icon: '🗝️', type: isFi ? 'Pomoavain' : 'Boss Key' },
+      wishbone:       { name: isFi ? 'Maan Sydän' : 'Wishbone', icon: '🦴', type: isFi ? 'Pomoavain' : 'Boss Key' },
+      artisanCore:    { name: isFi ? 'Riimumestarin Kide' : 'Artisan Core', icon: '💠', type: isFi ? 'Pomoavain' : 'Boss Key' },
+      dragonTears:    { name: isFi ? 'Varjokyynel' : 'Dragon Tears', icon: '💧', type: isFi ? 'Pomoavain' : 'Boss Key' },
+      bone:           { name: isFi ? 'Kirottu luu' : 'Cursed Bone', icon: '🦴', type: isFi ? 'Materiaali' : 'Material' },
+      slime:          { name: isFi ? 'Suoliejua' : 'Swamp Slime', icon: '🧪', type: isFi ? 'Materiaali' : 'Material' },
+      wolfPelt:       { name: isFi ? 'Sudentalja' : 'Wolf Pelt', icon: '🐺', type: isFi ? 'Materiaali' : 'Material' },
+      shadow_essence: { name: isFi ? 'Varjoesanssi' : 'Shadow Essence', icon: '🔮', type: isFi ? 'Harvinainen' : 'Rare' },
+      beastHeart:     { name: isFi ? 'Sarvisydän' : 'Beast Heart', icon: '🫀', type: isFi ? 'Pomomateriaali' : 'Boss Material' },
+      swampScale:     { name: isFi ? 'Vesipedon Suomu' : 'Swamp Scale', icon: '🐉', type: isFi ? 'Pomomateriaali' : 'Boss Material' },
+      graniteCore:    { name: isFi ? 'Graniittiydin' : 'Granite Core', icon: '💎', type: isFi ? 'Pomomateriaali' : 'Boss Material' },
+      runeCore:       { name: isFi ? 'Riimuydin' : 'Rune Core', icon: '💠', type: isFi ? 'Pomomateriaali' : 'Boss Material' },
+      dragonCrown:    { name: isFi ? 'Varjokruunu' : 'Shadow Crown', icon: '👑', type: isFi ? 'Pomomateriaali' : 'Boss Material' }
     };
 
     const slots = [];
@@ -229,32 +238,32 @@ export default class BackpackScreen {
 
     // Add all crafted/owned tools
     const toolMeta = {
-      torch:           { name: 'Soihtu', icon: '🔥', type: 'Valonlähde' },
-      stoneAxe:        { name: 'Kivikirves', icon: '🪓', type: 'Kirves' },
-      bronzeAxe:       { name: 'Pronssikirves', icon: '🪓', type: 'Kirves' },
-      ironAxe:         { name: 'Rautakirves', icon: '🪓', type: 'Kirves' },
-      blackMetalAxe:   { name: 'Mustametallikirves', icon: '🪓', type: 'Kirves' },
-      pickaxe:         { name: 'Kivihakku', icon: '⛏️', type: 'Hakku' },
-      antlerPickaxe:   { name: 'Sarvihakku', icon: '🔱', type: 'Hakku' },
-      bronzePickaxe:   { name: 'Pronssihakku', icon: '⛏️', type: 'Hakku' },
-      ironPickaxe:     { name: 'Rautahakku', icon: '⛏️', type: 'Hakku' },
-      silverPickaxe:   { name: 'Vuoristohakku', icon: '⛏️', type: 'Hakku' },
-      stoneSpear:      { name: 'Kivikeihäs', icon: '🗡️', type: 'Ase' },
-      hornSpear:       { name: 'Sarvikeihäs', icon: '🔱', type: 'Ase' },
-      bronzeSword:     { name: 'Pronssimiekka', icon: '⚔️', type: 'Ase' },
-      scaleSword:      { name: 'Suomumiekka', icon: '🗡️', type: 'Ase' },
-      ironSword:       { name: 'Rautamiekka', icon: '⚔️', type: 'Ase' },
-      steelSword:      { name: 'Teräsmiekka', icon: '⚔️', type: 'Ase' },
-      silverSword:     { name: 'Hopeamiekka', icon: '❄️', type: 'Ase' },
-      titanHammer:     { name: 'Titaanivasara', icon: '🔨', type: 'Ase' },
-      blackMetalSword: { name: 'Mustametalliterä', icon: '🌌', type: 'Ase' },
-      runeblade:       { name: 'Riimumiekka', icon: '💠', type: 'Ase' },
-      dragonSlayer:    { name: 'Draakinsurmaaja', icon: '🐉', type: 'Legendaarinen Ase' },
-      huntingBow:      { name: 'Metsästäjän Jousi', icon: '🏹', type: 'Jousi' },
-      runicStaff:      { name: 'Riimusauva', icon: '🔮', type: 'Taikasauva' },
-      hammer:          { name: 'Rakennusvasara', icon: '🔨', type: 'Työkalu' },
-      fishingRod:      { name: 'Kalastusvapa', icon: '🎣', type: 'Kalastus' },
-      shield:          { name: 'Puukilpi', icon: '🛡️', type: 'Suoja' }
+      torch:           { name: isFi ? 'Soihtu' : 'Torch', icon: '🔥', type: isFi ? 'Valonlähde' : 'Light Source' },
+      stoneAxe:        { name: isFi ? 'Kivikirves' : 'Stone Axe', icon: '🪓', type: isFi ? 'Kirves' : 'Axe' },
+      bronzeAxe:       { name: isFi ? 'Pronssikirves' : 'Bronze Axe', icon: '🪓', type: isFi ? 'Kirves' : 'Axe' },
+      ironAxe:         { name: isFi ? 'Rautakirves' : 'Iron Axe', icon: '🪓', type: isFi ? 'Kirves' : 'Axe' },
+      blackMetalAxe:   { name: isFi ? 'Mustametallikirves' : 'Blackmetal Axe', icon: '🪓', type: isFi ? 'Kirves' : 'Axe' },
+      pickaxe:         { name: isFi ? 'Kivihakku' : 'Stone Pickaxe', icon: '⛏️', type: isFi ? 'Hakku' : 'Pickaxe' },
+      antlerPickaxe:   { name: isFi ? 'Sarvihakku' : 'Antler Pickaxe', icon: '🔱', type: isFi ? 'Hakku' : 'Pickaxe' },
+      bronzePickaxe:   { name: isFi ? 'Pronssihakku' : 'Bronze Pickaxe', icon: '⛏️', type: isFi ? 'Hakku' : 'Pickaxe' },
+      ironPickaxe:     { name: isFi ? 'Rautahakku' : 'Iron Pickaxe', icon: '⛏️', type: isFi ? 'Hakku' : 'Pickaxe' },
+      silverPickaxe:   { name: isFi ? 'Vuoristohakku' : 'Mountain Pickaxe', icon: '⛏️', type: isFi ? 'Hakku' : 'Pickaxe' },
+      stoneSpear:      { name: isFi ? 'Kivikeihäs' : 'Stone Spear', icon: '🗡️', type: isFi ? 'Ase' : 'Weapon' },
+      hornSpear:       { name: isFi ? 'Sarvikeihäs' : 'Horn Spear', icon: '🔱', type: isFi ? 'Ase' : 'Weapon' },
+      bronzeSword:     { name: isFi ? 'Pronssimiekka' : 'Bronze Sword', icon: '⚔️', type: isFi ? 'Ase' : 'Weapon' },
+      scaleSword:      { name: isFi ? 'Suomumiekka' : 'Scale Sword', icon: '🗡️', type: isFi ? 'Ase' : 'Weapon' },
+      ironSword:       { name: isFi ? 'Rautamiekka' : 'Iron Sword', icon: '⚔️', type: isFi ? 'Ase' : 'Weapon' },
+      steelSword:      { name: isFi ? 'Teräsmiekka' : 'Steel Sword', icon: '⚔️', type: isFi ? 'Ase' : 'Weapon' },
+      silverSword:     { name: isFi ? 'Hopeamiekka' : 'Silver Sword', icon: '❄️', type: isFi ? 'Ase' : 'Weapon' },
+      titanHammer:     { name: isFi ? 'Titaanivasara' : 'Titan War Hammer', icon: '🔨', type: isFi ? 'Ase' : 'Weapon' },
+      blackMetalSword: { name: isFi ? 'Mustametalliterä' : 'Blackmetal Blade', icon: '🌌', type: isFi ? 'Ase' : 'Weapon' },
+      runeblade:       { name: isFi ? 'Riimumiekka' : 'Runic Blade', icon: '💠', type: isFi ? 'Ase' : 'Weapon' },
+      dragonSlayer:    { name: isFi ? 'Draakinsurmaaja' : 'Dragonslayer', icon: '🐉', type: isFi ? 'Legendaarinen Ase' : 'Legendary Weapon' },
+      huntingBow:      { name: isFi ? 'Metsästäjän Jousi' : 'Hunting Bow', icon: '🏹', type: isFi ? 'Jousi' : 'Bow' },
+      runicStaff:      { name: isFi ? 'Riimusauva' : 'Runic Staff', icon: '🔮', type: isFi ? 'Taikasauva' : 'Magic Staff' },
+      hammer:          { name: isFi ? 'Rakennusvasara' : 'Building Hammer', icon: '🔨', type: isFi ? 'Työkalu' : 'Tool' },
+      fishingRod:      { name: isFi ? 'Kalastusvapa' : 'Fishing Rod', icon: '🎣', type: isFi ? 'Kalastus' : 'Fishing' },
+      shield:          { name: isFi ? 'Puukilpi' : 'Wood Shield', icon: '🛡️', type: isFi ? 'Suoja' : 'Shield' }
     };
 
     if (this.inventory.tools) {

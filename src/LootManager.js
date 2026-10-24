@@ -279,27 +279,42 @@ export default class LootManager {
   }
 
   _collectDrop(drop, index) {
+    if (!drop || drop.isCollected) return;
     drop.isCollected = true;
-    this.scene.remove(drop.group);
-    this.drops.splice(index, 1);
-
-    if (this.inventory) {
-      this.inventory.add(drop.type, drop.count);
-    }
-
-    if (this.hud) {
-      this.hud.showPickupText(`+${drop.count} ${drop.meta.icon} ${drop.meta.name}`);
-      this.hud.showNotification(`Kerätty: ${drop.meta.icon} ${drop.meta.name} (x${drop.count})`, 2500);
-    }
-
-    if (this.audioManager) {
-      this.audioManager.playPickup();
-    }
-
-    if (this.questManager) {
-      if (drop.type === 'meat' && this.questManager.onCollectMeat) {
-        this.questManager.onCollectMeat(drop.count);
+    try {
+      if (this.scene && drop.group) {
+        this.scene.remove(drop.group);
       }
+      const foundIdx = this.drops.indexOf(drop);
+      if (foundIdx !== -1) {
+        this.drops.splice(foundIdx, 1);
+      }
+
+      if (this.inventory && this.inventory.add) {
+        this.inventory.add(drop.type, drop.count);
+      }
+
+      if (this.hud) {
+        const icon = drop.meta?.icon || '📦';
+        const name = drop.meta?.name || drop.type;
+        if (this.hud.showPickupText) this.hud.showPickupText(`+${drop.count} ${icon} ${name}`);
+        if (this.hud.showNotification) this.hud.showNotification(`+${drop.count} ${icon} ${name}`, 2000);
+      }
+
+      if (this.audioManager && this.audioManager.playPickup) {
+        this.audioManager.playPickup();
+      }
+
+      if (this.questManager) {
+        if (this.questManager.onCollect) {
+          this.questManager.onCollect(drop.type, drop.count);
+        }
+        if (drop.type === 'meat' && this.questManager.onCollectMeat) {
+          this.questManager.onCollectMeat(drop.count);
+        }
+      }
+    } catch (e) {
+      console.warn('Drop pickup error safely handled:', e);
     }
   }
 }

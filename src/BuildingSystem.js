@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import Localization from './Localization.js';
 
 export default class BuildingSystem {
   constructor(scene, inventory, hud, audioManager, assetLoader = null, controls = null) {
@@ -23,38 +24,48 @@ export default class BuildingSystem {
 
     // Full catalog of 18 craftable structures grouped into clear survival categories
     this.structureDefs = [
-      // 🪵 RAKENTEET
-      { id: 'woodenWall', category: 'structures', wood: 5, stone: 0, name: 'Hirsiseinä', icon: '🪵', desc: 'Tukeva hirsiseinä suojaksi' },
-      { id: 'stoneWall', category: 'structures', wood: 0, stone: 6, name: 'Kivimuuri', icon: '🧱', desc: 'Vahva graniittimuuri' },
-      { id: 'woodenFloor', category: 'structures', wood: 4, stone: 0, name: 'Lankkulattia', icon: '🪚', desc: 'Sileä puulattia asumuksen pohjaksi' },
-      { id: 'stoneFloor', category: 'structures', wood: 0, stone: 4, name: 'Kivilattia', icon: '🏛️', desc: 'Tasainen kivilattia tulisijoille ja pajoille' },
-      { id: 'woodenRoof', category: 'structures', wood: 6, stone: 2, name: 'Harjakatto', icon: '🏠', desc: 'Suojaa sateelta ja antaa Levännyt-bonuksen' },
-      { id: 'woodenStairs', category: 'structures', wood: 4, stone: 0, name: 'Puuportaat', icon: '🪜', desc: 'Portaat toiseen kerrokseen tai torniin' },
-      { id: 'woodenDoor', category: 'structures', wood: 4, stone: 0, name: 'Salpaovi', icon: '🚪', desc: 'Avattava linnoituksen ovi' },
-      { id: 'palisade', category: 'structures', wood: 6, stone: 0, name: 'Paaluaita', icon: '🛡️', desc: 'Teräväkärkinen suojamuuri kylän ympärille' },
+      // 🪵 STRUCTURES
+      { id: 'woodenWall', category: 'structures', wood: 5, stone: 0, nameEn: 'Wood Wall', nameFi: 'Hirsiseinä', icon: '🪵', descEn: 'Sturdy timber log wall for shelter', descFi: 'Tukeva hirsiseinä suojaksi' },
+      { id: 'stoneWall', category: 'structures', wood: 0, stone: 6, nameEn: 'Stone Wall', nameFi: 'Kivimuuri', icon: '🧱', descEn: 'Heavy granite defensive barrier', descFi: 'Vahva graniittimuuri' },
+      { id: 'woodenFloor', category: 'structures', wood: 4, stone: 0, nameEn: 'Wood Floor', nameFi: 'Lankkulattia', icon: '🪚', descEn: 'Smooth wooden plank foundation', descFi: 'Sileä puulattia asumuksen pohjaksi' },
+      { id: 'stoneFloor', category: 'structures', wood: 0, stone: 4, nameEn: 'Stone Floor', nameFi: 'Kivilattia', icon: '🏛️', descEn: 'Paved stone floor for forges and hearths', descFi: 'Tasainen kivilattia tulisijoille ja pajoille' },
+      { id: 'woodenRoof', category: 'structures', wood: 6, stone: 2, nameEn: 'Thatched Roof', nameFi: 'Harjakatto', icon: '🏠', descEn: 'Shelters from rain and grants Rested bonus', descFi: 'Suojaa sateelta ja antaa Levännyt-bonuksen' },
+      { id: 'woodenStairs', category: 'structures', wood: 4, stone: 0, nameEn: 'Wood Stairs', nameFi: 'Puuportaat', icon: '🪜', descEn: 'Access upper floors and watchtowers', descFi: 'Portaat toiseen kerrokseen tai torniin' },
+      { id: 'woodenDoor', category: 'structures', wood: 4, stone: 0, nameEn: 'Heavy Door', nameFi: 'Salpaovi', icon: '🚪', descEn: 'Secures your home against wild creatures', descFi: 'Avattava linnoituksen ovi' },
+      { id: 'palisade', category: 'structures', wood: 6, stone: 0, nameEn: 'Palisade Wall', nameFi: 'Paaluaita', icon: '🛡️', descEn: 'Spiked defensive perimeter fortification', descFi: 'Teräväkärkinen suojamuuri kylän ympärille' },
       
-      // 🔥 TULI & VALO
-      { id: 'campfire', category: 'fire', wood: 4, stone: 3, name: 'Leirituli', icon: '🔥', desc: 'Lämmittele, paista lihaa ja poista väsymys' },
-      { id: 'standingTorch', category: 'fire', wood: 2, stone: 1, name: 'Soihtuteline', icon: '🕯️', desc: 'Valaisee pihan ja karkottaa petoja' },
+      // 🔥 FIRE & LIGHT
+      { id: 'campfire', category: 'fire', wood: 4, stone: 3, nameEn: 'Campfire', nameFi: 'Leirituli', icon: '🔥', descEn: 'Cooks meat and fish, provides warmth and light', descFi: 'Lämmittele, paista lihaa ja poista väsymys' },
+      { id: 'standingTorch', category: 'fire', wood: 2, stone: 1, nameEn: 'Standing Torch', nameFi: 'Soihtuteline', icon: '🕯️', descEn: 'Permanent outdoor torch post', descFi: 'Valaisee pihan ja karkottaa petoja' },
 
-      // 🛠️ TYÖPAJAT & VARASTO
-      { id: 'workbench', category: 'crafting', wood: 8, stone: 4, name: 'Työpöytä', icon: '🛠️', desc: 'Avaa aseiden ja työkalujen valmistuksen' },
-      { id: 'smelter', category: 'crafting', wood: 4, stone: 12, name: 'Sulattouuni', icon: '🌋', desc: 'Sulata kuparia ja rautamalmia harkoiksi' },
-      { id: 'forge', category: 'crafting', wood: 6, stone: 8, name: 'Ahjo & Alasin', icon: '🔨', desc: 'Tako pronssi-, rauta- ja teräsvarusteita' },
-      { id: 'chest', category: 'crafting', wood: 6, stone: 0, name: 'Puuarkku', icon: '📦', desc: 'Säilytä ylimääräisiä resursseja' },
-      { id: 'barrel', category: 'crafting', wood: 5, stone: 1, name: 'Viljatynnyri', icon: '🛢️', desc: 'Säilytystynnyri viljalle ja ruualle' },
+      // 🛠️ WORKSTATIONS & STORAGE
+      { id: 'workbench', category: 'crafting', wood: 8, stone: 4, nameEn: 'Workbench', nameFi: 'Työpöytä', icon: '🛠️', descEn: 'Enables advanced weapon, tool and armor crafting', descFi: 'Avaa aseiden ja työkalujen valmistuksen' },
+      { id: 'smelter', category: 'crafting', wood: 4, stone: 12, nameEn: 'Smelter', nameFi: 'Sulattouuni', icon: '🌋', descEn: 'Smelt copper, tin, and iron ore into bars', descFi: 'Sulata kuparia ja rautamalmia harkoiksi' },
+      { id: 'forge', category: 'crafting', wood: 6, stone: 8, nameEn: 'Forge & Anvil', nameFi: 'Ahjo & Alasin', icon: '🔨', descEn: 'Forge bronze, iron, and steel armaments', descFi: 'Tako pronssi-, rauta- ja teräsvarusteita' },
+      { id: 'chest', category: 'crafting', wood: 6, stone: 0, nameEn: 'Wood Chest', nameFi: 'Puuarkku', icon: '📦', descEn: 'Safe storage for harvested materials and loot', descFi: 'Säilytä ylimääräisiä resursseja' },
+      { id: 'barrel', category: 'crafting', wood: 5, stone: 1, nameEn: 'Grain Barrel', nameFi: 'Viljatynnyri', icon: '🛢️', descEn: 'Storage for crops, grain, and provisions', descFi: 'Säilytystynnyri viljalle ja ruualle' },
 
-      // 🛏️ HUONEKALUT
-      { id: 'bed', category: 'furniture', wood: 6, stone: 0, name: 'Viking-Sänky', icon: '🛏️', desc: 'Nuku yön yli ja palauta hahmon energia' },
-      { id: 'table', category: 'furniture', wood: 5, stone: 0, name: 'Pirtin Pöytä', icon: '🪵', desc: 'Lisää kodin mukavuutta' },
-      { id: 'chair', category: 'furniture', wood: 3, stone: 0, name: 'Tammipenkki', icon: '🪑', desc: 'Istu ja nauti lämpimästä leiritulesta' }
+      // 🛏️ FURNITURE
+      { id: 'bed', category: 'furniture', wood: 6, stone: 0, nameEn: 'Viking Bed', nameFi: 'Viking-Sänky', icon: '🛏️', descEn: 'Sleep through the night and restore player energy', descFi: 'Nuku yön yli ja palauta hahmon energia' },
+      { id: 'table', category: 'furniture', wood: 5, stone: 0, nameEn: 'Rustic Table', nameFi: 'Pirtin Pöytä', icon: '🪵', descEn: 'Increases indoor comfort level', descFi: 'Lisää kodin mukavuutta' },
+      { id: 'chair', category: 'furniture', wood: 3, stone: 0, nameEn: 'Oak Bench', nameFi: 'Tammipenkki', icon: '🪑', descEn: 'Rest and enjoy the warmth of a hearth fire', descFi: 'Istu ja nauti lämpimästä leiritulesta' }
     ];
+
+    this.structureDefs.forEach(d => {
+      d.name = d.nameEn;
+      d.desc = d.descEn;
+    });
 
     this.structureKeys = this.structureDefs.map(d => d.id);
     this.currentStructureIndex = 0; // 'woodenWall'
     this.isHammerActive = false;
     this.isBuildMenuOpen = false;
     this.currentCategory = 'all';
+
+    window.addEventListener('languageChanged', () => {
+      if (this.isBuildMenuOpen) this.renderBuildMenuGrid();
+      this.updateSelectorBar();
+    });
 
     this.recipes = {};
     this.structureDefs.forEach(d => {
@@ -153,17 +164,28 @@ export default class BuildingSystem {
     this.modalEl = modal;
   }
 
+  getDefName(def) {
+    if (!def) return '';
+    return Localization.lang === 'fi' ? (def.nameFi || def.name) : (def.nameEn || def.name);
+  }
+
+  getDefDesc(def) {
+    if (!def) return '';
+    return Localization.lang === 'fi' ? (def.descFi || def.desc) : (def.descEn || def.desc);
+  }
+
   updateSelectorBar() {
     if (!this.hudBarEl) return;
     const def = this.structureDefs[this.currentStructureIndex];
     if (!def) return;
+    const isFi = Localization.lang === 'fi';
 
     const iconEl = this.hudBarEl.querySelector('#b-hud-icon');
     const nameEl = this.hudBarEl.querySelector('#b-hud-name');
     const costEl = this.hudBarEl.querySelector('#b-hud-cost');
 
     if (iconEl) iconEl.textContent = def.icon;
-    if (nameEl) nameEl.textContent = def.name;
+    if (nameEl) nameEl.textContent = this.getDefName(def);
 
     if (costEl && this.inventory) {
       const woodHave = this.inventory.items?.wood || 0;
@@ -171,11 +193,11 @@ export default class BuildingSystem {
       let costParts = [];
       if (def.wood > 0) {
         const ok = woodHave >= def.wood;
-        costParts.push(`<span class="${ok ? 'cost-ok' : 'cost-missing'}">🪵 ${def.wood} Puu (${woodHave})</span>`);
+        costParts.push(`<span class="${ok ? 'cost-ok' : 'cost-missing'}">🪵 ${def.wood} ${isFi ? 'Puu' : 'Wood'} (${woodHave})</span>`);
       }
       if (def.stone > 0) {
         const ok = stoneHave >= def.stone;
-        costParts.push(`<span class="${ok ? 'cost-ok' : 'cost-missing'}">🪨 ${def.stone} Kivi (${stoneHave})</span>`);
+        costParts.push(`<span class="${ok ? 'cost-ok' : 'cost-missing'}">🪨 ${def.stone} ${isFi ? 'Kivi' : 'Stone'} (${stoneHave})</span>`);
       }
       costEl.innerHTML = costParts.join(' &bull; ');
     }
@@ -253,6 +275,7 @@ export default class BuildingSystem {
     if (!this.modalEl) return;
     const gridEl = this.modalEl.querySelector('#build-modal-grid');
     if (!gridEl) return;
+    const isFi = Localization.lang === 'fi';
 
     const cat = this.currentCategory || 'all';
     const list = this.structureDefs.filter(d => cat === 'all' || d.category === cat);
@@ -265,6 +288,8 @@ export default class BuildingSystem {
       const canAffordWood = def.wood === 0 || woodHave >= def.wood;
       const canAffordStone = def.stone === 0 || stoneHave >= def.stone;
       const canAfford = canAffordWood && canAffordStone;
+      const name = this.getDefName(def);
+      const desc = this.getDefDesc(def);
 
       return `
         <div class="build-card ${isSelected ? 'selected' : ''} ${canAfford ? 'affordable' : 'unaffordable'}" data-structure-id="${def.id}">
@@ -272,14 +297,14 @@ export default class BuildingSystem {
             <span class="build-card-icon">${def.icon}</span>
             <span class="build-card-tag">${def.category.toUpperCase()}</span>
           </div>
-          <div class="build-card-title">${def.name}</div>
-          <div class="build-card-desc">${def.desc}</div>
+          <div class="build-card-title">${name}</div>
+          <div class="build-card-desc">${desc}</div>
           <div class="build-card-costs">
             ${def.wood > 0 ? `<span class="build-cost-pill ${canAffordWood ? 'ok' : 'missing'}">🪵 ${def.wood} (${woodHave})</span>` : ''}
             ${def.stone > 0 ? `<span class="build-cost-pill ${canAffordStone ? 'ok' : 'missing'}">🪨 ${def.stone} (${stoneHave})</span>` : ''}
           </div>
           <button class="build-card-btn ${canAfford ? 'btn-can-build' : 'btn-lacking'}">
-            ${isSelected ? '✅ Valittuna' : (canAfford ? 'Valitse pala' : 'Puuttuu resursseja')}
+            ${isSelected ? (isFi ? '✅ Valittuna' : '✅ Selected') : (canAfford ? (isFi ? 'Valitse pala' : 'Select Piece') : (isFi ? 'Puuttuu resursseja' : 'Need Resources'))}
           </button>
         </div>
       `;

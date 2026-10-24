@@ -1,3 +1,5 @@
+import Localization from './Localization.js';
+
 export default class Inventory {
   constructor(hud, audioManager) {
     this.hud = hud;
@@ -120,7 +122,8 @@ export default class Inventory {
   }
 
   getItemName(key) {
-    const names = {
+    const isFi = Localization.lang === 'fi';
+    const namesFi = {
       wood: '🪵 Puu',
       stone: '🪨 Kivi',
       berry: '🫐 Marja',
@@ -191,18 +194,103 @@ export default class Inventory {
       plateArmor: '💎 Graniittilevyhaarniska (Kalliopanssari)',
       runicArmor: '✨ Riimumestarin Haarniska (Arkaani)',
       dragonArmor: '👑 Pohjolan Kuninkaan Jumalhaarniska',
-      hardAntler: '🔱 Kova Sarvi (Avaa Pronssikauden!)',
-      swampKey: '🗝️ Suoavain (Avaa Rautakauden!)',
-      wishbone: '🦴 Maan Sydän (Avaa Hopean & Vuoriston!)',
-      artisanCore: '💠 Riimumestarin Kide (Avaa Mustametallin!)',
-      dragonTears: '💧 Varjokyynel (Avaa Jumalteräksen!)',
+      hardAntler: '🔱 Kova Sarvi',
+      swampKey: '🗝️ Suoavain',
+      wishbone: '🦴 Maan Sydän',
+      artisanCore: '💠 Riimumestarin Kide',
+      dragonTears: '💧 Varjokyynel',
       beastHeart: '🫀 Sarvisydän',
       swampScale: '🐉 Suomu',
       graniteCore: '💎 Graniittisydän',
       runeCore: '💠 Riimuydin',
       dragonCrown: '👑 Varjokruunu'
     };
-    return names[key] || key;
+
+    const namesEn = {
+      wood: '🪵 Wood',
+      stone: '🪨 Stone',
+      berry: '🫐 Wild Berry',
+      apple: '🍎 Mountain Apple',
+      carrot: '🥕 Carrot',
+      meat: '🥩 Raw Meat',
+      cookedMeat: '🍖 Cooked Meat',
+      trout: '🐟 Stream Trout',
+      pike: '🦈 Northern Pike',
+      salmon: '🐠 Golden Salmon',
+      cookedFish: '🍲 Cooked Fish',
+      wheat: '🌾 Field Wheat',
+      bread: '🍞 Fresh Bread',
+      bandage: '🩹 Herbal Bandage',
+      arrow: '🏹 Arrow',
+      huntingBow: '🏹 Hunting Bow',
+      runicStaff: '🔮 Runic Staff',
+      leather: '🥋 Leather Hide',
+      fang: '🦷 Sharp Fang',
+      resin: '🌲 Pine Resin',
+      coal: '⚫ Charcoal',
+      copperOre: '🥉 Copper Ore',
+      tinOre: '🪙 Tin Ore',
+      bronze: '🪙 Bronze Bar',
+      ironOre: '🪨 Iron Ore',
+      iron: '⚔️ Iron Bar',
+      steel: '🛡️ Steel Bar',
+      silverOre: '❄️ Silver Ore',
+      silver: '✨ Silver Bar',
+      blackMetalScrap: '🔮 Blackmetal Scrap',
+      blackMetal: '🌌 Blackmetal Bar',
+      flametalOre: '🌋 Flametal Ore',
+      dragonSteel: '👑 Dragonsteel',
+      bone: '🦴 Cursed Bone',
+      slime: '🧪 Swamp Slime',
+      wolfPelt: '🐺 Wolf Pelt',
+      shadow_essence: '🔮 Shadow Essence',
+      torch: '🔥 Torch',
+      stoneAxe: '🪓 Stone Axe',
+      bronzeAxe: '🪓 Bronze Axe',
+      ironAxe: '🪓 Iron Axe',
+      blackMetalAxe: '🪓 Blackmetal Axe',
+      pickaxe: '⛏️ Stone Pickaxe',
+      antlerPickaxe: '🔱 Antler Pickaxe',
+      bronzePickaxe: '⛏️ Bronze Pickaxe',
+      ironPickaxe: '⛏️ Iron Pickaxe',
+      silverPickaxe: '⛏️ Mountain Pickaxe',
+      stoneSpear: '🗡️ Stone Spear',
+      hornSpear: '🔱 Horn Spear',
+      bronzeSword: '⚔️ Bronze Sword',
+      scaleSword: '🗡️ Scale Sword',
+      ironSword: '⚔️ Iron Sword',
+      steelSword: '⚔️ Steel Sword',
+      silverSword: '❄️ Silver Sword',
+      titanHammer: '🔨 Titan War Hammer',
+      blackMetalSword: '🌌 Blackmetal Blade',
+      runeblade: '💠 Runic Blade',
+      dragonSlayer: '🐉 Dragonslayer',
+      hammer: '🔨 Building Hammer',
+      fishingRod: '🎣 Fishing Rod',
+      shield: '🛡️ Wood Shield',
+      leatherArmor: '🥋 Leather Armor (Brown)',
+      bronzeArmor: '🪙 Bronze Armor (Bronze)',
+      beastArmor: '🫀 Beast Hide Armor (Fur)',
+      ironArmor: '⚔️ Iron Armor (Dark Iron)',
+      scaleArmor: '🐉 Scale Armor (Aquatic)',
+      steelArmor: '🛡️ Steel Armor (Polished Steel)',
+      plateArmor: '💎 Granite Plate Armor (Rock)',
+      runicArmor: '✨ Archmage Runic Armor (Arcane)',
+      dragonArmor: '👑 Godly Dragon King Armor',
+      hardAntler: '🔱 Hard Antler',
+      swampKey: '🗝️ Swamp Key',
+      wishbone: '🦴 Wishbone',
+      artisanCore: '💠 Artisan Core',
+      dragonTears: '💧 Dragon Tears',
+      beastHeart: '🫀 Beast Heart',
+      swampScale: '🐉 Swamp Scale',
+      graniteCore: '💎 Granite Core',
+      runeCore: '💠 Rune Core',
+      dragonCrown: '👑 Shadow Crown'
+    };
+
+    const map = isFi ? namesFi : namesEn;
+    return map[key] || key;
   }
 
   getAll() {
@@ -500,7 +588,7 @@ export default class Inventory {
     for (const [key, qty] of Object.entries(this.items)) {
       html += `
         <div class="inv-row">
-          <span><span class="inv-icon">${icons[key] || '📦'}</span>${names[key] || key}</span>
+          <span>${this.getItemName(key)}</span>
           <span class="inv-count">${qty}</span>
         </div>
       `;
@@ -508,29 +596,9 @@ export default class Inventory {
     if (this.displayEl) this.displayEl.innerHTML = html;
 
     if (this.equippedEl) {
-      let toolName = `Paljaat kädet (DMG: ${this.getWeaponDamage()})`;
-      if (this.equippedTool === 'dragonSlayer') {
-        toolName = '🐉 Draakinsurmaaja (DMG: 250)';
-      } else if (this.equippedTool === 'runeblade') {
-        toolName = '💠 Riimumiekka (DMG: 170)';
-      } else if (this.equippedTool === 'titanHammer') {
-        toolName = '🔨 Titaanivasara (DMG: 125)';
-      } else if (this.equippedTool === 'scaleSword') {
-        toolName = '🗡️ Suomumiekka (DMG: 85)';
-      } else if (this.equippedTool === 'hornSpear') {
-        toolName = '🔱 Sarvikeihäs (DMG: 55)';
-      } else if (this.equippedTool === 'bronzeSword') {
-        toolName = '⚔️ Pronssimiekka (DMG: 50)';
-      } else if (this.equippedTool === 'stoneSpear') {
-        toolName = '🗡️ Kivikeihäs (DMG: 35)';
-      } else if (this.equippedTool === 'stoneAxe') {
-        toolName = '🪓 Kivikirves (DMG: 25)';
-      } else if (this.equippedTool === 'pickaxe') {
-        toolName = '⛏️ Pronssihakku (DMG: 20)';
-      } else if (this.equippedTool === 'shield') {
-        toolName = '🛡️ Puukilpi (-35% DMG)';
-      }
-      this.equippedEl.textContent = `Varustettu: ${toolName}`;
+      const isFi = Localization.lang === 'fi';
+      const toolName = this.equippedTool ? this.getItemName(this.equippedTool) : (isFi ? 'Paljaat kädet' : 'Bare Hands');
+      this.equippedEl.textContent = `${isFi ? 'Varustettu' : 'Equipped'}: ${toolName} (${this.getWeaponDamage()} DMG)`;
     }
   }
 }
