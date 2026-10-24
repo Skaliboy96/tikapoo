@@ -65,6 +65,7 @@ export default class AudioManager {
     this.ambientGain.gain.setValueAtTime(this.ambientVolume * 0.25, t);
     this.ambientGain.connect(this.masterGain);
 
+    this.sharedNoiseBuffer = null;
     this._startGentleAmbient();
   }
 
@@ -247,24 +248,43 @@ export default class AudioManager {
     osc.start(t);
     osc.stop(t + 0.3);
 
-    // Snare / rim transient accent on backbeats
+    // Snare / rim transient accent on backbeats (reusing shared buffer)
     if (!isDownbeat && this.bossStep % 2 === 1) {
-      const noise = this._createNoiseBuffer(0.08);
-      if (noise) {
-        const nSrc = this.ctx.createBufferSource();
-        nSrc.buffer = noise;
-        const nFilter = this.ctx.createBiquadFilter();
-        nFilter.type = 'bandpass';
-        nFilter.frequency.setValueAtTime(800, t);
-        const nGain = this.ctx.createGain();
-        nGain.gain.setValueAtTime(0.08, t);
-        nGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+      try {
+        if (!this.sharedNoiseBuffer) {
+          this.sharedNoiseBuffer = this._createNoiseBuffer(0.5);
+        }
+        if (this.sharedNoiseBuffer) {
+          const nSrc = this.ctx.createBufferSource();
+          nSrc.buffer = this.sharedNoiseBuffer;
+          const nFilter = this.ctx.createBiquadFilter();
+          nFilter.type = 'bandpass';
+          nFilter.frequency.setValueAtTime(800, t);
+          const nGain = this.ctx.createGain();
+          nGain.gain.setValueAtTime(0.08, t);
+          nGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
 
-        nSrc.connect(nFilter);
-        nFilter.connect(nGain);
-        nGain.connect(this.musicGain);
-        nSrc.start(t);
+          nSrc.connect(nFilter);
+          nFilter.connect(nGain);
+          nGain.connect(this.musicGain);
+          nSrc.start(t);
+        }
+      } catch (e) {}
+    }
+  }
+
+  _createNoiseBuffer(duration = 0.5) {
+    if (!this.ctx) return null;
+    try {
+      const bufSize = Math.max(64, Math.floor(this.ctx.sampleRate * duration));
+      const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufSize, 1.2);
       }
+      return buf;
+    } catch (e) {
+      return null;
     }
   }
 
@@ -834,31 +854,35 @@ export default class AudioManager {
   playLevelUp() {
     this.ensureContext();
     if (!this.ctx || !this.sfxGain) return;
-    const t = this.ctx.currentTime;
-    // Glorious triumphant fanfare
-    const chords = [
-      { notes: [261.63, 329.63, 392.0], time: 0 },
-      { notes: [293.66, 369.99, 440.0], time: 0.18 },
-      { notes: [329.63, 392.0, 493.88], time: 0.36 },
-      { notes: [523.25, 659.25, 783.99, 1046.5], time: 0.58 }
-    ];
-    chords.forEach(c => {
-      c.notes.forEach(freq => {
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        const st = t + c.time;
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(freq, st);
-        const dur = (c.time > 0.5) ? 1.6 : 0.22;
-        gain.gain.setValueAtTime(0.001, st);
-        gain.gain.linearRampToValueAtTime(0.25, st + 0.04);
-        gain.gain.exponentialRampToValueAtTime(0.001, st + dur);
-        osc.connect(gain);
-        gain.connect(this.sfxGain);
-        osc.start(st);
-        osc.stop(st + dur + 0.1);
+    try {
+      const t = this.ctx.currentTime;
+      // Glorious triumphant fanfare
+      const chords = [
+        { notes: [261.63, 329.63, 392.0], time: 0 },
+        { notes: [293.66, 369.99, 440.0], time: 0.18 },
+        { notes: [329.63, 392.0, 493.88], time: 0.36 },
+        { notes: [523.25, 659.25, 783.99, 1046.5], time: 0.58 }
+      ];
+      chords.forEach(c => {
+        c.notes.forEach(freq => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const st = t + c.time;
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(freq, st);
+          const dur = (c.time > 0.5) ? 1.6 : 0.22;
+          gain.gain.setValueAtTime(0.001, st);
+          gain.gain.linearRampToValueAtTime(0.25, st + 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, st + dur);
+          osc.connect(gain);
+          gain.connect(this.sfxGain);
+          osc.start(st);
+          osc.stop(st + dur + 0.1);
+        });
       });
-    });
+    } catch (e) {
+      console.warn('Level up sound safely caught:', e);
+    }
   }
 
   playBowShot() {

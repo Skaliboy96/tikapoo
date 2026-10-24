@@ -603,6 +603,22 @@ async function init() {
   });
 
   // --- Pointer Lock Controls & Pause Menu ---
+  let lastResumeTime = 0;
+  let lastMenuCloseTime = 0;
+
+  const safeLockControls = () => {
+    if (!isGameStarted) return;
+    try {
+      lastResumeTime = performance.now();
+      const p = controls.lock();
+      if (p && p.catch) p.catch(() => {});
+    } catch (e) {}
+  };
+
+  document.addEventListener('pointerlockerror', () => {
+    // Gracefully handle browser pointer lock cooldown rejection without UI lockup
+  });
+
   controls.addEventListener('lock', () => {
     if (crosshair && isGameStarted) crosshair.style.display = 'block';
     if (pauseMenu) pauseMenu.classList.remove('active');
@@ -612,20 +628,34 @@ async function init() {
     if (crosshair) crosshair.style.display = 'none';
     if (!isGameStarted) return;
 
+    const now = performance.now();
+    // Prevent immediate bounce-back into pause menu if we just resumed or closed an in-game screen
+    if (now - lastResumeTime < 350 || now - lastMenuCloseTime < 350) return;
+
     const anyMenuOpen = craftingMenu.isOpen || mapScreen.isOpen || backpackScreen.isOpen ||
                         (skillTree && skillTree.isOpen) ||
-                        (npcManager.activeNPC !== null) ||
-                        document.querySelector('.menu-modal.active');
+                        (npcManager && npcManager.activeNPC !== null) ||
+                        (devMode && (devMode.isActive || devMode.isPromptOpen)) ||
+                        (characterCreator && characterCreator.isOpen) ||
+                        document.querySelector('.menu-modal.active') ||
+                        document.querySelector('#dev-password-modal.active');
     if (!anyMenuOpen && pauseMenu) {
       pauseMenu.classList.add('active');
     }
   });
 
+  const resumeGame = () => {
+    if (pauseMenu) pauseMenu.classList.remove('active');
+    lastResumeTime = performance.now();
+    setTimeout(() => {
+      safeLockControls();
+    }, 70);
+  };
+
   if (pauseResumeBtn) {
     pauseResumeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (pauseMenu) pauseMenu.classList.remove('active');
-      controls.lock();
+      resumeGame();
     });
   }
 
@@ -651,20 +681,86 @@ async function init() {
     });
   }
 
-  // Global ESC key handler for menus and pause state
+  // Global ESC key and browser protection handler
   window.addEventListener('keydown', (e) => {
+    // 1. Prevent accidental browser tab close (Ctrl+W), reload (Ctrl+R), print (Ctrl+P), save (Ctrl+S) while playing with WASD
+    if (e.ctrlKey && (e.code === 'KeyW' || e.code === 'KeyR' || e.code === 'KeyS' || e.code === 'KeyP' || e.code === 'KeyQ')) {
+      e.preventDefault();
+    }
+    if (e.ctrlKey && e.shiftKey && (e.code === 'KeyW' || e.code === 'KeyR')) {
+      e.preventDefault();
+    }
+
     if (e.code === 'Escape') {
+      // If Skill Tree is open, close it
       if (skillTree && skillTree.isOpen) {
         e.preventDefault();
         e.stopPropagation();
+        lastMenuCloseTime = performance.now();
         skillTree.close();
         return;
       }
 
+      // If Crafting Menu is open, close it
+      if (craftingMenu && craftingMenu.isOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        lastMenuCloseTime = performance.now();
+        craftingMenu.close();
+        return;
+      }
+
+      // If Backpack is open, close it
+      if (backpackScreen && backpackScreen.isOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        lastMenuCloseTime = performance.now();
+        backpackScreen.close();
+        return;
+      }
+
+      // If Map is open, close it
+      if (mapScreen && mapScreen.isOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        lastMenuCloseTime = performance.now();
+        mapScreen.close();
+        return;
+      }
+
+      // If NPC dialogue is open, close it
+      if (npcManager && npcManager.activeNPC) {
+        e.preventDefault();
+        e.stopPropagation();
+        lastMenuCloseTime = performance.now();
+        npcManager.closeDialogue();
+        return;
+      }
+
+      // If Dev Password prompt is open, close it
+      if (devMode && devMode.isPromptOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        lastMenuCloseTime = performance.now();
+        devMode.closePasswordPrompt();
+        return;
+      }
+
+      // If Dev Mode is open, exit it
+      if (devMode && devMode.isActive) {
+        e.preventDefault();
+        e.stopPropagation();
+        lastMenuCloseTime = performance.now();
+        devMode.exit();
+        return;
+      }
+
+      // If any menu modal is open (Instructions, Lore, Settings)
       const activeModal = document.querySelector('.menu-modal.active');
       if (activeModal) {
         e.preventDefault();
         e.stopPropagation();
+        lastMenuCloseTime = performance.now();
         activeModal.classList.remove('active');
         if (isGameStarted && pauseMenu && !craftingMenu.isOpen && !backpackScreen.isOpen && !mapScreen.isOpen && (!npcManager || !npcManager.activeNPC)) {
           pauseMenu.classList.add('active');
@@ -672,15 +768,32 @@ async function init() {
         return;
       }
 
+      // If Character Creator is open, close it and return to main menu
+      if (characterCreator && characterCreator.isOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        characterCreator.close();
+        if (mainMenu) mainMenu.style.display = 'flex';
+        return;
+      }
+
+      // If Main Menu is open and user presses ESC: immediately start / enter game!
+      if (mainMenu && mainMenu.style.display !== 'none') {
+        e.preventDefault();
+        e.stopPropagation();
+        startGame();
+        return;
+      }
+
+      // If game is started and Pause Menu is open, resume game cleanly!
       if (isGameStarted && pauseMenu && pauseMenu.classList.contains('active')) {
         e.preventDefault();
         e.stopPropagation();
-        pauseMenu.classList.remove('active');
-        controls.lock();
+        resumeGame();
         return;
       }
     }
-  });
+  }, { passive: false });
 
   // Click on canvas always relocks pointer if in-game and no modal is active
   renderer.domElement.addEventListener('click', () => {
@@ -692,9 +805,12 @@ async function init() {
                         document.querySelector('#backpack-screen.active') ||
                         document.querySelector('#npc-dialogue.active') ||
                         document.querySelector('#pause-menu.active') ||
-                        (skillTree && skillTree.isOpen);
+                        document.querySelector('#dev-password-modal.active') ||
+                        (skillTree && skillTree.isOpen) ||
+                        (devMode && (devMode.isActive || devMode.isPromptOpen)) ||
+                        (characterCreator && characterCreator.isOpen);
       if (!anyModal) {
-        controls.lock();
+        safeLockControls();
       }
     }
   });
@@ -748,7 +864,6 @@ async function init() {
           nearbyChest.isOpened = true;
           if (nearbyChest.glowLight) {
             scene.remove(nearbyChest.glowLight);
-            if (nearbyChest.glowLight.dispose) nearbyChest.glowLight.dispose();
             nearbyChest.glowLight = null;
           }
           if (audioManager && audioManager.playLevelUp) {
@@ -762,7 +877,7 @@ async function init() {
               }
             });
           }
-          // Generous treasure rewards
+          // Generous treasure rewards added in a single batch update
           const chestRewards = [
             { item: 'bronze', count: 2 },
             { item: 'iron', count: 2 },
@@ -771,11 +886,26 @@ async function init() {
             { item: 'wood', count: 14 },
             { item: 'stone', count: 10 }
           ];
-          chestRewards.forEach(r => {
-            if (inventory && inventory.add) inventory.add(r.item, r.count);
-          });
-          if (hud && hud.showNotification) {
-            hud.showNotification(Localization.t('chest_opened', '🎁 You opened a treasure chest and found valuable resources!'), 3500);
+          if (inventory) {
+            if (inventory.addBatch) {
+              inventory.addBatch(chestRewards);
+            } else {
+              chestRewards.forEach(r => inventory.add(r.item, r.count));
+            }
+          }
+          if (hud) {
+            chestRewards.forEach((r, idx) => {
+              setTimeout(() => {
+                const name = inventory ? inventory.getItemName(r.item) : r.item;
+                if (hud.showPickupText) hud.showPickupText(`+${r.count} ${name}`);
+              }, idx * 110);
+            });
+            if (hud.showNotification) {
+              hud.showNotification(Localization.t('chest_opened', '🎁 You opened a treasure chest and found valuable resources!'), 3500);
+            }
+            if (hud.hideTooltip) {
+              hud.hideTooltip();
+            }
           }
         } catch (err) {
           console.error('Chest opening error handled:', err);
@@ -930,8 +1060,14 @@ async function init() {
           }
         } else if (isNearWaterEdge(pPos)) {
           hud.showTooltip('[E] Juo raikasta tunturivettä 💧');
+        } else {
+          hud.hideTooltip();
         }
       }
+    } else if (locked && (resourceNode.isAimingAtHarvestable() || npcManager.targetedNPC)) {
+      // Handled by resourceNode or npcManager
+    } else {
+      hud.hideTooltip();
     }
 
     // Check exploration proximity to Ancient Ruins Altar (x: 85, z: -25) and Highland Watchtower (x: 30, z: -68)

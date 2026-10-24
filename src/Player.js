@@ -59,6 +59,12 @@ export default class Player {
     this.cameraDistance = 3.2;
     this.targetCameraDistance = 3.2;
 
+    // Reusable camera vectors to prevent GC allocations
+    this._camLookDir = new THREE.Vector3();
+    this._camRight = new THREE.Vector3();
+    this._camDesiredPos = new THREE.Vector3();
+    this._camFocusTarget = new THREE.Vector3();
+
     this.keys = {
       forward: false,
       back: false,
@@ -514,6 +520,11 @@ export default class Player {
 
   setupInputs() {
     window.addEventListener('keydown', (e) => {
+      // Prevent browser from closing tab on Ctrl+W, reload on Ctrl+R, etc. while playing
+      if (e.ctrlKey && (e.code === 'KeyW' || e.code === 'KeyR' || e.code === 'KeyS' || e.code === 'KeyP' || e.code === 'KeyQ')) {
+        e.preventDefault();
+      }
+
       // Toggle 3rd person / 1st person with [V]
       if (e.code === 'KeyV') {
         this.isThirdPerson = !this.isThirdPerson;
@@ -522,6 +533,17 @@ export default class Player {
             this.isThirdPerson ? '🎥 Kolmannen persoonan kuvakulma (Valheim)' : '🎥 Ensimmäisen persoonan kuvakulma',
             2000
           );
+        }
+      }
+
+      // Camera distance zoom in third person via keyboard (PageUp / PageDown or [ / ])
+      if (this.isThirdPerson) {
+        if (e.code === 'PageUp' || e.code === 'BracketRight') {
+          e.preventDefault();
+          this.targetCameraDistance = Math.max(1.4, this.targetCameraDistance - 0.5);
+        } else if (e.code === 'PageDown' || e.code === 'BracketLeft') {
+          e.preventDefault();
+          this.targetCameraDistance = Math.min(8.5, this.targetCameraDistance + 0.5);
         }
       }
 
@@ -808,33 +830,28 @@ export default class Player {
     // Adjust camera position based on perspective mode
     if (this.isThirdPerson) {
       // Natural RPG spherical boom camera (Valheim / Witcher 3)
-      const lookDir = new THREE.Vector3();
-      this.camera.getWorldDirection(lookDir);
+      this.camera.getWorldDirection(this._camLookDir);
 
       // Focus point on the character's upper chest (Y + 1.45m)
-      const focusTarget = this.playerPos.clone().add(new THREE.Vector3(0, 1.45, 0));
+      this._camFocusTarget.copy(this.playerPos);
+      this._camFocusTarget.y += 1.45;
 
       // Right vector perpendicular to camera look direction
-      const camRight = new THREE.Vector3();
-      camRight.crossVectors(lookDir, new THREE.Vector3(0, 1, 0)).normalize();
+      this._camRight.crossVectors(this._camLookDir, new THREE.Vector3(0, 1, 0)).normalize();
 
       // Subtle shoulder offset (0.22m) so line of sight and crosshair are unobstructed
-      const shoulder = camRight.multiplyScalar(0.22);
-
-      // Spherical boom position along look direction
-      const desiredCamPos = focusTarget
-        .clone()
-        .add(shoulder)
-        .sub(lookDir.clone().multiplyScalar(this.cameraDistance));
+      this._camDesiredPos.copy(this._camFocusTarget);
+      this._camDesiredPos.addScaledVector(this._camRight, 0.22);
+      this._camDesiredPos.addScaledVector(this._camLookDir, -this.cameraDistance);
 
       // Ground terrain collision check (prevents camera sinking below hills)
-      const groundAtCam = world ? world.getGroundHeight(desiredCamPos.x, desiredCamPos.z) : 0;
-      if (desiredCamPos.y < groundAtCam + 0.45) {
-        desiredCamPos.y = groundAtCam + 0.45;
+      const groundAtCam = world ? world.getGroundHeight(this._camDesiredPos.x, this._camDesiredPos.z) : 0;
+      if (this._camDesiredPos.y < groundAtCam + 0.45) {
+        this._camDesiredPos.y = groundAtCam + 0.45;
       }
 
-      // Smooth follow to eliminate harsh jitter
-      this.camera.position.lerp(desiredCamPos, Math.min(1.0, delta * 24));
+      // Directly sync camera position with mouse rotation for 100% instant, jitter-free turns!
+      this.camera.position.copy(this._camDesiredPos);
 
       // Hide 1st-person viewmodel in third person mode
       if (combat && combat.weaponRig) {

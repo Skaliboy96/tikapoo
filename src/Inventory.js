@@ -108,6 +108,20 @@ export default class Inventory {
     this.updateDisplay();
   }
 
+  addBatch(itemsArray) {
+    if (!Array.isArray(itemsArray)) return;
+    for (const entry of itemsArray) {
+      const item = entry.item || entry.id;
+      const count = entry.count !== undefined ? entry.count : 1;
+      if (this.items[item] !== undefined) {
+        this.items[item] += count;
+      } else {
+        this.items[item] = count;
+      }
+    }
+    this.updateDisplay();
+  }
+
   remove(item, count = 1) {
     if (!this.has(item, count)) {
       return false;

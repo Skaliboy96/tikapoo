@@ -402,6 +402,49 @@ export default class Combat {
 
   // --- Archery & Magic Projectiles ---
 
+  _getProjectileOriginAndDir() {
+    const is3rd = this.player ? this.player.isThirdPerson : false;
+    const pPos = (this.player && this.player.getPosition) ? this.player.getPosition() : this.camera.position;
+
+    // Raycast from camera center to find target impact point
+    this.raycaster.setFromCamera(this.screenCenter, this.camera);
+    const meshes = [
+      ...(this.enemyManager ? this.enemyManager.getEnemyMeshes() : []),
+      ...(this.bossManager ? this.bossManager.getBossMeshes() : []),
+      ...(this.animalManager ? this.animalManager.getAnimals().map(a => a.mesh) : []),
+      (this.player && this.player.world && this.player.world.terrainMesh) ? this.player.world.terrainMesh : null
+    ].filter(Boolean);
+
+    const hits = this.raycaster.intersectObjects(meshes, true);
+    let targetPoint = null;
+    if (hits.length > 0 && hits[0].distance > 1.8) {
+      targetPoint = hits[0].point;
+    } else {
+      const camDir = new THREE.Vector3();
+      this.camera.getWorldDirection(camDir);
+      targetPoint = this.camera.position.clone().add(camDir.multiplyScalar(75.0));
+    }
+
+    // In 3rd person, spawn in front of character chest/shoulder (never behind the back!)
+    let spawnPos;
+    if (is3rd) {
+      spawnPos = pPos.clone();
+      spawnPos.y += 1.45;
+      const camLook = new THREE.Vector3();
+      this.camera.getWorldDirection(camLook);
+      const camRight = new THREE.Vector3().crossVectors(camLook, new THREE.Vector3(0, 1, 0)).normalize();
+      spawnPos.addScaledVector(camRight, 0.25);
+      spawnPos.addScaledVector(camLook, 0.65);
+    } else {
+      const camLook = new THREE.Vector3();
+      this.camera.getWorldDirection(camLook);
+      spawnPos = this.camera.position.clone().addScaledVector(camLook, 0.6);
+    }
+
+    const dir = new THREE.Vector3().subVectors(targetPoint, spawnPos).normalize();
+    return { spawnPos, dir };
+  }
+
   shootArrow(damageMultiplier = 1.0, isPiercing = false) {
     if (this.currentCooldown > 0) return;
     this.attackCooldown = 0.55;
@@ -436,14 +479,10 @@ export default class Combat {
     head.position.z = 0.45;
     arrowGroup.add(head);
 
-    // Initial position in front of camera / player
-    const spawnPos = this.camera.position.clone();
-    const dir = new THREE.Vector3();
-    this.camera.getWorldDirection(dir);
-    spawnPos.add(dir.clone().multiplyScalar(0.8));
-
+    // Accurate spawn position in front of chest/shoulder toward crosshair target
+    const { spawnPos, dir } = this._getProjectileOriginAndDir();
     arrowGroup.position.copy(spawnPos);
-    arrowGroup.quaternion.copy(this.camera.quaternion);
+    arrowGroup.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
 
     this.scene.add(arrowGroup);
 
@@ -452,7 +491,7 @@ export default class Combat {
 
     this.projectiles.push({
       mesh: arrowGroup,
-      velocity: dir.multiplyScalar(46.0),
+      velocity: dir.multiplyScalar(48.0),
       gravity: -9.8,
       damage: finalDmg,
       isPiercing: isPiercing,
@@ -520,17 +559,16 @@ export default class Combat {
     const pLight = new THREE.PointLight(0x00c4ff, 2.5, 8);
     boltMesh.add(pLight);
 
-    const dir = new THREE.Vector3();
-    this.camera.getWorldDirection(dir);
-    boltMesh.position.copy(this.camera.position.clone().add(dir.clone().multiplyScalar(0.8)));
+    const { spawnPos, dir } = this._getProjectileOriginAndDir();
+    boltMesh.position.copy(spawnPos);
 
     this.scene.add(boltMesh);
 
     this.projectiles.push({
       mesh: boltMesh,
-      velocity: dir.multiplyScalar(38.0),
+      velocity: dir.multiplyScalar(42.0),
       gravity: 0,
-      damage: 48,
+      damage: 52,
       isPiercing: false,
       life: 2.5,
       type: 'bolt'
@@ -545,20 +583,19 @@ export default class Combat {
     const fLight = new THREE.PointLight(0xff3300, 4.0, 14);
     fireball.add(fLight);
 
-    const dir = new THREE.Vector3();
-    this.camera.getWorldDirection(dir);
-    fireball.position.copy(this.camera.position.clone().add(dir.clone().multiplyScalar(1.0)));
+    const { spawnPos, dir } = this._getProjectileOriginAndDir();
+    fireball.position.copy(spawnPos);
 
     this.scene.add(fireball);
 
     this.projectiles.push({
       mesh: fireball,
-      velocity: dir.multiplyScalar(32.0),
-      gravity: -2.5,
-      damage: 110,
+      velocity: dir.multiplyScalar(36.0),
+      gravity: -1.8,
+      damage: 130,
       isExplosive: true,
-      explosionRadius: 6.0,
-      life: 3.0,
+      explosionRadius: 6.5,
+      life: 3.5,
       type: 'fireball'
     });
   }
@@ -722,14 +759,14 @@ export default class Combat {
     }
   }
 
-  _damageTargetsInRadius(center, radius, damage) {
+  _damageTargetsInRadius(center, radius, damage, excludeTarget = null) {
     let hitCount = 0;
     const radSq = radius * radius;
 
     // Enemies
     if (this.enemyManager && this.enemyManager.enemies) {
       this.enemyManager.enemies.forEach(e => {
-        if (e && e.isAlive && e.mesh) {
+        if (e && e.isAlive && e.mesh && e !== excludeTarget) {
           const dx = e.mesh.position.x - center.x;
           const dz = e.mesh.position.z - center.z;
           const distSq = dx * dx + dz * dz;
@@ -752,7 +789,7 @@ export default class Combat {
     // Animals
     if (this.animalManager && this.animalManager.animals) {
       this.animalManager.animals.forEach(a => {
-        if (a && a.isAlive && a.mesh) {
+        if (a && a.isAlive && a.mesh && a !== excludeTarget) {
           const dx = a.mesh.position.x - center.x;
           const dz = a.mesh.position.z - center.z;
           const distSq = dx * dx + dz * dz;
@@ -776,7 +813,7 @@ export default class Combat {
     if (this.bossManager && this.bossManager.bosses) {
       const bossRadSq = (radius + 4.0) * (radius + 4.0);
       this.bossManager.bosses.forEach(b => {
-        if (b && b.isAlive && b.mesh) {
+        if (b && b.isAlive && b.mesh && b !== excludeTarget) {
           const dx = b.mesh.position.x - center.x;
           const dz = b.mesh.position.z - center.z;
           const distSq = dx * dx + dz * dz;
@@ -861,30 +898,44 @@ export default class Combat {
 
       // Check hit against enemies & animals & bosses
       let hasHit = false;
+      let hitTarget = null;
       const pPos = p.mesh.position;
 
-      // Bosses
+      // Bosses (volumetric cylinder check from ground to horns)
       if (this.bossManager && this.bossManager.bosses) {
         for (const b of this.bossManager.bosses) {
-          if (b.isAlive && b.mesh.position.distanceTo(pPos) < 3.2) {
-            b.takeDamage(p.damage);
-            if (this.hud) this.hud.showDamageNumber(p.damage, false);
-            if (this.audioManager) this.audioManager.playArrowHit();
-            hasHit = true;
-            break;
+          if (b.isAlive && b.mesh) {
+            const bPos = b.mesh.position;
+            const bScale = (b.def && b.def.scale) ? b.def.scale : 3.5;
+            const horizDist = Math.hypot(bPos.x - pPos.x, bPos.z - pPos.z);
+            const vertDist = pPos.y - bPos.y;
+            if (horizDist <= bScale * 1.3 && vertDist >= -0.5 && vertDist <= bScale * 2.2) {
+              b.takeDamage(p.damage);
+              if (this.hud) this.hud.showDamageNumber(p.damage, false);
+              if (this.audioManager) this.audioManager.playArrowHit();
+              hasHit = true;
+              hitTarget = b;
+              break;
+            }
           }
         }
       }
 
-      // Enemies
+      // Enemies (volumetric cylinder check)
       if (!hasHit && this.enemyManager && this.enemyManager.enemies) {
         for (const e of this.enemyManager.enemies) {
-          if (e.isAlive && e.mesh.position.distanceTo(pPos) < 1.4) {
-            e.takeDamage(p.damage);
-            if (this.hud) this.hud.showDamageNumber(p.damage, false, e.mesh.position, this.camera);
-            if (this.audioManager) this.audioManager.playArrowHit();
-            hasHit = true;
-            break;
+          if (e.isAlive && e.mesh) {
+            const ePos = e.mesh.position;
+            const horizDist = Math.hypot(ePos.x - pPos.x, ePos.z - pPos.z);
+            const vertDist = pPos.y - ePos.y;
+            if (horizDist <= 1.5 && vertDist >= -0.3 && vertDist <= 2.4) {
+              e.takeDamage(p.damage);
+              if (this.hud) this.hud.showDamageNumber(p.damage, false, e.mesh.position, this.camera);
+              if (this.audioManager) this.audioManager.playArrowHit();
+              hasHit = true;
+              hitTarget = e;
+              break;
+            }
           }
         }
       }
@@ -892,12 +943,18 @@ export default class Combat {
       // Animals
       if (!hasHit && this.animalManager && this.animalManager.animals) {
         for (const a of this.animalManager.animals) {
-          if (a.isAlive && a.mesh.position.distanceTo(pPos) < 1.4) {
-            a.takeDamage(p.damage);
-            if (this.hud) this.hud.showDamageNumber(p.damage, false, a.mesh.position, this.camera);
-            if (this.audioManager) this.audioManager.playArrowHit();
-            hasHit = true;
-            break;
+          if (a.isAlive && a.mesh) {
+            const aPos = a.mesh.position;
+            const horizDist = Math.hypot(aPos.x - pPos.x, aPos.z - pPos.z);
+            const vertDist = pPos.y - aPos.y;
+            if (horizDist <= 1.6 && vertDist >= -0.3 && vertDist <= 2.2) {
+              a.takeDamage(p.damage);
+              if (this.hud) this.hud.showDamageNumber(p.damage, false, a.mesh.position, this.camera);
+              if (this.audioManager) this.audioManager.playArrowHit();
+              hasHit = true;
+              hitTarget = a;
+              break;
+            }
           }
         }
       }
@@ -910,7 +967,10 @@ export default class Combat {
 
       if (hasHit || p.life <= 0) {
         if (p.isExplosive) {
-          this._damageTargetsInRadius(pPos, p.explosionRadius || 5.0, p.damage);
+          this._damageTargetsInRadius(pPos, p.explosionRadius || 6.5, p.damage, hitTarget);
+          if (this.audioManager && this.audioManager.playExplosion) {
+            this.audioManager.playExplosion();
+          }
         }
         this.scene.remove(p.mesh);
         this.projectiles.splice(i, 1);

@@ -980,4 +980,38 @@ export default class BuildingSystem {
 
     return true;
   }
+
+  placeDirect(type, position, rotationY = 0, customId = null) {
+    const solidMesh = this.createStructureMesh(type, false);
+    solidMesh.position.copy(position);
+    solidMesh.rotation.y = rotationY;
+    if (customId) {
+      solidMesh.userData.customId = customId;
+    }
+    this.scene.add(solidMesh);
+
+    const structure = {
+      mesh: solidMesh,
+      type: type,
+      position: solidMesh.position.clone(),
+      customId: customId || null
+    };
+    this.placedStructures.push(structure);
+
+    const p = solidMesh.position;
+    if (type === 'woodenWall' || type === 'stoneWall' || type === 'palisade') {
+      this.placedColliders.push({ minX: p.x - 1.2, maxX: p.x + 1.2, minZ: p.z - 1.2, maxZ: p.z + 1.2, mesh: solidMesh });
+    } else if (type === 'smelter' || type === 'forge' || type === 'workbench') {
+      this.placedColliders.push({ minX: p.x - 0.9, maxX: p.x + 0.9, minZ: p.z - 0.9, maxZ: p.z + 0.9, mesh: solidMesh });
+    } else if (type === 'table' || type === 'chest' || type === 'barrel' || type === 'bed') {
+      this.placedColliders.push({ minX: p.x - 0.7, maxX: p.x + 0.7, minZ: p.z - 0.7, maxZ: p.z + 0.7, mesh: solidMesh });
+    }
+    return structure;
+  }
+
+  removeStructure(mesh) {
+    this.placedStructures = this.placedStructures.filter(s => s.mesh !== mesh);
+    this.placedColliders = this.placedColliders.filter(c => c.mesh !== mesh);
+    this.scene.remove(mesh);
+  }
 }

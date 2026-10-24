@@ -142,6 +142,21 @@ export default class BackpackScreen {
     });
 
     this.equipEl.innerHTML = html;
+
+    // Allow clicking the weapon slot to toggle weapon / fists
+    const weaponSlotEl = this.equipEl.children[2];
+    if (weaponSlotEl) {
+      weaponSlotEl.style.cursor = 'pointer';
+      weaponSlotEl.title = isFi ? 'Klikkaa riisuaksesi ase tai vaihtaaksesi nyrkkeihin [X]' : 'Click to unequip weapon or switch to fists [X]';
+      weaponSlotEl.addEventListener('click', () => {
+        if (this.hotbar && this.hotbar.toggleFists) {
+          this.hotbar.toggleFists();
+        } else if (this.inventory) {
+          this.inventory.equip(null);
+        }
+        this.refresh();
+      });
+    }
   }
 
   _renderStats() {

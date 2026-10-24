@@ -405,14 +405,14 @@
                 <li data-i18n="guide_move_shift"><strong>Shift</strong> : Sprint (consumes stamina)</li>
                 <li data-i18n="guide_move_space"><strong>Space</strong> : Jump</li>
                 <li data-i18n="guide_move_v"><strong>V</strong> : Toggle camera view (3rd person / 1st person)</li>
-                <li data-i18n="guide_move_zoom"><strong>CTRL + Mouse Wheel</strong> : Adjust camera distance (Zoom in/out)</li>
+                <li data-i18n="guide_move_zoom"><strong>Shift / Ctrl + Wheel or PageUp / PageDown</strong> : Camera distance (Zoom in/out)</li>
                 <li data-i18n="guide_move_mouse"><strong>Mouse</strong> : Look around</li>
               </ul>
             </div>
             <div class="guide-card">
               <h3 data-i18n="guide_action_title">⚔️ Actions & Tools</h3>
               <ul>
-                <li data-i18n="guide_act_hotbar"><strong>1 – 8</strong> : Hotbar equipment (Weapons, Rod, Hammer, Food)</li>
+                <li data-i18n="guide_act_hotbar"><strong>1 – 8</strong> : Hotbar. Press <strong>[X] / [0]</strong> or click weapon for Fists</li>
                 <li data-i18n="guide_act_harvest"><strong>Left Click (Hold)</strong> : Harvest trees, rocks, crops</li>
                 <li data-i18n="guide_act_attack"><strong>Left Click</strong> : Attack enemies or cast fishing rod</li>
                 <li data-i18n="guide_act_e"><strong>E</strong> : Interact (Talk to NPCs, open chests, campfire cooking)</li>
@@ -643,18 +643,28 @@
   <!-- ===== DEVELOPER / CREATIVE MODE OVERLAY ===== -->
   <div id="dev-mode-panel" class="dev-panel-container" style="display: none;">
     <div class="dev-toolbar">
-      <div class="dev-brand">🛠️ DEV CREATIVE MODE</div>
+      <div class="dev-brand">🛠️ DEV MAAILMANEDITORI</div>
       <button id="dev-pause-toggle" class="dev-btn active">⏸️ Simulaatio: PYSÄYTETTY</button>
       <button id="dev-fly-toggle" class="dev-btn active">🕊️ Vapaa Lento: PÄÄLLÄ</button>
       <div class="dev-speed-group">
-        <span>Lentonopeus:</span>
+        <span>Nopeus:</span>
         <button class="dev-speed-btn" data-speed="1">1x</button>
         <button class="dev-speed-btn active" data-speed="3">3x</button>
         <button class="dev-speed-btn" data-speed="8">8x</button>
       </div>
+      <button id="dev-delete-mode-btn" class="dev-btn">🗑️ Poistotyökalu [X]: POIS</button>
+      <button id="dev-save-edits-btn" class="dev-btn">💾 Tallenna (0)</button>
+      <button id="dev-reset-edits-btn" class="dev-btn dev-btn-danger">🔄 Nollaa maailma</button>
+      <button id="dev-export-btn" class="dev-btn">📋 JSON</button>
       <button id="dev-godmode-btn" class="dev-btn">🛡️ Kuolemattomuus: POIS</button>
-      <button id="dev-give-items-btn" class="dev-btn">🎒 Anna Kaikki Resurssit (999)</button>
-      <button id="dev-close-btn" class="dev-btn dev-btn-exit">✕ Poistu Devaustilasta [ESC]</button>
+      <button id="dev-give-items-btn" class="dev-btn">🎒 Resurssit (999)</button>
+      <button id="dev-close-btn" class="dev-btn dev-btn-exit">✕ Poistu [ESC]</button>
+    </div>
+
+    <!-- Placement banner -->
+    <div id="dev-placement-banner" class="dev-placement-banner" style="display: none;">
+      <span id="dev-placement-text">🛠️ Asetustila: Mänty</span>
+      <button id="dev-cancel-placement-btn" class="dev-banner-cancel-btn">✕ Peruuta [ESC]</button>
     </div>
 
     <!-- Inspector floating card for object under crosshair / clicked -->
@@ -662,6 +672,7 @@
       <div class="dev-insp-header">
         <span id="dev-insp-title">Valittu Kohde</span>
         <span id="dev-insp-type" class="dev-tag">Puu</span>
+        <button id="dev-insp-close-btn" class="modal-close" style="font-size: 13px; margin-left: auto;">✕</button>
       </div>
       <div class="dev-insp-body">
         <div class="dev-coord-row">
@@ -675,28 +686,103 @@
       </div>
     </div>
 
-    <!-- Dev Spawn & Teleport Drawer -->
+    <!-- Dev Categorized Palette & Drawer -->
     <div class="dev-bottom-drawer">
-      <div class="dev-tab-row">
-        <span class="dev-drawer-label">Spawn Kohteita:</span>
-        <button class="dev-spawn-btn" data-spawn="tree_birch">🌲 Koivu</button>
-        <button class="dev-spawn-btn" data-spawn="tree_pine">🌲 Mänty</button>
-        <button class="dev-spawn-btn" data-spawn="rock">🪨 Kivi</button>
-        <button class="dev-spawn-btn" data-spawn="chest">🎁 Aarrearkku</button>
-        <button class="dev-spawn-btn" data-spawn="workbench">🔨 Työpöytä</button>
-        <button class="dev-spawn-btn" data-spawn="campfire">🔥 Nuotio</button>
-        <button class="dev-spawn-btn" data-spawn="boar">🐗 Karju</button>
-        <button class="dev-spawn-btn" data-spawn="skeleton">👹 Luuranko</button>
+      <div class="dev-drawer-tabs">
+        <button class="dev-category-tab active" data-category="nature">🌲 Luonto (Nature)</button>
+        <button class="dev-category-tab" data-category="structures">🪵 Rakenteet (Structures)</button>
+        <button class="dev-category-tab" data-category="crafting">🔥 Tuli &amp; Työpisteet</button>
+        <button class="dev-category-tab" data-category="props">📦 Huonekalut &amp; Tavarat</button>
+        <button class="dev-category-tab" data-category="creatures">🐺 Olennot (NPC)</button>
+        <button class="dev-category-tab" data-category="teleport">📍 Pikasiirtymä</button>
       </div>
-      <div class="dev-tab-row" style="margin-top: 6px;">
-        <span class="dev-drawer-label">Teleporttaa:</span>
-        <button class="dev-tp-btn" data-x="0" data-z="0">🏛️ Keskuskylä</button>
-        <button class="dev-tp-btn" data-x="50" data-z="-45">⚓ Satama</button>
+
+      <!-- Nature Palette -->
+      <div class="dev-palette-content active" id="dev-palette-nature">
+        <button class="dev-palette-btn" data-category="nature" data-type="tree_pine" data-model="Pine_1" data-name="Mänty">🌲 Mänty</button>
+        <button class="dev-palette-btn" data-category="nature" data-type="tree_tall" data-model="Pine_3" data-name="Valtava Mänty">🌲 Valtava Mänty</button>
+        <button class="dev-palette-btn" data-category="nature" data-type="tree_birch" data-model="BirchTree_1" data-name="Koivu">🌳 Koivu</button>
+        <button class="dev-palette-btn" data-category="nature" data-type="tree_oak" data-model="CommonTree_1" data-name="Muinaistammi">🌳 Tammi</button>
+        <button class="dev-palette-btn" data-category="nature" data-type="tree_dead" data-model="DeadTree_1" data-name="Kelohonka">🪵 Kelohonka</button>
+        <button class="dev-palette-btn" data-category="nature" data-type="rock_boulder" data-model="Rock_1" data-name="Kivijärkäle">🪨 Kivijärkäle</button>
+        <button class="dev-palette-btn" data-category="nature" data-type="rock_moss" data-model="Rock_Moss_1" data-name="Sammalkivi">🪨 Sammalkivi</button>
+        <button class="dev-palette-btn" data-category="nature" data-type="rock_pebble" data-model="Pebble_Round_1" data-name="Irtokivi">🪨 Irtokivi</button>
+        <button class="dev-palette-btn" data-category="nature" data-type="bush_berry" data-model="BushBerries_1" data-name="Marjapensas">🫐 Marjapensas</button>
+        <button class="dev-palette-btn" data-category="nature" data-type="chest" data-model="Chest_Wood" data-name="Aarrearkku">🎁 Aarrearkku</button>
+      </div>
+
+      <!-- Structures Palette -->
+      <div class="dev-palette-content" id="dev-palette-structures" style="display: none;">
+        <button class="dev-palette-btn" data-category="structures" data-type="woodenWall" data-name="Hirsiseinä">🪵 Hirsiseinä</button>
+        <button class="dev-palette-btn" data-category="structures" data-type="stoneWall" data-name="Kivimuuri">🧱 Kivimuuri</button>
+        <button class="dev-palette-btn" data-category="structures" data-type="woodenFloor" data-name="Puulattia">🪚 Puulattia</button>
+        <button class="dev-palette-btn" data-category="structures" data-type="stoneFloor" data-name="Kivilattia">🏛️ Kivilattia</button>
+        <button class="dev-palette-btn" data-category="structures" data-type="woodenRoof" data-name="Harjakatto">🏠 Harjakatto</button>
+        <button class="dev-palette-btn" data-category="structures" data-type="woodenDoor" data-name="Salpaovi">🚪 Salpaovi</button>
+        <button class="dev-palette-btn" data-category="structures" data-type="palisade" data-name="Paaluaita">🛡️ Paaluaita</button>
+        <button class="dev-palette-btn" data-category="structures" data-type="woodenStairs" data-name="Puuportaat">🪜 Puuportaat</button>
+      </div>
+
+      <!-- Crafting Palette -->
+      <div class="dev-palette-content" id="dev-palette-crafting" style="display: none;">
+        <button class="dev-palette-btn" data-category="crafting" data-type="workbench" data-name="Työpöytä">🔨 Työpöytä</button>
+        <button class="dev-palette-btn" data-category="crafting" data-type="campfire" data-name="Nuotio">🔥 Nuotio</button>
+        <button class="dev-palette-btn" data-category="crafting" data-type="torchPole" data-name="Soihtutolppa">🕯️ Soihtutolppa</button>
+        <button class="dev-palette-btn" data-category="crafting" data-type="smelter" data-name="Sulatto">🌋 Sulatto</button>
+        <button class="dev-palette-btn" data-category="crafting" data-type="forge" data-name="Sepän Ahjo">⚔️ Sepän Ahjo</button>
+        <button class="dev-palette-btn" data-category="crafting" data-type="cauldron" data-name="Keittopata">🍲 Keittopata</button>
+      </div>
+
+      <!-- Props Palette -->
+      <div class="dev-palette-content" id="dev-palette-props" style="display: none;">
+        <button class="dev-palette-btn" data-category="props" data-type="barrel" data-name="Tynnyri">🛢️ Tynnyri</button>
+        <button class="dev-palette-btn" data-category="props" data-type="table" data-name="Pöytä">🪵 Pöytä</button>
+        <button class="dev-palette-btn" data-category="props" data-type="chair" data-name="Tuoli">🪑 Tuoli</button>
+        <button class="dev-palette-btn" data-category="props" data-type="bed" data-name="Sänky">🛏️ Sänky</button>
+        <button class="dev-palette-btn" data-category="props" data-type="prop_wagon" data-model="Prop_Wagon" data-name="Hevoskärryt">🛒 Kärryt</button>
+        <button class="dev-palette-btn" data-category="props" data-type="prop_crate" data-model="Prop_Crate" data-name="Puulaatikko">📦 Laatikko</button>
+        <button class="dev-palette-btn" data-category="props" data-type="prop_fence" data-model="Prop_WoodenFence_Single" data-name="Aita">🚧 Puuaita</button>
+      </div>
+
+      <!-- Creatures Palette -->
+      <div class="dev-palette-content" id="dev-palette-creatures" style="display: none;">
+        <button class="dev-palette-btn" data-category="creatures" data-type="boar" data-name="Villisika">🐗 Villisika</button>
+        <button class="dev-palette-btn" data-category="creatures" data-type="skeleton" data-name="Luuranko">👹 Luuranko</button>
+        <button class="dev-palette-btn" data-category="creatures" data-type="greydwarf" data-name="Harmaakääpiö">🧌 Harmaakääpiö</button>
+        <button class="dev-palette-btn" data-category="creatures" data-type="wolf" data-name="Susi">🐺 Susi</button>
+      </div>
+
+      <!-- Teleport Palette -->
+      <div class="dev-palette-content" id="dev-palette-teleport" style="display: none;">
+        <button class="dev-tp-btn" data-x="0" data-z="0">🏛️ Keskuskylä (Spawn)</button>
+        <button class="dev-tp-btn" data-x="50" data-z="-45">⚓ Satama &amp; Laituri</button>
         <button class="dev-tp-btn" data-x="-95" data-z="-95">🌲 Mustametsä</button>
         <button class="dev-tp-btn" data-x="-110" data-z="110">🌿 Kirottu Suo</button>
-        <button class="dev-tp-btn" data-x="110" data-z="-110">❄️ Jäävuoret</button>
-        <button class="dev-tp-btn" data-x="140" data-z="0">🌾 Tasangot</button>
+        <button class="dev-tp-btn" data-x="110" data-z="-110">❄️ Lumivuoret</button>
+        <button class="dev-tp-btn" data-x="140" data-z="0">🌾 Riimutasangot</button>
+        <button class="dev-tp-btn" data-x="0" data-z="220">🌋 Sysivuori (Ashlands)</button>
         <button class="dev-tp-btn" data-x="-45" data-z="-35">🔥 Sarvipeto (Boss 1)</button>
+        <button class="dev-tp-btn" data-x="-150" data-z="130">💀 Suoherra (Boss 2)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dev JSON Export Modal -->
+  <div id="dev-export-modal" class="menu-modal" style="display: none;">
+    <div class="modal-box" style="max-width: 520px;">
+      <div class="modal-header">
+        <h2>📋 Paikalliset Maailmanmuokkaukset (JSON)</h2>
+        <button id="dev-export-close-btn" class="modal-close">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 18px;">
+        <p style="font-size: 12px; color: #bdc3c7; margin-bottom: 10px;">
+          Kaikki poistamasi ja lisäämäsi kohteet tallennetaan selaimesi paikalliseen muistiin (localStorage). Voit kopioida tiedot talteen:
+        </p>
+        <textarea id="dev-export-textarea" style="width: 100%; height: 180px; font-family: monospace; font-size: 11px; background: #0c1017; color: #2ecc71; border: 1px solid #34495e; border-radius: 4px; padding: 8px; resize: vertical;" readonly></textarea>
+        <div style="display: flex; gap: 10px; margin-top: 12px;">
+          <button id="dev-copy-json-btn" class="menu-btn menu-btn-primary" style="flex: 1;">KOPIOI LEIKEPÖYDÄLLE</button>
+          <button id="dev-export-close-modal-btn" class="menu-btn" style="flex: 1;">SULJE</button>
+        </div>
       </div>
     </div>
   </div>

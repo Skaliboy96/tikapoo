@@ -28,6 +28,18 @@ export default class World {
     this.clouds = [];
     this.altarLight = null;
 
+    // Load saved dev world edits (deleted entity positions) to suppress them upon world generation
+    this.deletedEdits = [];
+    try {
+      const savedEdits = localStorage.getItem('tikapoo_dev_world_edits');
+      if (savedEdits) {
+        const parsed = JSON.parse(savedEdits);
+        this.deletedEdits = parsed.deleted || [];
+      }
+    } catch (e) {
+      console.warn('Failed to parse saved dev world edits in World:', e);
+    }
+
     this.initLighting();
     this.initSky();
     this.initTerrain();
@@ -751,7 +763,22 @@ export default class World {
     }
   }
 
-  _placeModel(name, x, z, scale = 1.0, rotation = 0) {
+  isDeletedAt(x, z, radius = 2.0) {
+    if (!this.deletedEdits || this.deletedEdits.length === 0) return false;
+    for (let i = 0; i < this.deletedEdits.length; i++) {
+      const d = this.deletedEdits[i];
+      const r = d.radius || radius;
+      if (Math.hypot(d.x - x, d.z - z) < r) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  _placeModel(name, x, z, scale = 1.0, rotation = 0, ignoreDeleted = false) {
+    if (!ignoreDeleted && this.isDeletedAt(x, z, 2.0)) {
+      return null;
+    }
     if (!this.assetLoader) return null;
     const model = this.assetLoader.get(name);
     if (!model) return null;
@@ -780,6 +807,105 @@ export default class World {
 
     this.scene.add(model);
     return model;
+  }
+
+  spawnTree(x, z, modelName = 'Pine_1', scale = null, rot = null, customId = null) {
+    const y = this.getGroundHeight(x, z);
+    const chosenScale = scale || (modelName.includes('Birch') ? 2.2 : 2.6);
+    const chosenRot = rot !== null ? rot : Math.random() * Math.PI * 2;
+    const treeMesh = this._placeModel(modelName, x, z, chosenScale, chosenRot, true);
+    if (!treeMesh) return null;
+
+    const treeNode = {
+      mesh: treeMesh,
+      position: new THREE.Vector3(x, y, z),
+      type: 'tree',
+      modelName,
+      health: 100,
+      maxHealth: 100,
+      harvested: false,
+      name: modelName.includes('Birch') ? 'Koivupuu' : 'Mäntypuu',
+      customId: customId || null
+    };
+    treeMesh.userData.resourceNode = treeNode;
+    treeMesh.userData.customId = customId || null;
+    treeMesh.traverse((child) => {
+      child.userData.resourceNode = treeNode;
+      child.userData.customId = customId || null;
+    });
+
+    this.trees.push(treeNode);
+    return treeNode;
+  }
+
+  spawnStone(x, z, modelName = 'Rock_1', scale = null, rot = null, customId = null) {
+    const y = this.getGroundHeight(x, z);
+    const isLoose = modelName === 'Pebble_Round_1';
+    const chosenScale = scale || (isLoose ? 1.4 : 1.2);
+    const chosenRot = rot !== null ? rot : Math.random() * Math.PI * 2;
+    const rockMesh = this._placeModel(modelName, x, z, chosenScale, chosenRot, true);
+    if (!rockMesh) return null;
+
+    const stoneNode = {
+      mesh: rockMesh,
+      position: new THREE.Vector3(x, y, z),
+      type: 'stone',
+      modelName,
+      isLooseStone: isLoose,
+      health: isLoose ? 20 : 100,
+      maxHealth: isLoose ? 20 : 100,
+      harvested: false,
+      name: isLoose ? 'Irtokivi (Poimi käsin)' : 'Kivijärkäle',
+      customId: customId || null
+    };
+    rockMesh.userData.resourceNode = stoneNode;
+    rockMesh.userData.customId = customId || null;
+    rockMesh.traverse((child) => {
+      child.userData.resourceNode = stoneNode;
+      child.userData.customId = customId || null;
+    });
+
+    this.stones.push(stoneNode);
+    return stoneNode;
+  }
+
+  removeEntity(target) {
+    if (!target) return;
+    const mesh = target.mesh || target;
+
+    // 1. Remove from trees
+    this.trees = this.trees.filter(t => t.mesh !== mesh && t !== target);
+
+    // 2. Remove from stones
+    this.stones = this.stones.filter(s => s.mesh !== mesh && s !== target);
+
+    // 3. Remove from wildChests
+    const chestIndex = this.wildChests.findIndex(c => c.mesh === mesh || c === target);
+    if (chestIndex !== -1) {
+      const chest = this.wildChests[chestIndex];
+      if (chest.glowLight) this.scene.remove(chest.glowLight);
+      this.wildChests.splice(chestIndex, 1);
+    }
+
+    // 4. Remove from decorations
+    this.decorations = this.decorations.filter(d => d !== mesh);
+
+    // 5. Remove from bushes, ores, mushrooms
+    this.bushes = this.bushes.filter(b => b.mesh !== mesh);
+    this.ores = this.ores.filter(o => o.mesh !== mesh);
+    this.mushrooms = this.mushrooms.filter(m => m.mesh !== mesh);
+
+    // 6. Remove any associated colliders
+    if (mesh.position) {
+      const px = mesh.position.x;
+      const pz = mesh.position.z;
+      this.colliders = this.colliders.filter(c => {
+        return !(px >= c.minX - 0.6 && px <= c.maxX + 0.6 && pz >= c.minZ - 0.6 && pz <= c.maxZ + 0.6);
+      });
+    }
+
+    // 7. Remove from Three.js scene
+    this.scene.remove(mesh);
   }
 
   addBoxCollider(minX, maxX, minZ, maxZ, name = '') {

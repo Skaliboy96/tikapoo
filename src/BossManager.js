@@ -462,6 +462,9 @@ export default class BossManager {
       }
 
       const { group, flashMaterials } = this._createBossMesh(def);
+      flashMaterials.forEach(m => {
+        if (m.color) m.userData.origColor = m.color.getHex();
+      });
       const ay = this.world ? this.world.getGroundHeight(def.arenaPos.x, def.arenaPos.z) : 0;
       group.position.set(def.arenaPos.x, ay, def.arenaPos.z);
       this.scene.add(group);
@@ -496,10 +499,10 @@ export default class BossManager {
           boss.health = Math.max(0, boss.health - amount);
           this.updateBossHud(boss);
 
-          // Red hit flash
+          // Red hit flash with persistent original color restore
           flashMaterials.forEach(m => {
             if (m.color) {
-              const orig = m.color.getHex();
+              const orig = m.userData.origColor !== undefined ? m.userData.origColor : m.color.getHex();
               m.color.setHex(0xff2222);
               setTimeout(() => { if (m.color) m.color.setHex(orig); }, 120);
             }
@@ -642,24 +645,37 @@ export default class BossManager {
     }
   }
 
-  // --- Update Boss Health Bar HUD ---
+  // --- Update Boss Health Bar HUD with Dirty-Checking Cache ---
   updateBossHud(boss) {
     if (!this.bossHudEl) return;
 
     if (!boss || !boss.isAlive) {
-      this.bossHudEl.style.display = 'none';
+      if (this.bossHudEl.style.display !== 'none') {
+        this.bossHudEl.style.display = 'none';
+      }
+      this._lastHudHp = -1;
       return;
     }
 
-    this.bossHudEl.style.display = 'block';
-    if (this.bossNameEl) this.bossNameEl.textContent = boss.def.name;
-    if (this.bossBiomeEl) this.bossBiomeEl.textContent = boss.def.biome;
-    if (this.bossPhaseEl) this.bossPhaseEl.textContent = `VAIHE ${boss.phase}`;
-    if (this.bossHpValEl) this.bossHpValEl.textContent = `${Math.round(boss.health)} / ${boss.maxHealth}`;
+    if (this.bossHudEl.style.display !== 'block') {
+      this.bossHudEl.style.display = 'block';
+    }
 
-    if (this.bossHpFillEl) {
-      const pct = Math.max(0, Math.min(100, (boss.health / boss.maxHealth) * 100));
-      this.bossHpFillEl.style.width = `${pct}%`;
+    const roundHp = Math.round(boss.health);
+    if (this._lastHudHp !== roundHp || this._lastHudPhase !== boss.phase || this._lastHudBossId !== boss.def.id) {
+      this._lastHudHp = roundHp;
+      this._lastHudPhase = boss.phase;
+      this._lastHudBossId = boss.def.id;
+
+      if (this.bossNameEl) this.bossNameEl.textContent = boss.def.name;
+      if (this.bossBiomeEl) this.bossBiomeEl.textContent = boss.def.biome;
+      if (this.bossPhaseEl) this.bossPhaseEl.textContent = `VAIHE ${boss.phase}`;
+      if (this.bossHpValEl) this.bossHpValEl.textContent = `${roundHp} / ${boss.maxHealth}`;
+
+      if (this.bossHpFillEl) {
+        const pct = Math.max(0, Math.min(100, (boss.health / boss.maxHealth) * 100));
+        this.bossHpFillEl.style.width = `${pct}%`;
+      }
     }
   }
 
@@ -930,18 +946,20 @@ export default class BossManager {
     this.scene.add(ring);
 
     let progress = 0;
+    let hasHitPlayer = false;
     const expandAnim = () => {
       progress += 0.055;
       const currentRadius = 0.5 + progress * (maxRadius - 0.5);
       ring.scale.set(currentRadius, currentRadius, currentRadius);
       ringMat.opacity = Math.max(0, 0.95 * (1 - progress));
 
-      // Damage player if in shockwave radius during expansion and grounded
-      if (this.player && progress > 0.3 && progress < 0.8) {
+      // Damage player AT MOST ONCE if in shockwave radius during expansion and grounded
+      if (!hasHitPlayer && this.player && progress > 0.3 && progress < 0.8) {
         const pPos = this.player.getPosition ? this.player.getPosition() : this.player.playerPos;
         if (pPos) {
           const d = Math.hypot(pPos.x - pos.x, pPos.z - pos.z);
-          if (Math.abs(d - currentRadius) < 1.0 && this.player.isGrounded) {
+          if (Math.abs(d - currentRadius) < 1.4 && this.player.isGrounded) {
+            hasHitPlayer = true;
             this.player.takeDamage(22);
           }
         }
