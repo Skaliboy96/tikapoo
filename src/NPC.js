@@ -32,7 +32,14 @@ export default class NPC {
 
   _setupListeners() {
     if (this.dialogueCloseBtn) {
-      this.dialogueCloseBtn.addEventListener('click', () => this.closeDialogue());
+      const handleClose = (e) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+        this.closeDialogue();
+      };
+      this.dialogueCloseBtn.addEventListener('click', handleClose);
+      this.dialogueCloseBtn.addEventListener('pointerdown', handleClose);
+      this.dialogueCloseBtn.addEventListener('touchend', handleClose);
     }
     window.addEventListener('keydown', (e) => {
       if (e.code === 'KeyE' && this.activeNPC) {

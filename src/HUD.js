@@ -43,6 +43,103 @@ export default class HUD {
 
     this.notificationTimeout = null;
     this.tempVector = new THREE.Vector3();
+
+    // Heart Orb & Chat UI
+    this.heartOrb = document.getElementById('hud-heart-orb');
+    this.heartHpText = document.getElementById('heart-hp-text');
+    this.chatBox = document.getElementById('chat-box');
+    this.chatMessages = document.getElementById('chat-messages');
+    this.chatInput = document.getElementById('chat-input');
+    this.chatSendBtn = document.getElementById('chat-send-btn');
+    this.chatTabChat = document.getElementById('chat-tab-chat');
+    this.chatTabLog = document.getElementById('chat-tab-log');
+    this.currentChatTab = 'chat';
+    this.allChatMessages = [];
+
+    this._initChat();
+  }
+
+  _initChat() {
+    if (this.chatTabChat && this.chatTabLog) {
+      this.chatTabChat.addEventListener('click', () => {
+        this.currentChatTab = 'chat';
+        this.chatTabChat.classList.add('active');
+        this.chatTabLog.classList.remove('active');
+        this._filterChatMessages();
+      });
+      this.chatTabLog.addEventListener('click', () => {
+        this.currentChatTab = 'log';
+        this.chatTabLog.classList.add('active');
+        this.chatTabChat.classList.remove('active');
+        this._filterChatMessages();
+      });
+    }
+
+    if (this.chatSendBtn && this.chatInput) {
+      const sendMsg = () => {
+        const text = this.chatInput.value.trim();
+        if (text) {
+          this.addChatMessage('Pelaaja', text, 'player');
+          this.chatInput.value = '';
+          this.chatInput.blur();
+        }
+      };
+
+      this.chatSendBtn.addEventListener('click', sendMsg);
+      this.chatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          e.stopPropagation();
+          sendMsg();
+        }
+      });
+    }
+
+    // Global Enter key opens chat when in-game
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const activeModals = document.querySelector('.modal.active, .menu-modal.active, #crafting-menu.active, #backpack-screen.active, #map-screen.active, #pause-menu.active');
+        if (activeModals) return;
+        if (document.activeElement === this.chatInput) return;
+        if (this.chatInput) {
+          e.preventDefault();
+          this.chatInput.focus();
+        }
+      }
+    });
+  }
+
+  addChatMessage(sender, text, type = 'chat') {
+    const timeStr = this.clockTimeEl ? this.clockTimeEl.textContent.replace('Klo ', '') : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const msgObj = { sender, text, type, timeStr };
+    this.allChatMessages.push(msgObj);
+    if (this.allChatMessages.length > 80) {
+      this.allChatMessages.shift();
+    }
+    this._renderChatMessage(msgObj);
+  }
+
+  _filterChatMessages() {
+    if (!this.chatMessages) return;
+    this.chatMessages.innerHTML = '';
+    const filtered = this.allChatMessages.filter(m => {
+      if (this.currentChatTab === 'chat') return m.type === 'chat' || m.type === 'player' || m.type === 'system';
+      return m.type === 'log' || m.type === 'system';
+    });
+    filtered.forEach(m => this._renderChatMessage(m, false));
+    this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+  }
+
+  _renderChatMessage(msg, append = true) {
+    if (!this.chatMessages) return;
+    if (this.currentChatTab === 'chat' && msg.type === 'log') return;
+    if (this.currentChatTab === 'log' && msg.type === 'player') return;
+
+    const el = document.createElement('div');
+    el.className = `chat-msg ${msg.type}`;
+    el.innerHTML = `<span class="chat-time">${msg.timeStr}</span> <span class="chat-tag">[${msg.sender}]</span> <span class="chat-body">${msg.text}</span>`;
+    this.chatMessages.appendChild(el);
+    this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
   }
 
   updateClock(clockData) {
@@ -107,6 +204,18 @@ export default class HUD {
     const pct = Math.max(0, Math.min(100, (current / max) * 100));
     if (this.healthFill) this.healthFill.style.width = `${pct}%`;
     if (this.healthVal) this.healthVal.textContent = `${Math.ceil(current)}/${max}`;
+    if (this.heartHpText) this.heartHpText.textContent = `${Math.ceil(current)}`;
+    if (this.heartOrb) {
+      if (pct <= 25) {
+        this.heartOrb.classList.add('critical');
+        this.heartOrb.classList.remove('warning');
+      } else if (pct <= 50) {
+        this.heartOrb.classList.add('warning');
+        this.heartOrb.classList.remove('critical');
+      } else {
+        this.heartOrb.classList.remove('warning', 'critical');
+      }
+    }
   }
 
   updateStamina(current, max) {
@@ -157,6 +266,9 @@ export default class HUD {
   }
 
   showNotification(text, duration = 3000) {
+    if (this.addChatMessage) {
+      this.addChatMessage('Loki', text, 'log');
+    }
     if (!this.notification) return;
     this.notification.textContent = text;
     this.notification.classList.add('show');
@@ -168,6 +280,74 @@ export default class HUD {
     this.notificationTimeout = setTimeout(() => {
       this.notification.classList.remove('show');
     }, duration);
+  }
+
+  updateBlockMeter(current, max, shield = null) {
+    if (!this.shieldBlockContainer) {
+      this.shieldBlockContainer = document.getElementById('shield-block-container');
+      this.shieldBlockFill = document.getElementById('shield-block-bar-fill');
+      this.shieldBlockText = document.getElementById('shield-block-text');
+    }
+    if (!this.shieldBlockContainer) return;
+
+    if (this._hideBlockTimeout) {
+      clearTimeout(this._hideBlockTimeout);
+      this._hideBlockTimeout = null;
+    }
+
+    this.shieldBlockContainer.style.display = 'flex';
+    this.shieldBlockContainer.classList.add('visible');
+
+    const pct = Math.max(0, Math.min(100, (current / max) * 100));
+    if (this.shieldBlockFill) {
+      this.shieldBlockFill.style.width = `${pct}%`;
+      if (pct > 50) {
+        this.shieldBlockFill.style.background = 'linear-gradient(90deg, #3498db, #2ecc71)';
+      } else if (pct > 25) {
+        this.shieldBlockFill.style.background = 'linear-gradient(90deg, #f39c12, #e67e22)';
+      } else {
+        this.shieldBlockFill.style.background = 'linear-gradient(90deg, #e74c3c, #c0392b)';
+      }
+    }
+    if (this.shieldBlockText) {
+      const shieldName = shield ? (shield.nameFi || shield.nameEn) : 'Kilpi';
+      this.shieldBlockText.textContent = `🛡️ ${shieldName}: ${Math.ceil(current)}/${max}`;
+    }
+  }
+
+  hideBlockMeter(delay = 1200) {
+    if (!this.shieldBlockContainer) {
+      this.shieldBlockContainer = document.getElementById('shield-block-container');
+    }
+    if (!this.shieldBlockContainer) return;
+
+    if (this._hideBlockTimeout) clearTimeout(this._hideBlockTimeout);
+    this._hideBlockTimeout = setTimeout(() => {
+      if (this.shieldBlockContainer) {
+        this.shieldBlockContainer.classList.remove('visible');
+        setTimeout(() => {
+          if (this.shieldBlockContainer && !this.shieldBlockContainer.classList.contains('visible')) {
+            this.shieldBlockContainer.style.display = 'none';
+          }
+        }, 300);
+      }
+    }, delay);
+  }
+
+  flashParry() {
+    let parryFlash = document.getElementById('parry-flash-overlay');
+    if (!parryFlash) {
+      parryFlash = document.createElement('div');
+      parryFlash.id = 'parry-flash-overlay';
+      parryFlash.className = 'parry-flash-overlay';
+      document.body.appendChild(parryFlash);
+    }
+    parryFlash.classList.remove('active');
+    void parryFlash.offsetWidth;
+    parryFlash.classList.add('active');
+    setTimeout(() => {
+      parryFlash.classList.remove('active');
+    }, 350);
   }
 
   showBossTelegraph(text, duration = 3200) {

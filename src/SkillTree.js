@@ -547,7 +547,16 @@ export default class SkillTree {
 
     // Attach listeners
     const closeBtn = this.modalEl.querySelector('#close-skilltree-btn');
-    if (closeBtn) closeBtn.addEventListener('click', () => this.close());
+    if (closeBtn) {
+      const handleClose = (e) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+        this.close();
+      };
+      closeBtn.addEventListener('click', handleClose);
+      closeBtn.addEventListener('pointerdown', handleClose);
+      closeBtn.addEventListener('touchend', handleClose);
+    }
 
     // Tab buttons click
     this.modalEl.querySelectorAll('.st-tab-btn').forEach(btn => {
@@ -556,7 +565,6 @@ export default class SkillTree {
         this.render();
       });
     });
-    if (closeBtn) closeBtn.addEventListener('click', () => this.close());
 
     this.modalEl.querySelectorAll('.st-btn-unlock').forEach(btn => {
       btn.addEventListener('click', () => {

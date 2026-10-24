@@ -1,5 +1,80 @@
 import * as THREE from 'three';
 
+export const SHIELD_DEFS = {
+  shield: {
+    id: 'shield',
+    nameFi: 'Puukilpi',
+    nameEn: 'Wooden Shield',
+    maxBlock: 75,
+    damageReduction: 0.65,
+    parryWindow: 0.28,
+    staggerDuration: 1.8,
+    parryMult: 2.0,
+    color: 0x8a5526,
+    icon: '🛡️'
+  },
+  stoneShield: {
+    id: 'stoneShield',
+    nameFi: 'Kivinen Tornikilpi',
+    nameEn: 'Stone Tower Shield',
+    maxBlock: 110,
+    damageReduction: 0.75,
+    parryWindow: 0.22,
+    staggerDuration: 2.0,
+    parryMult: 2.0,
+    color: 0x7f8c8d,
+    icon: '🛡️'
+  },
+  bronzeShield: {
+    id: 'bronzeShield',
+    nameFi: 'Pronssikilpi',
+    nameEn: 'Bronze Buckler',
+    maxBlock: 145,
+    damageReduction: 0.82,
+    parryWindow: 0.35,
+    staggerDuration: 2.4,
+    parryMult: 2.2,
+    color: 0xcd7f32,
+    icon: '🛡️'
+  },
+  ironShield: {
+    id: 'ironShield',
+    nameFi: 'Rautakilpi',
+    nameEn: 'Iron Banded Shield',
+    maxBlock: 190,
+    damageReduction: 0.88,
+    parryWindow: 0.30,
+    staggerDuration: 2.6,
+    parryMult: 2.2,
+    color: 0x555b63,
+    icon: '🛡️'
+  },
+  silverShield: {
+    id: 'silverShield',
+    nameFi: 'Hopeakilpi',
+    nameEn: 'Silver Round Shield',
+    maxBlock: 240,
+    damageReduction: 0.93,
+    parryWindow: 0.32,
+    staggerDuration: 2.8,
+    parryMult: 2.4,
+    color: 0xdfe6e9,
+    icon: '🛡️'
+  },
+  blackmetalShield: {
+    id: 'blackmetalShield',
+    nameFi: 'Mustametallikilpi',
+    nameEn: 'Black Metal Shield',
+    maxBlock: 310,
+    damageReduction: 0.96,
+    parryWindow: 0.32,
+    staggerDuration: 3.2,
+    parryMult: 2.5,
+    color: 0x222f3e,
+    icon: '🛡️'
+  }
+};
+
 /**
  * Player – Handles movement physics, vitals (HP, Stamina, Hunger),
  * and dual camera perspectives (Valheim 3rd-person over-the-shoulder & 1st-person FPS toggle with [V]).
@@ -48,6 +123,10 @@ export default class Player {
     this.skillPoints = 1;
     this.restedTimer = 0; // 5-minute Rested buff from campfires / beds
 
+    this.isDead = false;
+    this.ragdollManager = null;
+    this.lastDamageDir = null;
+
     this.isHarvesting = false; // Set to true while holding LMB to chop/mine
     this.skillTree = null; // Injected from main.js
     this.footstepTimer = 0; // Cadence timer for authentic footsteps
@@ -85,6 +164,15 @@ export default class Player {
     this.weaponInHand = null;
     this.shieldOnArm = null;
 
+    // Shield Block & Timed Parry Mechanics
+    this.isBlocking = false;
+    this.blockStartTime = 0;
+    this.blockStamina = 100;
+    this.maxBlockStamina = 100;
+    this.isGuardBroken = false;
+    this.guardBreakTimer = 0;
+    this.activeShield = null;
+
     // Melee attack animation and combo state
     this.isAttacking = false;
     this.attackTimer = 0;
@@ -116,6 +204,7 @@ export default class Player {
       this.playerModel = null;
       this.playerMixer = null;
       this.playerActions = {};
+      this.currentAnim = null;
     }
 
     // Load saved or default character configuration
@@ -206,9 +295,12 @@ export default class Player {
     this.scene.add(this.playerModel);
     this.playAnimation('Idle_A');
 
-    // Apply currently equipped armor visuals
+    // Apply currently equipped armor visuals and re-equip active held weapon
     if (this.inventory && this.inventory.equippedArmor) {
       this.updateArmorVisuals(this.inventory.equippedArmor);
+    }
+    if (this.inventory && this.inventory.equippedTool) {
+      this.updateHeldWeapon(this.inventory.equippedTool);
     }
   }
 
@@ -459,10 +551,14 @@ export default class Player {
     if (!this.playerModel || !this.weaponPool) return;
 
     const equipped = this.inventory ? this.inventory.equippedTool : null;
+    const activeShield = this.getEquippedShield();
 
-    // 1. Shield visibility
+    // 1. Shield visibility & material tinting based on shield tier
     if (this.shieldOnArm) {
-      this.shieldOnArm.visible = (equipped === 'shield' || equipped === 'stoneShield' || (this.inventory && this.inventory.tools && (this.inventory.tools.shield || this.inventory.tools.stoneShield)));
+      this.shieldOnArm.visible = !!activeShield;
+      if (activeShield && this.shieldOnArm.material && this.shieldOnArm.material.color) {
+        this.shieldOnArm.material.color.setHex(activeShield.color);
+      }
     }
 
     // 2. Map equipped tool to weaponPool key
@@ -542,6 +638,68 @@ export default class Player {
     this.charConfig = { ...this.charConfig, ...newConfig };
     localStorage.setItem('tikapoo_character', JSON.stringify(this.charConfig));
     this._initPlayerModel();
+  }
+
+  getEquippedShield() {
+    if (!this.inventory) return null;
+    const order = ['blackmetalShield', 'silverShield', 'ironShield', 'bronzeShield', 'stoneShield', 'shield'];
+    const cur = this.inventory.equippedTool;
+    if (cur && SHIELD_DEFS[cur]) return SHIELD_DEFS[cur];
+
+    if (this.inventory.tools) {
+      for (const k of order) {
+        if (this.inventory.tools[k]) return SHIELD_DEFS[k];
+      }
+    }
+    if (this.inventory.items) {
+      for (const k of order) {
+        if (this.inventory.items[k] > 0) return SHIELD_DEFS[k];
+      }
+    }
+    return null;
+  }
+
+  startBlock() {
+    if (this.isDead || this.isGuardBroken || this._isAnyMenuOpen()) return false;
+    const shield = this.getEquippedShield();
+    if (!shield) return false;
+
+    this.isBlocking = true;
+    this.blockStartTime = performance.now();
+    this.activeShield = shield;
+    this.maxBlockStamina = shield.maxBlock;
+    if (this.blockStamina <= 0) {
+      this.blockStamina = shield.maxBlock * 0.25;
+    }
+
+    // Shield arm block pose
+    if (this.shieldOnArm) {
+      this.shieldOnArm.visible = true;
+      if (this.shieldOnArm.material && this.shieldOnArm.material.color) {
+        this.shieldOnArm.material.color.setHex(shield.color);
+      }
+      this.shieldOnArm.position.set(0.18, 0.16, 0.22);
+      this.shieldOnArm.rotation.set(0.2, Math.PI * 0.65, 0.3);
+    }
+
+    // Show HUD block meter
+    if (this.hud && this.hud.updateBlockMeter) {
+      this.hud.updateBlockMeter(this.blockStamina, this.maxBlockStamina, shield);
+    }
+    return true;
+  }
+
+  stopBlock() {
+    this.isBlocking = false;
+    if (this.shieldOnArm) {
+      this.shieldOnArm.position.set(0.06, 0.12, 0);
+      this.shieldOnArm.rotation.set(0, Math.PI / 2, 0);
+      const shield = this.getEquippedShield();
+      this.shieldOnArm.visible = !!shield;
+    }
+    if (this.hud && this.hud.hideBlockMeter) {
+      this.hud.hideBlockMeter(1200);
+    }
   }
 
   playAnimation(name) {
@@ -631,7 +789,40 @@ export default class Player {
     }
   }
 
+  _isAnyMenuOpen() {
+    const pauseMenu = document.getElementById('pause-menu');
+    const isPaused = pauseMenu && (pauseMenu.classList.contains('active') || (pauseMenu.style.display !== 'none' && pauseMenu.style.display !== ''));
+    const mainMenu = document.getElementById('main-menu');
+    const isMainMenu = mainMenu && (mainMenu.style.display !== 'none');
+    const hasModal = !!(
+      document.querySelector('.modal.active') ||
+      document.querySelector('.menu-modal.active') ||
+      document.querySelector('#crafting-menu.active') ||
+      document.querySelector('#backpack-screen.active') ||
+      document.querySelector('#map-screen.active') ||
+      document.querySelector('#skill-tree-modal.active') ||
+      document.querySelector('#npc-dialogue.active') ||
+      document.querySelector('#char-creator-modal.active') ||
+      document.querySelector('#death-screen.active') ||
+      document.querySelector('#modal-account.active')
+    );
+    return isPaused || isMainMenu || hasModal;
+  }
+
   setupInputs() {
+    // Respawn button listener for Cinematic Red Death Screen
+    const respawnBtn = document.getElementById('death-respawn-btn');
+    if (respawnBtn) {
+      const handleRespawn = (e) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+        this.respawn();
+      };
+      respawnBtn.addEventListener('click', handleRespawn);
+      respawnBtn.addEventListener('pointerdown', handleRespawn);
+      respawnBtn.addEventListener('touchend', handleRespawn);
+    }
+
     window.addEventListener('keydown', (e) => {
       // Prevent browser from closing tab on Ctrl+W, reload on Ctrl+R, etc. while playing
       if (e.ctrlKey && (e.code === 'KeyW' || e.code === 'KeyR' || e.code === 'KeyS' || e.code === 'KeyP' || e.code === 'KeyQ')) {
@@ -662,7 +853,9 @@ export default class Player {
         }
       }
 
-      if (!this.controls.isLocked) return;
+      // Ignore movement keys while typing in input fields, when dead, or when a menu is open
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+      if (this.isDead || this._isAnyMenuOpen()) return;
 
       switch (e.code) {
         case 'KeyW':
@@ -787,8 +980,9 @@ export default class Player {
       return;
     }
 
-    // On mobile touch devices, pointer lock does not exist, so active gameplay proceeds whenever no menu is open
-    if (!isMobile && !this.controls.isLocked) {
+    // Active gameplay proceeds whenever no menu is open and player is not dead
+    // This allows instant movement on ESC unpause without requiring an extra mouse click
+    if (this._isAnyMenuOpen() || this.isDead) {
       return;
     }
 
@@ -816,7 +1010,39 @@ export default class Player {
       this.stamina = Math.min(this.maxStamina, this.stamina + staminaRegenRate * delta);
     }
 
-    const currentSpeed = isSprinting ? this.sprintSpeed : this.moveSpeed;
+    // Guard Break Recovery
+    if (this.isGuardBroken) {
+      this.guardBreakTimer -= delta;
+      if (this.guardBreakTimer <= 0) {
+        this.isGuardBroken = false;
+      }
+    }
+
+    // Shield Block Stamina Recovery & Drain
+    if (this.isBlocking) {
+      this.stamina = Math.max(0, this.stamina - 2.5 * delta);
+      if (this.stamina <= 0) {
+        this.stopBlock();
+      }
+    } else if (!this.isGuardBroken) {
+      const shield = this.getEquippedShield();
+      if (shield) {
+        this.maxBlockStamina = shield.maxBlock;
+        if (this.blockStamina < this.maxBlockStamina) {
+          this.blockStamina = Math.min(this.maxBlockStamina, this.blockStamina + 45.0 * delta);
+          if (this.hud && this.hud.updateBlockMeter) {
+            this.hud.updateBlockMeter(this.blockStamina, this.maxBlockStamina, shield);
+          }
+        }
+      }
+    }
+
+    let currentSpeed = isSprinting ? this.sprintSpeed : this.moveSpeed;
+    if (this.isBlocking) {
+      currentSpeed *= 0.72; // Braced movement speed while holding shield guard
+    } else if (this.isGuardBroken) {
+      currentSpeed *= 0.45; // Stumbled speed during guard break
+    }
 
     // Camera forward and right vectors projected on XZ plane
     const forward = new THREE.Vector3();
@@ -840,23 +1066,33 @@ export default class Player {
       if (this.keys.left) this.direction.sub(right);
     }
 
-    // Apply horizontal WASD movement with sliding collision check against buildings and obstacles
+    // Apply horizontal WASD movement with substepped Continuous Collision Detection (CCD)
+    // Prevents tunneling through walls, fences, rocks, trees and buildings regardless of sprint speed or frame drops
     if (this.direction.lengthSq() > 0) {
       this.direction.normalize();
-      const moveX = this.direction.x * currentSpeed * delta;
-      const moveZ = this.direction.z * currentSpeed * delta;
+      const totalMoveX = this.direction.x * currentSpeed * delta;
+      const totalMoveZ = this.direction.z * currentSpeed * delta;
       const bs = this.buildingSystem || (this.inventory && this.inventory.buildingSystem) || null;
+      const playerRadius = 0.45;
 
-      // Sliding test X
-      const testX = this.playerPos.x + moveX;
-      if (!world || !world.isPositionBlocked(testX, this.playerPos.z, 0.45, bs)) {
-        this.playerPos.x = testX;
-      }
+      const totalDist = Math.hypot(totalMoveX, totalMoveZ);
+      const maxSubStep = 0.09; // Max 9cm per step to guarantee 0-tunneling
+      const substeps = Math.max(1, Math.ceil(totalDist / maxSubStep));
+      const subX = totalMoveX / substeps;
+      const subZ = totalMoveZ / substeps;
 
-      // Sliding test Z
-      const testZ = this.playerPos.z + moveZ;
-      if (!world || !world.isPositionBlocked(this.playerPos.x, testZ, 0.45, bs)) {
-        this.playerPos.z = testZ;
+      for (let s = 0; s < substeps; s++) {
+        // Sliding test X
+        const testX = this.playerPos.x + subX;
+        if (!world || !world.isPositionBlocked(testX, this.playerPos.z, playerRadius, bs)) {
+          this.playerPos.x = testX;
+        }
+
+        // Sliding test Z
+        const testZ = this.playerPos.z + subZ;
+        if (!world || !world.isPositionBlocked(this.playerPos.x, testZ, playerRadius, bs)) {
+          this.playerPos.z = testZ;
+        }
       }
     }
 
@@ -917,8 +1153,63 @@ export default class Player {
       }
     }
 
+    // 🪜 Climbing Ladder Mechanics (Vertical climbing on ladders & structures)
+    let activeClimbable = null;
+    const bsForFloor = this.buildingSystem || (this.inventory && this.inventory.buildingSystem) || null;
+    if (bsForFloor && bsForFloor.placedStructures) {
+      for (let i = 0; i < bsForFloor.placedStructures.length; i++) {
+        const st = bsForFloor.placedStructures[i];
+        const isClimbType = st.type === 'ladder' || (st.mesh && st.mesh.userData && st.mesh.userData.isClimbable);
+        if (isClimbType && st.position) {
+          const dX = Math.abs(this.playerPos.x - st.position.x);
+          const dZ = Math.abs(this.playerPos.z - st.position.z);
+          if (dX <= 0.85 && dZ <= 0.85) {
+            const ladderBottom = st.position.y;
+            const ladderTop = st.position.y + 3.4;
+            if (this.playerPos.y >= ladderBottom - 0.4 && this.playerPos.y <= ladderTop + 0.6) {
+              activeClimbable = st;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    if (activeClimbable) {
+      if (this.hud && !this.isClimbing) {
+        this.hud.showTooltip('🧗 [W / Space] Kiipeä tikkaille | [S] Laskeudu');
+      }
+
+      const wantsUp = this.keys.forward || (this.keys.jump && !this.isGrounded);
+      const wantsDown = this.keys.back;
+
+      if (wantsUp) {
+        this.isClimbing = true;
+        this.velocity.y = 3.6;
+        this.stamina = Math.max(0, this.stamina - 4.0 * delta);
+
+        // Auto-vault onto ledge at top of ladder
+        if (this.playerPos.y >= activeClimbable.position.y + 3.2) {
+          this.playerPos.y = activeClimbable.position.y + 3.5;
+          const facing = activeClimbable.mesh.rotation.y;
+          this.playerPos.x += Math.sin(facing) * 0.75;
+          this.playerPos.z += Math.cos(facing) * 0.75;
+          this.velocity.y = 1.0;
+          this.isClimbing = false;
+        }
+      } else if (wantsDown) {
+        this.isClimbing = true;
+        this.velocity.y = -3.2;
+      } else if (this.isClimbing) {
+        // Hold position on ladder
+        this.velocity.y = 0;
+      }
+    } else {
+      this.isClimbing = false;
+    }
+
     // Jump handling
-    if (this.keys.jump && this.isGrounded) {
+    if (this.keys.jump && this.isGrounded && !this.isClimbing) {
       this.velocity.y = this.jumpForce;
       this.isGrounded = false;
       this.playAnimation('NinjaJump_Start');
@@ -927,19 +1218,40 @@ export default class Player {
       }
     }
 
-    // Gravity
-    this.velocity.y -= 22 * delta;
-    if (this.velocity.y < -35) this.velocity.y = -35;
+    // Gravity (Suppressed during active climbing)
+    if (!this.isClimbing) {
+      this.velocity.y -= 22 * delta;
+      if (this.velocity.y < -35) this.velocity.y = -35;
+    }
     this.playerPos.y += this.velocity.y * delta;
 
     // Ground collision & landing (with guaranteed elevation floor so character never sinks underground or below riverbed)
     const rawGroundH = world ? world.getGroundHeight(this.playerPos.x, this.playerPos.z) : 0;
-    const groundHeight = Math.max(rawGroundH, -1.25);
+
+    // Check placed floors & platforms (woodenFloor, stoneFloor, floorDarkWood, floorLightWood, stairsPlatform)
+    let highestFloor = -999;
+    if (bsForFloor && bsForFloor.placedStructures) {
+      for (let i = 0; i < bsForFloor.placedStructures.length; i++) {
+        const st = bsForFloor.placedStructures[i];
+        const tLower = (st.type || '').toLowerCase();
+        if ((tLower.includes('floor') || tLower.includes('platform') || tLower.includes('stair')) && st.position) {
+          if (Math.abs(this.playerPos.x - st.position.x) <= 1.45 && Math.abs(this.playerPos.z - st.position.z) <= 1.45) {
+            const fTop = st.position.y + 0.18;
+            if (fTop > highestFloor && fTop <= this.playerPos.y + 0.65) {
+              highestFloor = fTop;
+            }
+          }
+        }
+      }
+    }
+
+    const groundHeight = Math.max(rawGroundH, highestFloor, -0.65);
     if (this.playerPos.y <= groundHeight) {
       if (!this.isGrounded) {
         this.playAnimation('NinjaJump_Land');
         let surface = 'grass';
-        if (world && world.getBiomeKey) {
+        if (highestFloor > rawGroundH) surface = 'wood';
+        else if (world && world.getBiomeKey) {
           const b = world.getBiomeKey(this.playerPos.x, this.playerPos.z);
           if (b === 'mountain') surface = 'stone';
           else if (b === 'swamp') surface = 'mud';
@@ -1112,7 +1424,69 @@ export default class Player {
   }
 
   takeDamage(amount, attacker = null, playAudio = true) {
-    if (this.health <= 0) return;
+    if (this.health <= 0 || this.isDead) return;
+
+    // Check Shield Block & Parry Mechanics
+    const shield = this.getEquippedShield();
+    if (this.isBlocking && shield && !this.isGuardBroken) {
+      const timeSinceBlock = (performance.now() - this.blockStartTime) / 1000;
+      const isParry = timeSinceBlock <= shield.parryWindow;
+
+      if (isParry) {
+        // ⚡ PERFECT TIMED PARRY!
+        if (this.audioManager && this.audioManager.playParry) {
+          this.audioManager.playParry();
+        }
+        if (this.hud) {
+          const isFi = (typeof Localization === 'undefined' || Localization.getLanguage() !== 'en');
+          this.hud.showNotification(isFi ? `⚡ PARRY! VASTA-ISKU (${shield.nameFi})!` : `⚡ PARRY! COUNTER STRIKE (${shield.nameEn})!`, 2200);
+          this.hud.showDamageNumber('⚡ PARRY!', false, this.playerPos, this.camera);
+          if (this.hud.flashParry) this.hud.flashParry();
+        }
+
+        // Stagger attacker!
+        if (attacker && typeof attacker.stagger === 'function') {
+          attacker.stagger(shield.staggerDuration, shield.parryMult);
+        }
+
+        // Parry stamina reward
+        this.stamina = Math.min(this.maxStamina, this.stamina + 12);
+        if (this.hud) this.hud.updateStamina(this.stamina, this.maxStamina);
+        return; // Zero damage taken on parry!
+      }
+
+      // Normal SHIELD BLOCK
+      const absorbed = amount * shield.damageReduction;
+      const passThroughDamage = amount - absorbed;
+      const blockCost = Math.round(amount * (1.15 - shield.damageReduction * 0.4));
+
+      this.blockStamina = Math.max(0, this.blockStamina - blockCost);
+
+      if (this.audioManager && this.audioManager.playShieldBlock) {
+        this.audioManager.playShieldBlock();
+      }
+      if (this.hud) {
+        if (this.hud.updateBlockMeter) this.hud.updateBlockMeter(this.blockStamina, this.maxBlockStamina, shield);
+        const isFi = (typeof Localization === 'undefined' || Localization.getLanguage() !== 'en');
+        this.hud.showNotification(isFi ? `🛡️ ${shield.nameFi} torjui ${Math.round(absorbed)} vahinkoa!` : `🛡️ ${shield.nameEn} blocked ${Math.round(absorbed)} DMG!`, 1600);
+      }
+
+      // Guard Break if block stamina depleted!
+      if (this.blockStamina <= 0) {
+        this.isGuardBroken = true;
+        this.guardBreakTimer = 1.4;
+        this.stopBlock();
+        if (this.audioManager && this.audioManager.playGuardBreak) {
+          this.audioManager.playGuardBreak();
+        }
+        if (this.hud) {
+          const isFi = (typeof Localization === 'undefined' || Localization.getLanguage() !== 'en');
+          this.hud.showNotification(isFi ? '💥 KILVEN SUOJAUS MURTUI (GUARD BROKEN)!' : '💥 SHIELD POSTURE BROKEN!', 2600);
+        }
+      }
+
+      amount = passThroughDamage;
+    }
 
     // Apply armor & shield damage reduction
     const reduction = (this.inventory && this.inventory.getDamageReduction)
@@ -1251,7 +1625,19 @@ export default class Player {
     }
   }
 
-  die() {
+  die(hitDirection = null) {
+    if (this.isDead) return;
+    this.isDead = true;
+
+    // Reset movement keys
+    this.keys.forward = false;
+    this.keys.back = false;
+    this.keys.left = false;
+    this.keys.right = false;
+    this.keys.sprint = false;
+    this.keys.jump = false;
+    if (this.analogMove) this.analogMove.set(0, 0);
+
     const deathPos = this.playerPos.clone();
 
     // 1. Drop player's inventory items into a recoverable Gravestone
@@ -1273,7 +1659,14 @@ export default class Player {
       this.world.spawnTombstone(deathPos.x, deathPos.y, deathPos.z, droppedItems);
     }
 
-    // 3. Audio & Notifications
+    // 3. Spawn physical Ragdoll corpse of player
+    if (this.ragdollManager && this.playerModel) {
+      const dir = hitDirection || this.lastDamageDir || new THREE.Vector3((Math.random() - 0.5), 0, (Math.random() - 0.5));
+      this.ragdollManager.spawnRagdoll(this.playerModel, dir, 1.35, true);
+      this.playerModel.visible = false;
+    }
+
+    // 4. Audio & Notification
     if (this.audioManager && this.audioManager.playHurt) {
       this.audioManager.playHurt();
     }
@@ -1282,25 +1675,91 @@ export default class Player {
       this.hud.showNotification(
         hasItems
           ? '☠️ Kaaduit maahan! Tavarat putosivat kuolinpaikkasi hautakivelle 🪦. Noutamalla hautakiven saat tavarasi takaisin!'
-          : '☠️ Kaaduit maahan! Synnyit uudelleen leirissä.',
+          : '☠️ Kaaduit maahan! Valitse "Synty uudelleen" herätäksesi leirissä.',
         6000
       );
     }
 
-    // 4. Respawn at central village camp
+    // 5. Unlock pointer so player can click Respawn button cleanly
+    if (this.controls && this.controls.isLocked) {
+      try { this.controls.unlock(); } catch (e) {}
+    }
+
+    // 6. Fade in Cinematic Red Death Screen
+    setTimeout(() => {
+      const deathScreen = document.getElementById('death-screen');
+      if (deathScreen) {
+        const titleEl = deathScreen.querySelector('.death-title');
+        const subEl = deathScreen.querySelector('.death-subtitle');
+        const respawnEl = deathScreen.querySelector('#death-respawn-btn span');
+        const isEn = (typeof Localization !== 'undefined' && Localization.getLanguage && Localization.getLanguage() === 'en');
+        if (titleEl) titleEl.textContent = isEn ? 'YOU DIED' : 'SINÄ KUOLIT';
+        if (subEl) subEl.textContent = isEn
+          ? 'The freezing winds of Pohjola claimed your life... Your belongings dropped onto a gravestone 🪦.'
+          : 'Pohjolan hyinen viima vei voimasi... Tavarat putosivat kuolinpaikkasi hautakivelle 🪦.';
+        if (respawnEl) respawnEl.textContent = isEn ? '⚔️ RESPAWN' : '⚔️ SYNNY UUDELLEEN (RESPAWN)';
+
+        deathScreen.style.display = 'flex';
+        void deathScreen.offsetWidth;
+        deathScreen.classList.add('active');
+      }
+    }, 600);
+  }
+
+  respawn() {
+    // 1. Hide death screen
+    const deathScreen = document.getElementById('death-screen');
+    if (deathScreen) {
+      deathScreen.classList.remove('active');
+      deathScreen.style.display = 'none';
+    }
+
+    // 2. Clean up player ragdoll
+    if (this.ragdollManager) {
+      this.ragdollManager.removePlayerRagdoll();
+    }
+
+    // 3. Make living player model visible again & guarantee complete head & hair integrity
+    if (this.playerModel) {
+      this.playerModel.visible = true;
+      if (this.assetLoader && this.assetLoader.ensureHead) {
+        const isFemale = this.charConfig?.gender === 'female';
+        this.assetLoader.ensureHead(
+          this.playerModel,
+          isFemale,
+          0x222222,
+          this.charConfig?.skinColor || null,
+          this.charConfig?.hairColor || null,
+          this.charConfig?.hairStyle || 'short'
+        );
+      }
+      this.currentAnim = null;
+      this.playAnimation('Idle_A');
+    }
+
+    // 4. Reset position to central village campfire
     const spawnY = (this.world && this.world.getGroundHeight) ? this.world.getGroundHeight(0, 0) : 3.0;
-    this.playerPos.set(0, spawnY, 0);
+    this.playerPos.set(0, Math.max(spawnY, 2.5), 0);
     this.velocity.set(0, 0, 0);
+
+    // 5. Restore vitals
     this.health = this.maxHealth;
     this.stamina = this.maxStamina;
     this.hunger = 80;
     this.thirst = 80;
     this.energy = 80;
+    this.isDead = false;
 
     if (this.hud) {
       this.hud.updateHealth(this.health, this.maxHealth);
       this.hud.updateStamina(this.stamina, this.maxStamina);
       this.hud.updateHunger(this.hunger, this.maxHunger);
+      this.hud.showNotification('☀️ Synnyit uudelleen leirissä! Hae varusteesi hautakiveltäsi.', 5000);
+    }
+
+    // 6. Lock controls back into active gameplay
+    if (window.restoreGameFocus) {
+      window.restoreGameFocus();
     }
   }
 

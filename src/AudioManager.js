@@ -34,6 +34,18 @@ export default class AudioManager {
     this.bossStep = 0;
     this.activeBossDef = null;
 
+    // Hardstyle boss battle tracks provided by user
+    this.bossAudioTracks = {
+      forestBeast: '/assets/audio/boss_track_1.mp3',
+      swampLord: '/assets/audio/boss_track_2.mp3',
+      ancientWraith: '/assets/audio/boss_track_3.mp3',
+      mountainGolem: '/assets/audio/boss_track_1.mp3',
+      runicDragon: '/assets/audio/boss_track_2.mp3',
+    };
+    this.bossVolumeMultiplier = 0.65; // Balanced boss battle music volume so sound effects & combat are clean
+    this.currentBossAudio = null;
+    this.bossAudioFadeInterval = null;
+
     // Mobile-friendly Lazy AudioContext initialization on first user interaction (iOS Safari compliant)
     this._audioUnlocked = false;
     const unlockAudio = () => {
@@ -81,7 +93,8 @@ export default class AudioManager {
     this.sfxGain.connect(this.masterGain);
 
     this.ambientGain = this.ctx.createGain();
-    this.ambientGain.gain.setValueAtTime(this.ambientVolume * 0.25, t);
+    // Reduced from 0.25 to 0.035 to eliminate the loud humming drone completely
+    this.ambientGain.gain.setValueAtTime(this.ambientVolume * 0.035, t);
     this.ambientGain.connect(this.masterGain);
 
     this.sharedNoiseBuffer = null;
@@ -121,6 +134,9 @@ export default class AudioManager {
     if (this.masterGain && this.ctx) {
       this.masterGain.gain.setTargetAtTime(this.masterVolume, this.ctx.currentTime, 0.05);
     }
+    if (this.currentBossAudio) {
+      this.currentBossAudio.volume = Math.max(0, Math.min(1, this.masterVolume * this.musicVolume * this.bossVolumeMultiplier));
+    }
   }
 
   setMusicVolume(val) {
@@ -128,6 +144,9 @@ export default class AudioManager {
     localStorage.setItem('valheim_vol_music', this.musicVolume.toFixed(2));
     if (this.musicGain && this.ctx) {
       this.musicGain.gain.setTargetAtTime(this.musicVolume * 0.45, this.ctx.currentTime, 0.05);
+    }
+    if (this.currentBossAudio) {
+      this.currentBossAudio.volume = Math.max(0, Math.min(1, this.masterVolume * this.musicVolume * this.bossVolumeMultiplier));
     }
   }
 
@@ -143,11 +162,11 @@ export default class AudioManager {
     this.ambientVolume = Math.max(0, Math.min(1, val));
     localStorage.setItem('valheim_vol_ambient', this.ambientVolume.toFixed(2));
     if (this.ambientGain && this.ctx) {
-      this.ambientGain.gain.setTargetAtTime(this.ambientVolume * 0.25, this.ctx.currentTime, 0.05);
+      this.ambientGain.gain.setTargetAtTime(this.ambientVolume * 0.035, this.ctx.currentTime, 0.05);
     }
   }
 
-  // Soft continuous natural wind layer with gentle low-pass pink noise
+  // Soft continuous natural wind layer with gentle low-pass pink noise (hum-free)
   _startGentleAmbient() {
     if (!this.ctx || !this.ambientGain || this.ambientNoiseNode) return;
     try {
@@ -160,7 +179,7 @@ export default class AudioManager {
         b0 = 0.99886 * b0 + white * 0.0555179;
         b1 = 0.99332 * b1 + white * 0.0750759;
         b2 = 0.96900 * b2 + white * 0.1538520;
-        output[i] = (b0 + b1 + b2) * 0.11;
+        output[i] = (b0 + b1 + b2) * 0.08;
       }
 
       const whiteNoise = this.ctx.createBufferSource();
@@ -169,7 +188,8 @@ export default class AudioManager {
 
       const filter = this.ctx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(320, this.ctx.currentTime);
+      // Low cut-off frequency 140Hz eliminates the mid-range hum entirely
+      filter.frequency.setValueAtTime(140, this.ctx.currentTime);
       this.ambientFilterNode = filter;
 
       whiteNoise.connect(filter);
@@ -190,9 +210,53 @@ export default class AudioManager {
     this.bossBeatTimer = 0;
     this.bossStep = 0;
 
-    if (this.musicGain && this.ctx) {
-      // Elevate music presence and intensity during dramatic boss battle
-      this.musicGain.gain.setTargetAtTime(this.musicVolume * 0.85, this.ctx.currentTime, 0.3);
+    // Determine boss track
+    let trackUrl = '/assets/audio/boss_track_1.mp3';
+    const bossId = (bossDef && (bossDef.id || bossDef.type)) ? (bossDef.id || bossDef.type) : 'forestBeast';
+    if (this.bossAudioTracks[bossId]) {
+      trackUrl = this.bossAudioTracks[bossId];
+    } else if (bossId.toLowerCase().includes('swamp') || bossId.toLowerCase().includes('lord') || bossId.toLowerCase().includes('dragon')) {
+      trackUrl = '/assets/audio/boss_track_2.mp3';
+    } else if (bossId.toLowerCase().includes('wraith') || bossId.toLowerCase().includes('aave')) {
+      trackUrl = '/assets/audio/boss_track_3.mp3';
+    }
+
+    try {
+      if (this.bossAudioFadeInterval) {
+        clearInterval(this.bossAudioFadeInterval);
+        this.bossAudioFadeInterval = null;
+      }
+
+      if (this.currentBossAudio) {
+        this.currentBossAudio.pause();
+        this.currentBossAudio.currentTime = 0;
+      }
+
+      const audio = new Audio(trackUrl);
+      audio.loop = true;
+      audio.volume = Math.max(0, Math.min(1, this.masterVolume * this.musicVolume * this.bossVolumeMultiplier));
+      
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          this.currentBossAudio = audio;
+          // Mute procedural synth music so the uploaded high-energy hardstyle track plays clean
+          if (this.musicGain && this.ctx) {
+            this.musicGain.gain.setTargetAtTime(0.0001, this.ctx.currentTime, 0.2);
+          }
+        }).catch((err) => {
+          console.warn('[AudioManager] Boss audio track autoplay notice (fallback to procedural synth):', err);
+          this.currentBossAudio = null;
+          if (this.musicGain && this.ctx) {
+            this.musicGain.gain.setTargetAtTime(this.musicVolume * 0.55, this.ctx.currentTime, 0.3);
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('[AudioManager] Failed to load boss audio track, using fallback synth:', err);
+      if (this.musicGain && this.ctx) {
+        this.musicGain.gain.setTargetAtTime(this.musicVolume * 0.55, this.ctx.currentTime, 0.3);
+      }
     }
   }
 
@@ -200,9 +264,31 @@ export default class AudioManager {
     if (!this.isBossMusicActive) return;
     this.isBossMusicActive = false;
     this.activeBossDef = null;
-    this.musicTimer = 3.5; // Resume ambient music peacefully
+    this.musicTimer = 2.0; // Resume ambient music peacefully
+
+    // Fade out boss audio track smoothly and promptly over ~0.4s
+    if (this.currentBossAudio) {
+      const audioToStop = this.currentBossAudio;
+      this.currentBossAudio = null;
+      let fadeVol = audioToStop.volume;
+      if (this.bossAudioFadeInterval) clearInterval(this.bossAudioFadeInterval);
+      this.bossAudioFadeInterval = setInterval(() => {
+        fadeVol -= 0.18;
+        if (fadeVol <= 0.04) {
+          clearInterval(this.bossAudioFadeInterval);
+          this.bossAudioFadeInterval = null;
+          try {
+            audioToStop.pause();
+            audioToStop.currentTime = 0;
+          } catch (e) {}
+        } else {
+          audioToStop.volume = Math.max(0, fadeVol);
+        }
+      }, 50);
+    }
+
     if (this.musicGain && this.ctx) {
-      this.musicGain.gain.setTargetAtTime(this.musicVolume * 0.45, this.ctx.currentTime, 1.2);
+      this.musicGain.gain.setTargetAtTime(this.musicVolume * 0.45, this.ctx.currentTime, 0.8);
     }
   }
 
@@ -242,125 +328,209 @@ export default class AudioManager {
     }
   }
 
-  // --- Dynamic Boss Battle Music: Pounding War Drums & Heavy Orchestral Brass ---
+  // --- Dynamic Hardstyle Boss Battle Engine (152 BPM Aggressive Hardstyle) ---
+  _makeDistortionCurve(amount = 28) {
+    const k = typeof amount === 'number' ? amount : 28;
+    const nSamples = 44100;
+    const curve = new Float32Array(nSamples);
+    const deg = Math.PI / 180;
+    for (let i = 0; i < nSamples; ++i) {
+      const x = (i * 2) / nSamples - 1;
+      curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
+    }
+    return curve;
+  }
+
   _updateBossMusic(delta) {
     if (!this.ctx || !this.musicGain) return;
+    // If uploaded high-energy audio track is playing, skip procedural synthesizer
+    if (this.currentBossAudio && !this.currentBossAudio.paused) return;
 
-    // 1. Driving Battle Percussion (142 BPM march = 0.422s per beat)
+    // 152 BPM Fast-tempo Hardstyle (0.3947s per beat, 0.0987s per 16th note)
+    const stepDuration = 0.0987;
     this.bossBeatTimer += delta;
-    if (this.bossBeatTimer >= 0.42) {
-      this.bossBeatTimer = 0;
-      const isDownbeat = (this.bossStep % 4 === 0);
-      this._playWarDrum(isDownbeat);
-      this.bossStep++;
-    }
 
-    // 2. Menacing Low Brass Power Chords (every 4 beats = ~1.68s)
-    this.bossMusicTimer += delta;
-    if (this.bossMusicTimer >= 1.68) {
-      this.bossMusicTimer = 0;
-      this._playBossBrassStab(this.bossStep);
+    while (this.bossBeatTimer >= stepDuration) {
+      this.bossBeatTimer -= stepDuration;
+      const step = this.bossStep % 16; // 16th-note measure
+      const bossType = this.activeBossDef ? this.activeBossDef.type : 'beast';
+
+      // 1. Hardstyle 909 Distorted Kick on every quarter beat (steps 0, 4, 8, 12)
+      if (step % 4 === 0) {
+        this._playHardstyleKick();
+      }
+
+      // 2. Rolling Distorted Reverse Bass on the 16th-note off-beats (steps 1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15)
+      if (step % 4 !== 0) {
+        this._playHardstyleOffbeatBass(step, bossType);
+      }
+
+      // 3. Screech Saw Lead Synth (Aggressive Minor Hardstyle Riffs)
+      this._playHardstyleScreech(this.bossStep, bossType);
+
+      // 4. Hardstyle Percussion (Off-beat open hats and snappy claps on beats 2 & 4)
+      this._playHardstylePercussion(step);
+
+      this.bossStep++;
     }
   }
 
-  _playWarDrum(isDownbeat = false) {
+  _playHardstyleKick() {
     if (!this.ctx || !this.musicGain) return;
     const t = this.ctx.currentTime;
 
-    // Heavy bass drum punch
+    // 1. Pitch-bent 909 sub punch (750Hz dropping exponentially to 52Hz)
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
 
     osc.type = 'sine';
-    const startFreq = isDownbeat ? 140 : 105;
-    const endFreq = isDownbeat ? 36 : 42;
-    osc.frequency.setValueAtTime(startFreq, t);
-    osc.frequency.exponentialRampToValueAtTime(endFreq, t + 0.18);
+    osc.frequency.setValueAtTime(750, t);
+    osc.frequency.exponentialRampToValueAtTime(130, t + 0.035);
+    osc.frequency.exponentialRampToValueAtTime(52, t + 0.16);
 
-    gain.gain.setValueAtTime(isDownbeat ? 0.32 : 0.18, t);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+    gain.gain.setValueAtTime(0.48, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
 
-    osc.connect(gain);
-    gain.connect(this.musicGain);
-    osc.start(t);
-    osc.stop(t + 0.3);
-
-    // Snare / rim transient accent on backbeats (reusing shared buffer)
-    if (!isDownbeat && this.bossStep % 2 === 1) {
-      try {
-        if (!this.sharedNoiseBuffer) {
-          this.sharedNoiseBuffer = this._createNoiseBuffer(0.5);
-        }
-        if (this.sharedNoiseBuffer) {
-          const nSrc = this.ctx.createBufferSource();
-          nSrc.buffer = this.sharedNoiseBuffer;
-          const nFilter = this.ctx.createBiquadFilter();
-          nFilter.type = 'bandpass';
-          nFilter.frequency.setValueAtTime(800, t);
-          const nGain = this.ctx.createGain();
-          nGain.gain.setValueAtTime(0.08, t);
-          nGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
-
-          nSrc.connect(nFilter);
-          nFilter.connect(nGain);
-          nGain.connect(this.musicGain);
-          nSrc.start(t);
-        }
-      } catch (e) {}
-    }
-  }
-
-  _createNoiseBuffer(duration = 0.5) {
-    if (!this.ctx) return null;
-    try {
-      const bufSize = Math.max(64, Math.floor(this.ctx.sampleRate * duration));
-      const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
-      const data = buf.getChannelData(0);
-      for (let i = 0; i < bufSize; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufSize, 1.2);
-      }
-      return buf;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  _playBossBrassStab(step) {
-    if (!this.ctx || !this.musicGain) return;
-    const t = this.ctx.currentTime;
-
-    // Dark Nordic combat chord roots (E -> C -> D -> B)
-    const chords = [
-      [82.41, 123.47, 164.81], // E power chord
-      [65.41, 98.0, 130.81],   // C power chord
-      [73.42, 110.0, 146.83],  // D power chord
-      [61.74, 92.5, 123.47]    // B power chord
-    ];
-    const notes = chords[Math.floor(step / 4) % chords.length];
-
-    const masterGain = this.ctx.createGain();
-    masterGain.gain.setValueAtTime(0.0001, t);
-    masterGain.gain.linearRampToValueAtTime(0.18, t + 0.08);
-    masterGain.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
-    masterGain.connect(this.musicGain);
+    // Hard distortion waveshaper for raw hardstyle crunch
+    const shaper = this.ctx.createWaveShaper();
+    shaper.curve = this._makeDistortionCurve(22);
+    shaper.oversample = '2x';
 
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(350, t);
-    filter.frequency.linearRampToValueAtTime(1400, t + 0.2);
-    filter.frequency.exponentialRampToValueAtTime(250, t + 1.4);
-    filter.Q.setValueAtTime(3.5, t);
-    filter.connect(masterGain);
+    filter.frequency.setValueAtTime(550, t);
 
-    notes.forEach((freq, idx) => {
+    osc.connect(shaper);
+    shaper.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.musicGain);
+
+    osc.start(t);
+    osc.stop(t + 0.3);
+
+    // 2. Click transient punch
+    const click = this.ctx.createOscillator();
+    const clickG = this.ctx.createGain();
+    click.type = 'triangle';
+    click.frequency.setValueAtTime(1200, t);
+    click.frequency.exponentialRampToValueAtTime(120, t + 0.02);
+    clickG.gain.setValueAtTime(0.35, t);
+    clickG.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
+    click.connect(clickG);
+    clickG.connect(this.musicGain);
+    click.start(t);
+    click.stop(t + 0.03);
+  }
+
+  _playHardstyleOffbeatBass(step, bossType) {
+    if (!this.ctx || !this.musicGain) return;
+    const t = this.ctx.currentTime;
+
+    // Bass root notes per boss archetype (D, C, B, E, A minor scales)
+    const roots = {
+      beast:  [73.42, 82.41, 73.42, 65.41], // D minor / E / C
+      wyrm:   [65.41, 77.78, 65.41, 58.27], // C minor / Eb / Bb
+      golem:  [61.74, 69.30, 61.74, 55.00], // B minor / D / A
+      wraith: [82.41, 98.00, 82.41, 73.42], // E minor / G / D
+      dragon: [55.00, 65.41, 55.00, 49.00]  // A minor / C / G
+    };
+    const seq = roots[bossType] || roots.beast;
+    const freq = seq[Math.floor(this.bossStep / 16) % seq.length];
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(freq, t);
+
+    // Resonant bandpass filter sweeping on off-beats for classic reverse-bass suck
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.Q.setValueAtTime(4.2, t);
+    filter.frequency.setValueAtTime(180, t);
+    filter.frequency.exponentialRampToValueAtTime(750, t + 0.075);
+
+    const shaper = this.ctx.createWaveShaper();
+    shaper.curve = this._makeDistortionCurve(16);
+
+    gain.gain.setValueAtTime(0.24, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+
+    osc.connect(shaper);
+    shaper.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.musicGain);
+
+    osc.start(t);
+    osc.stop(t + 0.095);
+  }
+
+  _playHardstyleScreech(globalStep, bossType) {
+    if (!this.ctx || !this.musicGain) return;
+    const t = this.ctx.currentTime;
+
+    // Fast 16th-note screaming Hardstyle synth melodies
+    const scaleMap = {
+      beast:  [293.66, 329.63, 349.23, 392.00, 440.00, 523.25, 587.33], // D minor
+      wyrm:   [261.63, 293.66, 311.13, 349.23, 392.00, 466.16, 523.25], // C minor
+      golem:  [246.94, 277.18, 293.66, 329.63, 369.99, 440.00, 493.88], // B minor
+      wraith: [329.63, 369.99, 392.00, 440.00, 493.88, 587.33, 659.25], // E minor
+      dragon: [220.00, 246.94, 261.63, 293.66, 329.63, 392.00, 440.00]  // A minor
+    };
+    const scale = scaleMap[bossType] || scaleMap.beast;
+    // Energetic melodic pattern indexed by globalStep
+    const notePattern = [0, 2, 4, 2, 0, 5, 4, 3, 0, 4, 6, 5, 4, 2, 1, 0];
+    const noteIdx = notePattern[globalStep % notePattern.length];
+    const freq = scale[noteIdx % scale.length];
+
+    // Dual detuned screech oscillators
+    [-14, 14].forEach(detune => {
       const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(freq, t);
-      osc.detune.setValueAtTime(idx * 4 - 4, t);
+      osc.detune.setValueAtTime(detune, t);
+
+      // Pitch glide transient
+      osc.frequency.linearRampToValueAtTime(freq * 1.02, t + 0.04);
+      osc.frequency.linearRampToValueAtTime(freq, t + 0.08);
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.Q.setValueAtTime(5.5, t);
+      filter.frequency.setValueAtTime(freq * 1.8, t);
+
+      gain.gain.setValueAtTime(0.12, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.085);
+
       osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.musicGain);
+
       osc.start(t);
-      osc.stop(t + 1.45);
+      osc.stop(t + 0.09);
     });
+  }
+
+  _playHardstylePercussion(step) {
+    if (!this.ctx || !this.musicGain) return;
+    const t = this.ctx.currentTime;
+
+    // Off-beat open hi-hat (steps 2, 6, 10, 14)
+    if (step % 4 === 2) {
+      this._playSurfaceNoise(0.065, 0.22, 6500, 1.2);
+    }
+
+    // Snappy Clap on beats 2 and 4 (steps 4 and 12)
+    if (step === 4 || step === 12) {
+      [0, 0.012, 0.024].forEach((offset, idx) => {
+        const dur = (idx === 2) ? 0.09 : 0.02;
+        const vol = (idx === 2) ? 0.28 : 0.14;
+        setTimeout(() => {
+          this._playSurfaceNoise(dur, vol, 1400, 1.6);
+        }, offset * 1000);
+      });
+    }
   }
 
   playBossDefeatedFanfare() {
@@ -704,6 +874,78 @@ export default class AudioManager {
     }
   }
 
+  playTreeCrash() {
+    this.ensureContext();
+    if (!this.ctx || !this.sfxGain) return;
+    const t = this.ctx.currentTime;
+
+    // 1. Heavy ground impact boom
+    const boom = this.ctx.createOscillator();
+    const boomGain = this.ctx.createGain();
+    boom.type = 'triangle';
+    boom.frequency.setValueAtTime(85, t);
+    boom.frequency.exponentialRampToValueAtTime(32, t + 0.35);
+    boomGain.gain.setValueAtTime(this.sfxVolume * 0.95, t);
+    boomGain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+    boom.connect(boomGain);
+    boomGain.connect(this.sfxGain);
+    boom.start(t);
+    boom.stop(t + 0.56);
+
+    // 2. Wood creak & fracture snaps
+    [320, 640, 920].forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, t + idx * 0.04);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.4, t + 0.28);
+      g.gain.setValueAtTime(this.sfxVolume * 0.35, t + idx * 0.04);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+      osc.connect(g);
+      g.connect(this.sfxGain);
+      osc.start(t + idx * 0.04);
+      osc.stop(t + 0.35);
+    });
+
+    // 3. Foliage & branch rustle crash
+    this._playSurfaceNoise(0.45, 0.55, 950, 1.4);
+  }
+
+  playRockShatter() {
+    this.ensureContext();
+    if (!this.ctx || !this.sfxGain) return;
+    const t = this.ctx.currentTime;
+
+    // 1. High energy stone crack transient
+    const crack = this.ctx.createOscillator();
+    const crackG = this.ctx.createGain();
+    crack.type = 'sawtooth';
+    crack.frequency.setValueAtTime(2400, t);
+    crack.frequency.exponentialRampToValueAtTime(220, t + 0.08);
+    crackG.gain.setValueAtTime(this.sfxVolume * 0.85, t);
+    crackG.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    crack.connect(crackG);
+    crackG.connect(this.sfxGain);
+    crack.start(t);
+    crack.stop(t + 0.13);
+
+    // 2. Heavy crumbling low rumble
+    const rumble = this.ctx.createOscillator();
+    const rumbleG = this.ctx.createGain();
+    rumble.type = 'triangle';
+    rumble.frequency.setValueAtTime(140, t);
+    rumble.frequency.exponentialRampToValueAtTime(45, t + 0.38);
+    rumbleG.gain.setValueAtTime(this.sfxVolume * 0.7, t);
+    rumbleG.gain.exponentialRampToValueAtTime(0.001, t + 0.42);
+    rumble.connect(rumbleG);
+    rumbleG.connect(this.sfxGain);
+    rumble.start(t);
+    rumble.stop(t + 0.43);
+
+    // 3. Shingle & pebble clatter debris
+    this._playSurfaceNoise(0.35, 0.45, 2600, 1.2);
+  }
+
   _playQuickNoise(duration = 0.1, vol = 0.2, filterFreq = 1000) {
     this._playSurfaceNoise(duration, vol, filterFreq, 1.0);
   }
@@ -959,7 +1201,7 @@ export default class AudioManager {
     osc.stop(t + 0.1);
   }
 
-  playSpell(type = 'fireball') {
+  playSpell(type = 'bolt') {
     this.ensureContext();
     if (!this.ctx || !this.sfxGain) return;
     const t = this.ctx.currentTime;
@@ -1009,17 +1251,45 @@ export default class AudioManager {
       osc.start(t);
       osc.stop(t + 0.22);
     } else {
-      // Magic bell
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(659.25, t);
-      gain.gain.setValueAtTime(0.3, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
-      osc.connect(gain);
-      gain.connect(this.sfxGain);
-      osc.start(t);
-      osc.stop(t + 0.85);
+      // --- Realistic Wand & Magic Staff Arcane Blast Synthesis ---
+      // 1. Deep plasma sub punch transient (380Hz -> 52Hz)
+      const sub = this.ctx.createOscillator();
+      const subG = this.ctx.createGain();
+      sub.type = 'sine';
+      sub.frequency.setValueAtTime(380, t);
+      sub.frequency.exponentialRampToValueAtTime(52, t + 0.22);
+      subG.gain.setValueAtTime(0.42, t);
+      subG.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+      sub.connect(subG);
+      subG.connect(this.sfxGain);
+      sub.start(t);
+      sub.stop(t + 0.24);
+
+      // 2. High-resonance plasma energy sweep (bandpass 2600Hz -> 380Hz, Q: 5.0)
+      const blast = this.ctx.createOscillator();
+      const blastG = this.ctx.createGain();
+      blast.type = 'sawtooth';
+      blast.frequency.setValueAtTime(440, t);
+      blast.frequency.linearRampToValueAtTime(880, t + 0.04);
+      blast.frequency.exponentialRampToValueAtTime(110, t + 0.28);
+
+      const bpFilter = this.ctx.createBiquadFilter();
+      bpFilter.type = 'bandpass';
+      bpFilter.Q.setValueAtTime(5.2, t);
+      bpFilter.frequency.setValueAtTime(2600, t);
+      bpFilter.frequency.exponentialRampToValueAtTime(380, t + 0.28);
+
+      blastG.gain.setValueAtTime(0.32, t);
+      blastG.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+
+      blast.connect(bpFilter);
+      bpFilter.connect(blastG);
+      blastG.connect(this.sfxGain);
+      blast.start(t);
+      blast.stop(t + 0.3);
+
+      // 3. Crackling arcane spark dispersion
+      this._playSurfaceNoise(0.12, 0.28, 3400, 2.2);
     }
   }
 
@@ -1054,19 +1324,127 @@ export default class AudioManager {
     this.ensureContext();
     if (!this.ctx || !this.sfxGain) return;
     const t = this.ctx.currentTime;
-    [440, 554.37, 659.25].forEach((freq, idx) => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      const startTime = t + idx * 0.08;
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, startTime);
-      gain.gain.setValueAtTime(0.2, startTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.2);
-      osc.connect(gain);
-      gain.connect(this.sfxGain);
-      osc.start(startTime);
-      osc.stop(startTime + 0.2);
+
+    // --- Heavy Anvil Hammer Strike & Quench Synthesis ---
+    // 1. Heavy steel hammer impact thud
+    const thud = this.ctx.createOscillator();
+    const thudG = this.ctx.createGain();
+    thud.type = 'triangle';
+    thud.frequency.setValueAtTime(160, t);
+    thud.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+    thudG.gain.setValueAtTime(0.45, t);
+    thudG.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    thud.connect(thudG);
+    thudG.connect(this.sfxGain);
+    thud.start(t);
+    thud.stop(t + 0.14);
+
+    // 2. Harmonic metallic anvil rings (1180Hz & 2360Hz)
+    [1180, 2360].forEach((freq, idx) => {
+      const ping = this.ctx.createOscillator();
+      const pingG = this.ctx.createGain();
+      ping.type = 'sine';
+      ping.frequency.setValueAtTime(freq, t);
+      pingG.gain.setValueAtTime(0.32 / (idx + 1), t);
+      pingG.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+      ping.connect(pingG);
+      pingG.connect(this.sfxGain);
+      ping.start(t);
+      ping.stop(t + 0.3);
     });
+
+    // 3. Hot metal hiss / sizzle
+    setTimeout(() => {
+      this._playSurfaceNoise(0.18, 0.22, 2800, 1.2);
+    }, 80);
+  }
+
+  // --- Shield Block, Parry & Guard Break SFX ---
+  playShieldBlock() {
+    this.ensureContext();
+    if (!this.ctx || !this.sfxGain) return;
+    const t = this.ctx.currentTime;
+
+    // 1. Heavy dull impact thud
+    const thud = this.ctx.createOscillator();
+    const thudG = this.ctx.createGain();
+    thud.type = 'triangle';
+    thud.frequency.setValueAtTime(140, t);
+    thud.frequency.exponentialRampToValueAtTime(45, t + 0.14);
+    thudG.gain.setValueAtTime(0.5, t);
+    thudG.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+    thud.connect(thudG);
+    thudG.connect(this.sfxGain);
+    thud.start(t);
+    thud.stop(t + 0.15);
+
+    // 2. Shield wood/metal deflection ring
+    const ring = this.ctx.createOscillator();
+    const ringG = this.ctx.createGain();
+    ring.type = 'sine';
+    ring.frequency.setValueAtTime(480, t);
+    ring.frequency.exponentialRampToValueAtTime(180, t + 0.18);
+    ringG.gain.setValueAtTime(0.3, t);
+    ringG.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+    ring.connect(ringG);
+    ringG.connect(this.sfxGain);
+    ring.start(t);
+    ring.stop(t + 0.2);
+  }
+
+  playParry() {
+    this.ensureContext();
+    if (!this.ctx || !this.sfxGain) return;
+    const t = this.ctx.currentTime;
+
+    // 1. Piercing metallic clash ping (harmonic overtones: 1420Hz, 2840Hz, 4260Hz)
+    [1420, 2840, 4260].forEach((freq, idx) => {
+      const ping = this.ctx.createOscillator();
+      const pingG = this.ctx.createGain();
+      ping.type = 'sine';
+      ping.frequency.setValueAtTime(freq, t);
+      pingG.gain.setValueAtTime(0.55 / (idx + 1), t);
+      pingG.gain.exponentialRampToValueAtTime(0.001, t + 0.42);
+      ping.connect(pingG);
+      pingG.connect(this.sfxGain);
+      ping.start(t);
+      ping.stop(t + 0.45);
+    });
+
+    // 2. High-speed deflection crack
+    const crack = this.ctx.createOscillator();
+    const crackG = this.ctx.createGain();
+    crack.type = 'triangle';
+    crack.frequency.setValueAtTime(950, t);
+    crack.frequency.exponentialRampToValueAtTime(120, t + 0.08);
+    crackG.gain.setValueAtTime(0.65, t);
+    crackG.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+    crack.connect(crackG);
+    crackG.connect(this.sfxGain);
+    crack.start(t);
+    crack.stop(t + 0.1);
+  }
+
+  playGuardBreak() {
+    this.ensureContext();
+    if (!this.ctx || !this.sfxGain) return;
+    const t = this.ctx.currentTime;
+
+    // Heavy cracking shield collapse
+    const crash = this.ctx.createOscillator();
+    const crashG = this.ctx.createGain();
+    crash.type = 'sawtooth';
+    crash.frequency.setValueAtTime(90, t);
+    crash.frequency.exponentialRampToValueAtTime(25, t + 0.35);
+    crashG.gain.setValueAtTime(0.6, t);
+    crashG.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    crash.connect(crashG);
+    crashG.connect(this.sfxGain);
+    crash.start(t);
+    crash.stop(t + 0.38);
+
+    // Stumble groan
+    this._playSurfaceNoise(0.22, 0.35, 800, 1.8);
   }
 
   playBuild() {
@@ -1284,5 +1662,45 @@ export default class AudioManager {
     gain.connect(this.sfxGain);
     osc.start(t);
     osc.stop(t + 1.3);
+  }
+
+  // --- Atmospheric Nightfall Warning Horn (Nordic Lur Warhorn) ---
+  playNightWarning() {
+    this.ensureContext();
+    if (!this.ctx || !this.sfxGain) return;
+    try {
+      const t = this.ctx.currentTime;
+      // Resonant Nordic horn chords (D2, A2, D3)
+      const freqs = [73.42, 110.0, 146.83];
+      freqs.forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq * 0.98, t);
+        osc.frequency.linearRampToValueAtTime(freq, t + 0.6);
+        osc.frequency.linearRampToValueAtTime(freq * 0.96, t + 2.8);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(250, t);
+        filter.frequency.linearRampToValueAtTime(750 + idx * 150, t + 0.8);
+        filter.frequency.linearRampToValueAtTime(200, t + 3.0);
+        filter.Q.setValueAtTime(3.5, t);
+
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.linearRampToValueAtTime(0.28 / freqs.length, t + 0.7);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 3.2);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.sfxGain);
+
+        osc.start(t);
+        osc.stop(t + 3.3);
+      });
+    } catch (e) {
+      console.warn('[AudioManager] playNightWarning error:', e);
+    }
   }
 }

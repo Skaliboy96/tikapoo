@@ -449,7 +449,7 @@ export default class QuestManager {
       const title = isFi ? (q.title_fi || q.title) : (q.title_en || q.title);
       return `
         <div class="quest-log-entry ${q.completed ? 'ql-done' : this.isComplete(q.id) ? 'ql-ready' : 'ql-active'}">
-          <span class="ql-icon">${q.completed ? '✅' : this.isComplete(q.id) ? '🔔' : '🔵'}</span>
+          <span class="ql-icon">${q.completed ? '✅' : this.isComplete(q.id) ? '🔔' : '○'}</span>
           <span class="ql-title">${title}</span>
           ${!q.completed ? `<span class="ql-prog">${q.progress}/${q.required}</span>` : ''}
         </div>

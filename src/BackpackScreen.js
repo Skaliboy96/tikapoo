@@ -71,7 +71,14 @@ export default class BackpackScreen {
     });
 
     if (this.closeBtn) {
-      this.closeBtn.addEventListener('click', () => this.close());
+      const handleClose = (e) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+        this.close();
+      };
+      this.closeBtn.addEventListener('click', handleClose);
+      this.closeBtn.addEventListener('pointerdown', handleClose);
+      this.closeBtn.addEventListener('touchend', handleClose);
     }
 
     // Equipment slot click listeners
@@ -121,13 +128,32 @@ export default class BackpackScreen {
     if (shieldSlot) {
       shieldSlot.addEventListener('click', () => {
         if (!this.inventory) return;
-        if (this.inventory.tools.shield) {
-          this.inventory.tools.shield = false;
+        const currentShield = this.player ? this.player.getEquippedShield() : null;
+        if (currentShield) {
+          // Unequip all shields
+          ['shield', 'stoneShield', 'bronzeShield', 'ironShield', 'silverShield', 'blackmetalShield'].forEach(s => {
+            if (this.inventory.tools) this.inventory.tools[s] = false;
+          });
+          if (this.player && this.player.stopBlock) this.player.stopBlock();
           if (this.hud) this.hud.showNotification(Localization.lang === 'fi' ? 'Kilpi riisuttu' : 'Shield unequipped');
-        } else if (this.inventory.items.shield > 0 || this.inventory.tools.shield !== undefined) {
-          this.inventory.tools.shield = true;
-          if (this.hud) this.hud.showNotification(Localization.lang === 'fi' ? 'Kilpi varustettu' : 'Shield equipped');
+        } else {
+          // Equip best available shield
+          const order = ['blackmetalShield', 'silverShield', 'ironShield', 'bronzeShield', 'stoneShield', 'shield'];
+          let equippedAny = false;
+          for (const s of order) {
+            if ((this.inventory.items && this.inventory.items[s] > 0) || (this.inventory.tools && this.inventory.tools[s] !== undefined)) {
+              if (this.inventory.tools) this.inventory.tools[s] = true;
+              equippedAny = true;
+              if (this.hud) this.hud.showNotification(Localization.lang === 'fi' ? 'Kilpi varustettu' : 'Shield equipped');
+              break;
+            }
+          }
+          if (!equippedAny && this.inventory.tools) {
+            this.inventory.tools.shield = true;
+            if (this.hud) this.hud.showNotification(Localization.lang === 'fi' ? 'Puukilpi varustettu' : 'Shield equipped');
+          }
         }
+        if (this.player && this.player.updateHeldWeapon) this.player.updateHeldWeapon();
         this.refresh();
       });
     }
@@ -500,11 +526,11 @@ export default class BackpackScreen {
     if (weaponLabelEl) weaponLabelEl.textContent = weaponName;
 
     // 5. Shield
-    const hasShield = this.inventory && this.inventory.tools && this.inventory.tools.shield;
+    const activeShield = this.player ? this.player.getEquippedShield() : null;
     const shieldIconEl = document.getElementById('bp-icon-shield');
     const shieldLabelEl = document.getElementById('bp-label-shield');
-    if (shieldIconEl) shieldIconEl.textContent = hasShield ? '🛡️' : '⚪';
-    if (shieldLabelEl) shieldLabelEl.textContent = hasShield ? (isFi ? 'Puukilpi' : 'Shield') : (isFi ? 'Ei kilpeä' : 'None');
+    if (shieldIconEl) shieldIconEl.textContent = activeShield ? (activeShield.icon || '🛡️') : '⚪';
+    if (shieldLabelEl) shieldLabelEl.textContent = activeShield ? (isFi ? activeShield.nameFi : activeShield.nameEn) : (isFi ? 'Ei kilpeä' : 'None');
 
     // 6. Belt / Tool
     const hasHammer = this.inventory && this.inventory.tools && this.inventory.tools.hammer;

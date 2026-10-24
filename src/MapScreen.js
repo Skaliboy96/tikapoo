@@ -6,6 +6,7 @@
  * - Fog of War: only revealed explored areas are visible
  * - Coordinates & active quests display
  */
+import * as THREE from 'three';
 import explorationTracker from './ExplorationTracker.js';
 import Localization from './Localization.js';
 
@@ -20,6 +21,8 @@ export default class MapScreen {
     this.camera = camera;
     this.questManager = questManager;
     this.bossManager = bossManager;
+
+    this._camDir = new THREE.Vector3();
 
     this.isOpen = false;
     this.zoom = 1.0;
@@ -50,7 +53,14 @@ export default class MapScreen {
     });
 
     if (this.closeBtn) {
-      this.closeBtn.addEventListener('click', () => this.close());
+      const handleClose = (e) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+        this.close();
+      };
+      this.closeBtn.addEventListener('click', handleClose);
+      this.closeBtn.addEventListener('pointerdown', handleClose);
+      this.closeBtn.addEventListener('touchend', handleClose);
     }
 
     // Zoom Buttons
@@ -90,7 +100,7 @@ export default class MapScreen {
         this.draw();
       }, { passive: false });
 
-      // Drag to Pan
+      // Drag to Pan with Mouse
       this.canvasEl.addEventListener('mousedown', (e) => {
         if (e.button === 0) {
           this.isDragging = true;
@@ -99,6 +109,69 @@ export default class MapScreen {
           this.canvasEl.style.cursor = 'grabbing';
         }
       });
+
+      // Touch Drag Panning & Pinch-to-Zoom for Mobile Screens
+      let initialPinchDist = null;
+      let initialZoom = 1.0;
+
+      this.canvasEl.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          if (e.cancelable) e.preventDefault();
+          const t = e.touches[0];
+          this.isDragging = true;
+          this.dragStart = { x: t.clientX, y: t.clientY };
+          this.panStart = { x: this.pan.x, z: this.pan.z };
+          initialPinchDist = null;
+        } else if (e.touches.length === 2) {
+          if (e.cancelable) e.preventDefault();
+          this.isDragging = false;
+          initialPinchDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          initialZoom = this.zoom;
+        }
+      }, { passive: false });
+
+      this.canvasEl.addEventListener('touchmove', (e) => {
+        if (!this.isOpen) return;
+
+        if (e.touches.length === 1 && this.isDragging) {
+          if (e.cancelable) e.preventDefault();
+          const t = e.touches[0];
+          const dx = t.clientX - this.dragStart.x;
+          const dy = t.clientY - this.dragStart.y;
+          const W = this.canvasEl.width;
+          const WORLD = 330;
+          this.pan.x = this.panStart.x - (dx / (W / 2)) * (WORLD / this.zoom);
+          this.pan.z = this.panStart.z - (dy / (W / 2)) * (WORLD / this.zoom);
+          this.draw();
+        } else if (e.touches.length === 2 && initialPinchDist) {
+          if (e.cancelable) e.preventDefault();
+          const currentDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          const ratio = currentDist / initialPinchDist;
+          this.zoom = Math.max(0.55, Math.min(3.5, initialZoom * ratio));
+          this.draw();
+        }
+      }, { passive: false });
+
+      const handleTouchEnd = (e) => {
+        if (e.touches.length === 0) {
+          this.isDragging = false;
+          initialPinchDist = null;
+        } else if (e.touches.length === 1) {
+          const t = e.touches[0];
+          this.isDragging = true;
+          this.dragStart = { x: t.clientX, y: t.clientY };
+          this.panStart = { x: this.pan.x, z: this.pan.z };
+          initialPinchDist = null;
+        }
+      };
+      this.canvasEl.addEventListener('touchend', handleTouchEnd, { passive: true });
+      this.canvasEl.addEventListener('touchcancel', handleTouchEnd, { passive: true });
     }
 
     window.addEventListener('mousemove', (e) => {
@@ -165,23 +238,51 @@ export default class MapScreen {
     this.isOpen = true;
     if (this.overlayEl) this.overlayEl.classList.add('active');
     if (this.controls && this.controls.isLocked) this.controls.unlock();
-    if (this.canvasEl) this.canvasEl.style.cursor = 'grab';
+    if (this.canvasEl) {
+      this.canvasEl.style.cursor = 'grab';
+      if (!this.canvasEl.width || this.canvasEl.width < 100) this.canvasEl.width = 600;
+      if (!this.canvasEl.height || this.canvasEl.height < 100) this.canvasEl.height = 600;
+    }
 
-    // Center map on player upon opening
+    // Center map on player upon opening and reveal local area on Fog of War
     if (this.player) {
-      const pPos = this.player.getPosition();
-      this.pan.x = pPos.x;
-      this.pan.z = pPos.z;
+      const pPos = this.player.getPosition ? this.player.getPosition() : this.player.playerPos;
+      if (pPos) {
+        this.pan.x = pPos.x;
+        this.pan.z = pPos.z;
+        if (explorationTracker && explorationTracker.revealArea) {
+          explorationTracker.revealArea(pPos.x, pPos.z, 65);
+        }
+      }
     }
 
     this._buildLegend();
     this._updateQuests();
     this.draw();
+    this._startAnimLoop();
+  }
+
+  _startAnimLoop() {
+    if (this._animLoopId) cancelAnimationFrame(this._animLoopId);
+    const loop = () => {
+      if (!this.isOpen) return;
+      try {
+        this.draw();
+      } catch (err) {
+        console.error('[MapScreen] Draw loop error:', err);
+      }
+      this._animLoopId = requestAnimationFrame(loop);
+    };
+    this._animLoopId = requestAnimationFrame(loop);
   }
 
   close() {
     this.isOpen = false;
     this.isDragging = false;
+    if (this._animLoopId) {
+      cancelAnimationFrame(this._animLoopId);
+      this._animLoopId = null;
+    }
     if (this.overlayEl) this.overlayEl.classList.remove('active');
     if (window.restoreGameFocus) {
       window.restoreGameFocus();
@@ -301,25 +402,28 @@ export default class MapScreen {
       });
     }
 
-    // 4. Landmarks (only if explored)
+    // 4. Major Cities & Landmarks (visible as player explores)
     const isFi = Localization.lang === 'fi';
     const landmarks = [
-      { name: isFi ? '🏛️ Keskuskylä' : '🏛️ Central Village', x: 0, z: -10, color: '#f1c40f' },
-      { name: isFi ? '⚓ Satamakylä' : '⚓ Fishermen Haven', x: -22, z: 32, color: '#3498db' },
-      { name: isFi ? '🏰 Metsävartion Linnake' : '🏰 Highland Fortress', x: 35, z: -62, color: '#e67e22' },
-      { name: isFi ? '🔮 Muinainen Pyhäkkö' : '🔮 Ancient Sanctuary', x: 85, z: -25, color: '#00d4ff' },
-      { name: isFi ? '🌉 Jokisilta' : '🌉 River Bridge', x: -2, z: 28, color: '#bdc3c7' }
+      { name: isFi ? '🏰 Tuulentörmä' : '🏰 Windridge City', x: 0, z: -10, color: '#f1c40f' },
+      { name: isFi ? '⚓ Kalliosatama' : '⚓ Crag Seaport', x: -140, z: 45, color: '#3498db' },
+      { name: isFi ? '🔮 Riimulaakso' : '🔮 Rune Vale City', x: 135, z: -60, color: '#9b59b6' },
+      { name: isFi ? '🏔️ Sysiharju' : '🏔️ Ash Peak Citadel', x: -40, z: -180, color: '#e67e22' },
+      { name: isFi ? '🌲 Metsävartion Torni' : '🌲 Highland Watchtower', x: 35, z: -62, color: '#2ecc71' },
+      { name: isFi ? '✨ Muinainen Alttari' : '✨ Ancient Altar', x: 85, z: -25, color: '#00d4ff' },
+      { name: isFi ? '🌉 Suuri Jokisilta' : '🌉 Great River Bridge', x: -2, z: 28, color: '#bdc3c7' }
     ];
     landmarks.forEach(lm => {
       if (!explorationTracker.isExplored(lm.x, lm.z)) return;
       const p = toMap(lm.x, lm.z);
-      if (p.x < -40 || p.x > W + 40 || p.y < -40 || p.y > H + 40) return;
+      if (p.x < -60 || p.x > W + 60 || p.y < -60 || p.y > H + 60) return;
 
-      ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(p.x - 48, p.y - 12, 96, 17);
+      const tagW = Math.max(90, 105 * Math.min(1.2, this.zoom));
+      ctx.fillStyle = 'rgba(8, 14, 22, 0.88)';
+      ctx.fillRect(p.x - tagW / 2, p.y - 13, tagW, 18);
       ctx.strokeStyle = lm.color;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(p.x - 48, p.y - 12, 96, 17);
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(p.x - tagW / 2, p.y - 13, tagW, 18);
 
       ctx.fillStyle = lm.color;
       ctx.font = 'bold 9.5px Cinzel, serif';
@@ -327,19 +431,32 @@ export default class MapScreen {
       ctx.fillText(lm.name, p.x, p.y);
     });
 
-    // 5. Boss Markers (Legendary Boss Arenas across biomes)
+    // 5. Boss Markers (Legendary Boss Arenas with Sequential Progression)
     if (this.bossManager && this.bossManager.getBossMarkers) {
       const bossMarkers = this.bossManager.getBossMarkers();
       bossMarkers.forEach(bm => {
         const p = toMap(bm.x, bm.z);
         if (p.x < -60 || p.x > W + 60 || p.y < -60 || p.y > H + 60) return;
 
+        const isDefeated = bm.status === 'defeated';
+        const isActive = bm.status === 'active';
+
         // Boss arena circle
         ctx.save();
         ctx.beginPath();
         ctx.arc(p.x, p.y, Math.max(12, 18 * this.zoom), 0, Math.PI * 2);
-        ctx.fillStyle = bm.status === 'defeated' ? 'rgba(46, 204, 113, 0.16)' : 'rgba(231, 76, 60, 0.28)';
-        ctx.strokeStyle = bm.status === 'defeated' ? '#2ecc71' : '#e74c3c';
+
+        if (isDefeated) {
+          ctx.fillStyle = 'rgba(46, 204, 113, 0.16)';
+          ctx.strokeStyle = '#2ecc71';
+        } else if (isActive) {
+          ctx.fillStyle = 'rgba(231, 76, 60, 0.35)';
+          ctx.strokeStyle = '#e74c3c';
+        } else {
+          ctx.fillStyle = 'rgba(127, 140, 141, 0.15)';
+          ctx.strokeStyle = '#7f8c8d';
+        }
+
         ctx.lineWidth = 1.5;
         ctx.setLineDash([3, 3]);
         ctx.fill();
@@ -350,29 +467,35 @@ export default class MapScreen {
         ctx.font = `${Math.max(11, 14 * this.zoom)}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(bm.status === 'defeated' ? '👑' : '🔥', p.x, p.y);
+        const symbol = isDefeated ? '👑' : (isActive ? '🔥' : '🔒');
+        ctx.fillText(symbol, p.x, p.y);
         ctx.restore();
 
         // Label box
-        const tag = bm.status === 'defeated'
-          ? (isFi ? '👑 KUKISTETTU' : '👑 DEFEATED')
-          : (isFi ? '🔥 AKTIIVINEN' : '🔥 ACTIVE');
-        const tagColor = bm.status === 'defeated' ? '#2ecc71' : '#ff7675';
+        let tag = isFi ? '🔒 LUKITTU' : '🔒 LOCKED';
+        let tagColor = '#95a5a6';
+        if (isDefeated) {
+          tag = isFi ? '👑 KUKISTETTU' : '👑 DEFEATED';
+          tagColor = '#2ecc71';
+        } else if (isActive) {
+          tag = isFi ? '🔥 TAVOITE: AKTIIVINEN' : '🔥 ACTIVE TARGET';
+          tagColor = '#e67e22';
+        }
 
-        ctx.fillStyle = 'rgba(10, 15, 20, 0.9)';
-        ctx.fillRect(p.x - 60, p.y - 26, 120, 20);
+        ctx.fillStyle = 'rgba(10, 15, 20, 0.92)';
+        ctx.fillRect(p.x - 70, p.y - 28, 140, 22);
         ctx.strokeStyle = tagColor;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(p.x - 60, p.y - 26, 120, 20);
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(p.x - 70, p.y - 28, 140, 22);
 
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 8.5px Cinzel, serif';
         ctx.textAlign = 'center';
-        ctx.fillText(bm.name.split('–')[0].trim(), p.x, p.y - 15);
+        ctx.fillText(bm.name.split('–')[0].trim(), p.x, p.y - 17);
 
         ctx.fillStyle = tagColor;
         ctx.font = 'bold 7.5px sans-serif';
-        ctx.fillText(`${bm.biome} • ${tag}`, p.x, p.y - 8);
+        ctx.fillText(`${bm.biome} • ${tag}`, p.x, p.y - 9);
       });
     }
 
@@ -430,37 +553,106 @@ export default class MapScreen {
       });
     }
 
-    // 8. Player marker (always visible)
+    // 9. Prominent Player Navigation Compass Arrow (Always Visible)
     if (this.player) {
-      const pPos = this.player.getPosition();
-      const p = toMap(pPos.x, pPos.z);
-      const camDir = new THREE.Vector3();
-      if (this.camera) this.camera.getWorldDirection(camDir);
-      const heading = Math.atan2(camDir.x, -camDir.z);
+      const pPos = this.player.getPosition ? this.player.getPosition() : this.player.playerPos;
+      if (pPos) {
+        const p = toMap(pPos.x, pPos.z);
+        if (this.camera && this._camDir) {
+          this.camera.getWorldDirection(this._camDir);
+        } else if (this._camDir) {
+          this._camDir.set(0, 0, -1);
+        }
 
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(heading);
+        // Precise mathematical orientation in 2D canvas space (+x right, +y down)
+        const headingCanvas = this._camDir ? (Math.atan2(this._camDir.z, this._camDir.x) + Math.PI / 2) : 0;
 
-      // Pulse circle
-      ctx.beginPath();
-      ctx.arc(0, 0, Math.max(7, 10 * this.zoom), 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(46, 204, 113, 0.25)';
-      ctx.fill();
+        ctx.save();
+        ctx.translate(p.x, p.y);
 
-      // Heading triangle
-      ctx.fillStyle = '#2ecc71';
-      ctx.beginPath();
-      ctx.moveTo(0, -9);
-      ctx.lineTo(6, 7);
-      ctx.lineTo(-6, 7);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+        // 1. Vision Cone (semi-transparent forward sector showing line of sight)
+        ctx.save();
+        ctx.rotate(headingCanvas);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, 36 * Math.min(1.4, this.zoom), -Math.PI / 2 - 0.52, -Math.PI / 2 + 0.52);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(0, 210, 211, 0.18)';
+        ctx.fill();
+        ctx.restore();
 
-      ctx.restore();
+        // 2. Animated Pulsing Radar Beacon
+        const t = performance.now() * 0.003;
+        const pulseR1 = 12 + (Math.sin(t) * 0.5 + 0.5) * 14;
+        const pulseR2 = 8 + (Math.sin(t + 1.5) * 0.5 + 0.5) * 10;
+        ctx.beginPath();
+        ctx.arc(0, 0, pulseR1, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(46, 204, 113, 0.45)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(0, 0, pulseR2, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(46, 204, 113, 0.25)';
+        ctx.fill();
+
+        // 3. Sleek, Bold Directional Navigation Chevron Arrow
+        ctx.save();
+        ctx.rotate(headingCanvas);
+
+        // Navigation arrow shadow/drop outline
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+        ctx.shadowBlur = 6;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 2;
+
+        ctx.beginPath();
+        ctx.moveTo(0, -16);
+        ctx.lineTo(9.5, 9);
+        ctx.lineTo(0, 4);
+        ctx.lineTo(-9.5, 9);
+        ctx.closePath();
+
+        // Vibrant gradient fill (Golden amber top to cyan blade bottom)
+        const grad = ctx.createLinearGradient(0, -16, 0, 9);
+        grad.addColorStop(0, '#f1c40f');
+        grad.addColorStop(0.6, '#00d2d3');
+        grad.addColorStop(1, '#0984e3');
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.0;
+        ctx.stroke();
+
+        // Center spine accent
+        ctx.beginPath();
+        ctx.moveTo(0, -14);
+        ctx.lineTo(0, 4);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+
+        // 4. Player Badge Label
+        const isFi = (typeof Localization !== 'undefined' && Localization.lang === 'en') ? false : true;
+        const badgeText = isFi ? '🚩 SINÄ' : '🚩 YOU';
+        ctx.font = 'bold 8.5px Cinzel, sans-serif';
+        const txtW = ctx.measureText(badgeText).width;
+
+        ctx.fillStyle = 'rgba(8, 14, 20, 0.9)';
+        ctx.fillRect(-txtW / 2 - 6, 16, txtW + 12, 14);
+        ctx.strokeStyle = '#f1c40f';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-txtW / 2 - 6, 16, txtW + 12, 14);
+
+        ctx.fillStyle = '#f1c40f';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(badgeText, 0, 23);
+
+        ctx.restore();
+      }
     }
 
     // Outer border frame

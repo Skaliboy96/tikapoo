@@ -244,8 +244,17 @@ export default class LootManager {
       meta,
       baseY: groundY + 0.35,
       animTime: Math.random() * Math.PI * 2,
-      isCollected: false
+      isCollected: false,
+      life: 180.0
     };
+
+    // Cap total active ground loot drops to 45 items to prevent WebGL GPU memory exhaustion
+    if (this.drops.length >= 45) {
+      const oldest = this.drops.shift();
+      if (oldest && oldest.group) {
+        this._disposeDropGroup(oldest.group);
+      }
+    }
 
     this.drops.push(drop);
   }
@@ -256,6 +265,13 @@ export default class LootManager {
     for (let i = this.drops.length - 1; i >= 0; i--) {
       const drop = this.drops[i];
       if (drop.isCollected) continue;
+
+      drop.life = (drop.life !== undefined ? drop.life : 180.0) - delta;
+      if (drop.life <= 0) {
+        this._disposeDropGroup(drop.group);
+        this.drops.splice(i, 1);
+        continue;
+      }
 
       drop.animTime += delta * 2.5;
 
@@ -280,13 +296,25 @@ export default class LootManager {
     }
   }
 
+  _disposeDropGroup(group) {
+    if (!group) return;
+    if (this.scene) this.scene.remove(group);
+    group.traverse((c) => {
+      if (c.isMesh) {
+        if (c.geometry) c.geometry.dispose();
+        if (c.material) {
+          if (Array.isArray(c.material)) c.material.forEach(m => m.dispose());
+          else c.material.dispose();
+        }
+      }
+    });
+  }
+
   _collectDrop(drop, index) {
     if (!drop || drop.isCollected) return;
     drop.isCollected = true;
     try {
-      if (this.scene && drop.group) {
-        this.scene.remove(drop.group);
-      }
+      this._disposeDropGroup(drop.group);
       const foundIdx = this.drops.indexOf(drop);
       if (foundIdx !== -1) {
         this.drops.splice(foundIdx, 1);

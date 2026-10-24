@@ -34,13 +34,7 @@ export default class BossManager {
 
     const savedProgress = localStorage.getItem('tikapoo_boss_progress');
     this.unlockedBossIndex = savedProgress !== null ? parseInt(savedProgress, 10) : 0;
-
-    // Backward-compat: if legacy save had unlockedBossIndex > 0, seed defeatedBossIds
-    for (let i = 0; i < this.unlockedBossIndex; i++) {
-      if (this.bossDefs && this.bossDefs[i]) {
-        this.defeatedBossIds.add(this.bossDefs[i].id);
-      }
-    }
+    this.unlockedBossIndex = isNaN(this.unlockedBossIndex) ? 0 : Math.max(0, Math.min(4, this.unlockedBossIndex));
 
     this.projectiles = [];
     this.particles = [];
@@ -49,11 +43,11 @@ export default class BossManager {
     this.bossDefs = [
       {
         id: 'forestBeast',
-        name: 'Metsän Kauhu – Sarvipeto',
-        title: 'Muinainen Hirvikuningas',
-        biome: 'AARNIOMETSÄ',
+        name: 'Muinainen Sarvipeto – Ukkosvaltias',
+        title: 'Muinainen Hirvikuningas & Chieftain',
+        biome: 'AARNIOMETSÄ & NIITYT',
         arenaPos: { x: -140, z: -140 },
-        maxHealth: 1200,
+        maxHealth: 1400,
         damage: 24,
         scale: 3.2,
         color: 0x2e401e,
@@ -65,10 +59,10 @@ export default class BossManager {
       {
         id: 'swampWyrm',
         name: 'Suon Kauhu – Vesipeto Näkki',
-        title: 'Mutaliskojen Keisari',
+        title: 'Mutaliskojen Keisari & Suoherra',
         biome: 'SUMUSUOT',
         arenaPos: { x: -170, z: 155 },
-        maxHealth: 2200,
+        maxHealth: 2400,
         damage: 34,
         scale: 3.5,
         color: 0x1b4332,
@@ -83,7 +77,7 @@ export default class BossManager {
         title: 'Titaaninen Graniittikuningas',
         biome: 'KALLIOVUORISTO',
         arenaPos: { x: 175, z: -170 },
-        maxHealth: 3600,
+        maxHealth: 3800,
         damage: 46,
         scale: 4.2,
         color: 0x4a4a4a,
@@ -98,7 +92,7 @@ export default class BossManager {
         title: 'Arkaanisen Valon Suojelija',
         biome: 'RIIMUPYHÄKKÖ',
         arenaPos: { x: 215, z: -25 },
-        maxHealth: 5200,
+        maxHealth: 5400,
         damage: 58,
         scale: 3.4,
         color: 0x192a56,
@@ -113,7 +107,7 @@ export default class BossManager {
         title: 'Pohjolan Tuhoaja',
         biome: 'SYSIVUORI',
         arenaPos: { x: 0, z: 275 },
-        maxHealth: 7500,
+        maxHealth: 7800,
         damage: 75,
         scale: 4.8,
         color: 0x110e14,
@@ -123,6 +117,13 @@ export default class BossManager {
         unlockMessage: '👑 Olet alistanut kaikki Pohjolan 5 Muinaista Petoa! Sait Lohikäärmeen Kyyneleet jumalvarusteisiin!'
       }
     ];
+
+    // Backward-compat: if legacy save had unlockedBossIndex > 0, seed defeatedBossIds
+    for (let i = 0; i < this.unlockedBossIndex; i++) {
+      if (this.bossDefs[i]) {
+        this.defeatedBossIds.add(this.bossDefs[i].id);
+      }
+    }
 
     this.bosses = [];
     this.buildArenas();
@@ -196,106 +197,179 @@ export default class BossManager {
     const flashMaterials = [];
 
     if (def.type === 'beast') {
-      // 1. Ancient Elk/Horned Beast
-      const bodyGeo = new THREE.BoxGeometry(1.8, 1.6, 3.2);
-      const bodyMat = new THREE.MeshStandardMaterial({ color: def.color, roughness: 0.85 });
-      const body = new THREE.Mesh(bodyGeo, bodyMat);
-      body.position.y = 1.6;
-      body.castShadow = true;
-      group.add(body);
-      flashMaterials.push(bodyMat);
+      // 1. Muinainen Sarvipeto – Ukkosvaltias (Chieftain Peto using Barbarian Asset)
+      let barbarianMixer = null;
+      if (this.assetLoader) {
+        const charData = this.assetLoader.createAnimatedCharacter('Barbarian', 'Idle_A');
+        if (charData && charData.model) {
+          const model = charData.model;
+          barbarianMixer = charData.mixer;
+          group.userData.charMixer = barbarianMixer;
+          group.userData.charActions = charData.actions;
 
-      // 4 Animated Leg Pivots for natural trotting and galloping
-      const legs = [];
-      const legOffsets = [
-        { x: -0.7, z: 1.1, isFront: true, isLeft: true },
-        { x: 0.7, z: 1.1, isFront: true, isLeft: false },
-        { x: -0.7, z: -1.1, isFront: false, isLeft: true },
-        { x: 0.7, z: -1.1, isFront: false, isLeft: false }
-      ];
+          model.scale.set(1.0, 1.0, 1.0);
+          model.position.set(0, 0, 0);
 
-      for (const off of legOffsets) {
-        const pivot = new THREE.Group();
-        pivot.position.set(off.x, 1.5, off.z);
-        const legGeo = new THREE.CylinderGeometry(0.24, 0.2, 1.5, 8);
-        const leg = new THREE.Mesh(legGeo, bodyMat);
-        leg.position.set(0, -0.75, 0);
-        leg.castShadow = true;
-        pivot.add(leg);
-        group.add(pivot);
-        legs.push({ pivot, ...off });
+          let handBone = null;
+          let leftHandBone = null;
+          let headBone = null;
+
+          model.traverse((child) => {
+            if (child.isBone) {
+              if (child.name === 'head' || child.name === 'Head') headBone = child;
+              if (child.name === 'handslot.r' || child.name.includes('hand_r')) handBone = child;
+              if (child.name === 'handslot.l' || child.name.includes('hand_l')) leftHandBone = child;
+            }
+            if (child.isMesh && child.material) {
+              child.material = child.material.clone();
+              child.material.roughness = 0.6;
+              flashMaterials.push(child.material);
+            }
+          });
+
+          // Branching Horned Antlers mounted on chieftain's head
+          if (headBone) {
+            const hornMat = new THREE.MeshStandardMaterial({
+              color: def.glowColor,
+              emissive: def.glowColor,
+              emissiveIntensity: 0.8,
+              roughness: 0.3
+            });
+            group.userData.hornMat = hornMat;
+            for (const hx of [-0.25, 0.25]) {
+              const horn = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.08, 1.3, 8), hornMat);
+              horn.position.set(hx, 0.32, 0.08);
+              horn.rotation.z = (hx < 0 ? 0.45 : -0.45);
+              horn.rotation.x = -0.22;
+              headBone.add(horn);
+
+              const tine = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.06, 0.6, 6), hornMat);
+              tine.position.set(hx * 1.6, 0.55, 0.12);
+              tine.rotation.z = (hx < 0 ? 0.9 : -0.9);
+              headBone.add(tine);
+            }
+
+            // Glowing Electric Rune Eyes
+            const eyeMat = new THREE.MeshBasicMaterial({ color: def.glowColor });
+            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 6), eyeMat);
+            eyeL.position.set(-0.065, 0.08, 0.12);
+            const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 6), eyeMat);
+            eyeR.position.set(0.065, 0.08, 0.12);
+            headBone.add(eyeL, eyeR);
+          }
+
+          // Equip giant greatsword in right hand & barbarian round shield in left hand
+          const wModel = this.assetLoader.get('sword_2handed') || this.assetLoader.get('Sword_Bronze');
+          if (wModel && handBone) {
+            wModel.scale.set(1.4, 1.4, 1.4);
+            wModel.rotation.set(0, Math.PI / 2, 0);
+            handBone.add(wModel);
+          }
+          const sModel = this.assetLoader.get('shield_round_barbarian') || this.assetLoader.get('shield_badge');
+          if (sModel && leftHandBone) {
+            sModel.scale.set(1.3, 1.3, 1.3);
+            sModel.rotation.set(0, -Math.PI / 2, 0);
+            leftHandBone.add(sModel);
+          }
+
+          group.add(model);
+        }
       }
-      group.userData.legs = legs;
 
-      // Head & Massive Antlers
-      const headGeo = new THREE.BoxGeometry(0.9, 0.9, 1.4);
-      const head = new THREE.Mesh(headGeo, bodyMat);
-      head.position.set(0, 2.4, 1.7);
-      head.castShadow = true;
-      group.add(head);
-
-      // Glowing Antlers
-      const hornMat = new THREE.MeshStandardMaterial({
-        color: def.glowColor,
-        emissive: def.glowColor,
-        emissiveIntensity: 0.7,
-        roughness: 0.3
-      });
-      group.userData.hornMat = hornMat;
-      for (const hx of [-0.65, 0.65]) {
-        const hornGeo = new THREE.CylinderGeometry(0.08, 0.18, 2.2, 8);
-        const horn = new THREE.Mesh(hornGeo, hornMat);
-        horn.position.set(hx, 3.3, 1.4);
-        horn.rotation.z = (hx < 0 ? 0.45 : -0.45);
-        horn.rotation.x = -0.3;
-        group.add(horn);
-
-        // Branch tines
-        const tineGeo = new THREE.CylinderGeometry(0.05, 0.1, 0.9, 6);
-        const tine = new THREE.Mesh(tineGeo, hornMat);
-        tine.position.set(hx * 1.5, 3.8, 1.5);
-        tine.rotation.z = (hx < 0 ? 0.9 : -0.9);
-        group.add(tine);
+      // Fallback if glTF failed
+      if (!group.children.length) {
+        const bodyGeo = new THREE.BoxGeometry(1.8, 1.6, 3.2);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: def.color, roughness: 0.85 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 1.6;
+        group.add(body);
+        flashMaterials.push(bodyMat);
       }
-
-      // Glowing Nordic Rune Eyes & Chest Sigil
-      const beastEyeMat = new THREE.MeshBasicMaterial({ color: def.glowColor });
-      for (const ex of [-0.48, 0.48]) {
-        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), beastEyeMat);
-        eye.position.set(ex, 2.5, 2.1);
-        group.add(eye);
-      }
-      const sigilGeo = new THREE.OctahedronGeometry(0.42, 0);
-      const sigil = new THREE.Mesh(sigilGeo, beastEyeMat);
-      sigil.position.set(0, 1.8, 1.62);
-      group.add(sigil);
     } else if (def.type === 'wyrm') {
-      // 2. Swamp Water Wyrm / Behemoth
-      const bodyGeo = new THREE.CylinderGeometry(1.2, 1.6, 4.5, 12);
-      bodyGeo.rotateX(Math.PI / 2);
-      const bodyMat = new THREE.MeshStandardMaterial({ color: def.color, roughness: 0.5, metalness: 0.2 });
-      const body = new THREE.Mesh(bodyGeo, bodyMat);
-      body.position.y = 1.3;
-      body.castShadow = true;
-      group.add(body);
-      flashMaterials.push(bodyMat);
+      // 2. Suon Kauhu – Vesipeto Näkki (Abyssal Swamp Draugr Lord using Skeleton_Warrior Asset)
+      let wyrmMixer = null;
+      if (this.assetLoader) {
+        const charData = this.assetLoader.createAnimatedCharacter('Skeleton_Warrior', 'Idle_A');
+        if (charData && charData.model) {
+          const model = charData.model;
+          wyrmMixer = charData.mixer;
+          group.userData.charMixer = wyrmMixer;
+          group.userData.charActions = charData.actions;
 
-      // Spine ridges
-      const spineMat = new THREE.MeshStandardMaterial({ color: def.glowColor, emissive: def.glowColor, emissiveIntensity: 0.5 });
-      for (let s = -1.8; s <= 1.8; s += 0.8) {
-        const spGeo = new THREE.ConeGeometry(0.35, 1.1, 5);
-        const sp = new THREE.Mesh(spGeo, spineMat);
-        sp.position.set(0, 2.3, s);
-        group.add(sp);
+          model.scale.set(1.0, 1.0, 1.0);
+          model.position.set(0, 0, 0);
+
+          let handBone = null;
+          let leftHandBone = null;
+          let headBone = null;
+
+          model.traverse((child) => {
+            if (child.isBone) {
+              if (child.name === 'head' || child.name === 'Head') headBone = child;
+              if (child.name === 'handslot.r' || child.name.includes('hand_r')) handBone = child;
+              if (child.name === 'handslot.l' || child.name.includes('hand_l')) leftHandBone = child;
+            }
+            if (child.isMesh && child.material) {
+              child.material = child.material.clone();
+              child.material.color.setHex(0x133824); // Dark swamp moss green
+              child.material.roughness = 0.5;
+              flashMaterials.push(child.material);
+            }
+          });
+
+          // Glowing toxic emerald eyes
+          if (headBone) {
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0x2ecc71 });
+            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 6), eyeMat);
+            eyeL.position.set(-0.065, 0.08, 0.12);
+            const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 6), eyeMat);
+            eyeR.position.set(0.065, 0.08, 0.12);
+            headBone.add(eyeL, eyeR);
+          }
+
+          // Equip giant swamp greataxe & large heavy shield
+          const axeModel = this.assetLoader.get('Skeleton_Axe') || this.assetLoader.get('axe_2handed');
+          if (axeModel && handBone) {
+            axeModel.scale.set(1.5, 1.5, 1.5);
+            axeModel.rotation.set(0, Math.PI / 2, 0);
+            handBone.add(axeModel);
+          }
+          const shieldModel = this.assetLoader.get('Skeleton_Shield_Large_A') || this.assetLoader.get('shield_spikes');
+          if (shieldModel && leftHandBone) {
+            shieldModel.scale.set(1.4, 1.4, 1.4);
+            shieldModel.rotation.set(0, -Math.PI / 2, 0);
+            leftHandBone.add(shieldModel);
+          }
+
+          // Orbiting toxic poison sludge orbs
+          const orbs = [];
+          for (let i = 0; i < 4; i++) {
+            const orb = new THREE.Mesh(
+              new THREE.SphereGeometry(0.2, 8, 8),
+              new THREE.MeshBasicMaterial({ color: 0x2ecc71, transparent: true, opacity: 0.85 })
+            );
+            const ang = (i / 4) * Math.PI * 2;
+            orb.position.set(Math.cos(ang) * 1.5, 1.2 + (i % 2) * 0.4, Math.sin(ang) * 1.5);
+            group.add(orb);
+            orbs.push(orb);
+          }
+          group.userData.sludgeOrbs = orbs;
+
+          group.add(model);
+        }
       }
 
-      // Snapping Crocodile/Serpent Jaws
-      const jawGeo = new THREE.BoxGeometry(1.1, 0.7, 1.8);
-      const jaw = new THREE.Mesh(jawGeo, bodyMat);
-      jaw.position.set(0, 1.4, 2.7);
-      group.add(jaw);
+      if (!group.children.length) {
+        const bodyGeo = new THREE.CylinderGeometry(1.2, 1.6, 4.5, 12);
+        bodyGeo.rotateX(Math.PI / 2);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: def.color, roughness: 0.5 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 1.3;
+        group.add(body);
+        flashMaterials.push(bodyMat);
+      }
     } else if (def.type === 'golem') {
-      // 3. Mountain Granite Golem
+      // 3. Harjanteen Jätti – Kallionmurskaaja (Titan Granite Colossus)
       const torsoGeo = new THREE.DodecahedronGeometry(2.1, 1);
       const golemMat = new THREE.MeshStandardMaterial({ color: def.color, roughness: 0.95 });
       const torso = new THREE.Mesh(torsoGeo, golemMat);
@@ -304,17 +378,24 @@ export default class BossManager {
       group.add(torso);
       flashMaterials.push(golemMat);
 
-      // Huge boulder shoulders & arms
+      // Articulated boulder shoulders & swinging arm groups
+      const armGroups = [];
       for (const side of [-1, 1]) {
+        const armGroup = new THREE.Group();
+        armGroup.position.set(side * 2.4, 3.4, 0);
+
         const shoulder = new THREE.Mesh(new THREE.DodecahedronGeometry(1.1, 1), golemMat);
-        shoulder.position.set(side * 2.4, 3.4, 0);
-        group.add(shoulder);
+        armGroup.add(shoulder);
 
         const fist = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.4, 0.9), golemMat);
-        fist.position.set(side * 2.4, 1.5, 0.4);
+        fist.position.set(0, -1.8, 0.4);
         fist.castShadow = true;
-        group.add(fist);
+        armGroup.add(fist);
+
+        group.add(armGroup);
+        armGroups.push(armGroup);
       }
+      group.userData.arms = armGroups;
 
       // Glowing Magma Core inside chest
       const coreGeo = new THREE.OctahedronGeometry(0.65, 0);
@@ -323,14 +404,17 @@ export default class BossManager {
       core.position.set(0, 2.7, 1.8);
       group.add(core);
     } else if (def.type === 'wraith') {
-      // 4. Muinainen Aave – Riimunvartija (Towering Undead Lich King)
+      // 4. Muinainen Aave – Riimunvartija (Towering Undead Lich King using Skeleton_Mage)
       let mageMixer = null;
       if (this.assetLoader) {
         const charData = this.assetLoader.createAnimatedCharacter('Skeleton_Mage', 'Idle_A');
         if (charData && charData.model) {
           const mageModel = charData.model;
           mageMixer = charData.mixer;
-          mageModel.scale.set(3.4, 3.4, 3.4);
+          group.userData.charMixer = mageMixer;
+          group.userData.charActions = charData.actions;
+
+          mageModel.scale.set(1.0, 1.0, 1.0);
           mageModel.position.set(0, 0, 0);
 
           let handBone = null;
@@ -338,8 +422,7 @@ export default class BossManager {
           mageModel.traverse((child) => {
             if (child.isBone) {
               if (child.name === 'head' || child.name === 'Head') headBone = child;
-              if (child.name === 'handslot.r') handBone = child;
-              else if (!handBone && (child.name === 'hand.r' || child.name.includes('hand_r'))) handBone = child;
+              if (child.name === 'handslot.r' || child.name.includes('hand_r')) handBone = child;
             }
             if (child.isMesh && child.material) {
               child.material = child.material.clone();
@@ -368,24 +451,7 @@ export default class BossManager {
           }
 
           group.add(mageModel);
-          group.userData.charMixer = mageMixer;
         }
-      }
-
-      // If glTF character not available, fallback to ethereal wraith robes
-      if (!group.children.length) {
-        const cloakGeo = new THREE.ConeGeometry(1.6, 4.0, 10, 1, true);
-        const cloakMat = new THREE.MeshStandardMaterial({
-          color: def.color,
-          roughness: 0.4,
-          transparent: true,
-          opacity: 0.88,
-          side: THREE.DoubleSide
-        });
-        const cloak = new THREE.Mesh(cloakGeo, cloakMat);
-        cloak.position.y = 2.4;
-        group.add(cloak);
-        flashMaterials.push(cloakMat);
       }
 
       // Concentric Rotating Runic Rings
@@ -404,17 +470,8 @@ export default class BossManager {
       innerRing.rotation.y = Math.PI / 4;
       group.add(innerRing);
       group.userData.innerRuneRing = innerRing;
-
-      // Dark Arcane Aura Mesh
-      const arcaneGlow = new THREE.Mesh(
-        new THREE.RingGeometry(1.6, 2.2, 16),
-        new THREE.MeshBasicMaterial({ color: def.glowColor, side: THREE.DoubleSide, transparent: true, opacity: 0.55 })
-      );
-      arcaneGlow.position.y = 3.2;
-      arcaneGlow.rotateX(Math.PI / 2);
-      group.add(arcaneGlow);
     } else if (def.type === 'dragon') {
-      // 5. Cursed Shadow Dragon
+      // 5. Sysipimeyden Ruhtinas – Varjodraakki (Cataclysm Shadow Dragon)
       const bodyGeo = new THREE.CylinderGeometry(1.4, 1.8, 5.0, 10);
       bodyGeo.rotateX(Math.PI / 2);
       const dragonMat = new THREE.MeshStandardMaterial({ color: def.color, roughness: 0.7 });
@@ -424,13 +481,17 @@ export default class BossManager {
       group.add(body);
       flashMaterials.push(dragonMat);
 
-      // Giant Wings
+      // Giant Articulated Flapping Wings
+      const wingGroups = [];
       for (const side of [-1, 1]) {
+        const wingPivot = new THREE.Group();
+        wingPivot.position.set(side * 1.2, 2.8, 0);
+
         const wingGeo = new THREE.BufferGeometry();
         const vertices = new Float32Array([
-          0, 2.6, 0,
-          side * 4.8, 4.5, -1.5,
-          side * 3.6, 1.2, 0.8
+          0, 0, 0,
+          side * 4.6, 2.2, -1.5,
+          side * 3.4, -1.2, 0.8
         ]);
         wingGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
         wingGeo.computeVertexNormals();
@@ -439,9 +500,12 @@ export default class BossManager {
           side: THREE.DoubleSide,
           roughness: 0.6
         });
-        const wing = new THREE.Mesh(wingGeo, wingMat);
-        group.add(wing);
+        const wingMesh = new THREE.Mesh(wingGeo, wingMat);
+        wingPivot.add(wingMesh);
+        group.add(wingPivot);
+        wingGroups.push(wingPivot);
       }
+      group.userData.wings = wingGroups;
 
       // Dragon Head with Glowing Horns & Mouth
       const headGeo = new THREE.BoxGeometry(1.2, 1.1, 2.2);
@@ -473,96 +537,145 @@ export default class BossManager {
     return { group, flashMaterials };
   }
 
-  // --- Spawn active bosses across all biomes ---
+  // --- Spawn active bosses: STRICT SEQUENTIAL PROGRESSION (1 boss at a time) ---
   spawnActiveBosses() {
+    // Remove existing boss meshes from scene
+    this.bosses.forEach(b => {
+      if (b.mesh) this.scene.remove(b.mesh);
+    });
     this.bosses = [];
 
-    this.bossDefs.forEach((def, index) => {
-      // Spawn all bosses that are alive and not yet defeated
-      const isDefeated = this.defeatedBossIds.has(def.id);
+    // All bosses completed check
+    if (this.unlockedBossIndex >= this.bossDefs.length) {
+      return;
+    }
 
-      if (isDefeated) {
-        return; // Slain in this world
+    const activeDef = this.bossDefs[this.unlockedBossIndex];
+    if (this.defeatedBossIds.has(activeDef.id)) {
+      if (this.unlockedBossIndex < this.bossDefs.length - 1) {
+        this.unlockedBossIndex++;
+        localStorage.setItem('tikapoo_boss_progress', this.unlockedBossIndex.toString());
+        this.spawnActiveBosses();
       }
+      return;
+    }
 
-      const { group, flashMaterials } = this._createBossMesh(def);
-      flashMaterials.forEach(m => {
-        if (m.color) m.userData.origColor = m.color.getHex();
-      });
-      const ay = this.world ? this.world.getGroundHeight(def.arenaPos.x, def.arenaPos.z) : 0;
-      group.position.set(def.arenaPos.x, ay, def.arenaPos.z);
-      this.scene.add(group);
+    const { group, flashMaterials } = this._createBossMesh(activeDef);
+    flashMaterials.forEach(m => {
+      if (m.color) m.userData.origColor = m.color.getHex();
+    });
+    const ay = this.world ? this.world.getGroundHeight(activeDef.arenaPos.x, activeDef.arenaPos.z) : 0;
+    group.position.set(activeDef.arenaPos.x, ay, activeDef.arenaPos.z);
+    this.scene.add(group);
 
-      const boss = {
-        def,
-        index,
-        mesh: group,
-        flashMaterials,
-        health: def.maxHealth,
-        maxHealth: def.maxHealth,
-        damage: def.damage,
-        isAlive: true,
-        phase: 1,
-        state: 'idle',
-        cooldown: 0,
-        specialTimer: 4.0,
-        isCharging: false,
-        chargeDir: new THREE.Vector3(),
-        submerged: false,
-        invulnerable: false,
-        runeStones: [],
-        animTime: 0,
+    const boss = {
+      def: activeDef,
+      index: this.unlockedBossIndex,
+      mesh: group,
+      flashMaterials,
+      health: activeDef.maxHealth,
+      maxHealth: activeDef.maxHealth,
+      damage: activeDef.damage,
+      isAlive: true,
+      phase: 1,
+      state: 'idle',
+      cooldown: 0,
+      specialTimer: 4.0,
+      isCharging: false,
+      chargeDir: new THREE.Vector3(),
+      submerged: false,
+      invulnerable: false,
+      runeStones: [],
+      animTime: 0,
 
-        takeDamage: (amount) => {
-          if (!boss.isAlive) return;
-          if (boss.invulnerable) {
-            if (this.hud) {
-              if (this.hud.showBossTelegraph) this.hud.showBossTelegraph('🛡️ Bossi on suojattu riimukivillä! Tuhoa riimukivet ensin!');
-              else this.hud.showNotification('🛡️ Bossi on suojattu riimukivillä! Tuhoa riimukivet ensin!');
-            }
-            return;
+      playAnim: (animName, loop = true) => {
+        const actions = group.userData.charActions;
+        if (!actions || !actions[animName]) return;
+        const newAction = actions[animName];
+        if (boss.currentAction === newAction && loop) return;
+        if (boss.currentAction && boss.currentAction !== newAction) {
+          boss.currentAction.fadeOut(0.15);
+        }
+        newAction.reset();
+        newAction.fadeIn(0.15);
+        if (!loop) {
+          newAction.setLoop(THREE.LoopOnce);
+          newAction.clampWhenFinished = true;
+        } else {
+          newAction.setLoop(THREE.LoopRepeat);
+        }
+        newAction.play();
+        boss.currentAction = newAction;
+      },
+
+      isStaggered: false,
+      staggerTimer: 0,
+      damageMultiplier: 1.0,
+
+      stagger: (duration = 1.4, damageMult = 1.5) => {
+        if (!boss.isAlive || boss.invulnerable) return;
+        boss.isStaggered = true;
+        boss.staggerTimer = duration;
+        boss.damageMultiplier = damageMult;
+        boss.cooldown = duration + 0.6;
+        if (boss.playAnim) boss.playAnim('Idle_A');
+        if (this.hud && this.hud.showNotification) {
+          this.hud.showNotification(`⚡ PARRY! ${boss.def?.name || 'Päävihollinen'} horjahti! (+50% bonusvahinko)`, 2200);
+        }
+      },
+
+      takeDamage: (amount) => {
+        if (!boss.isAlive) return;
+        if (boss.isStaggered) {
+          amount = Math.round(amount * (boss.damageMultiplier || 1.5));
+        }
+        if (boss.invulnerable) {
+          if (this.hud) {
+            if (this.hud.showBossTelegraph) this.hud.showBossTelegraph('🛡️ Bossi on suojattu riimukivillä! Tuhoa riimukivet ensin!');
+            else this.hud.showNotification('🛡️ Bossi on suojattu riimukivillä! Tuhoa riimukivet ensin!');
           }
+          return;
+        }
 
-          boss.health = Math.max(0, boss.health - amount);
-          this.updateBossHud(boss);
+        boss.health = Math.max(0, boss.health - amount);
+        this.updateBossHud(boss);
 
-          // Red hit flash with persistent original color restore
-          flashMaterials.forEach(m => {
-            if (m.color) {
-              const orig = m.userData.origColor !== undefined ? m.userData.origColor : m.color.getHex();
-              m.color.setHex(0xff2222);
-              setTimeout(() => { if (m.color) m.color.setHex(orig); }, 120);
-            }
-          });
-
-          // Phase checks
-          if (boss.health < boss.maxHealth * 0.5 && boss.phase === 1) {
-            boss.phase = 2;
-            this.triggerPhase2(boss);
+        // Red hit flash with persistent original color restore
+        flashMaterials.forEach(m => {
+          if (m.color) {
+            const orig = m.userData.origColor !== undefined ? m.userData.origColor : m.color.getHex();
+            m.color.setHex(0xff2222);
+            setTimeout(() => { if (m.color) m.color.setHex(orig); }, 120);
           }
-          if (boss.health < boss.maxHealth * 0.25 && boss.phase === 2) {
-            boss.phase = 3;
-            if (this.hud) {
-              if (this.hud.showBossTelegraph) this.hud.showBossTelegraph(`⚠️ ${boss.def.name} siirtyy RAIVOTILAAN!`);
-              else this.hud.showNotification(`⚠️ ${boss.def.name} siirtyy RAIVOTILAAN!`);
-            }
-          }
+        });
 
-          if (boss.health <= 0) {
-            this.defeatBoss(boss);
+        // Phase checks
+        if (boss.health < boss.maxHealth * 0.5 && boss.phase === 1) {
+          boss.phase = 2;
+          this.triggerPhase2(boss);
+        }
+        if (boss.health < boss.maxHealth * 0.25 && boss.phase === 2) {
+          boss.phase = 3;
+          if (this.hud) {
+            if (this.hud.showBossTelegraph) this.hud.showBossTelegraph(`⚠️ ${boss.def.name} siirtyy RAIVOTILAAN!`);
+            else this.hud.showNotification(`⚠️ ${boss.def.name} siirtyy RAIVOTILAAN!`);
           }
         }
-      };
 
-      group.userData.boss = boss;
-      group.userData.enemy = boss;
-      group.traverse(c => {
-        c.userData.boss = boss;
-        c.userData.enemy = boss;
-      });
+        if (boss.health <= 0) {
+          this.defeatBoss(boss);
+        }
+      }
+    };
 
-      this.bosses.push(boss);
+    group.userData.boss = boss;
+    group.userData.enemy = boss;
+    group.traverse(c => {
+      c.userData.boss = boss;
+      c.userData.enemy = boss;
     });
+
+    this.bosses.push(boss);
   }
 
   triggerPhase2(boss) {
@@ -664,6 +777,9 @@ export default class BossManager {
     }
 
     if (this.audioManager) {
+      if (this.audioManager.stopBossMusic) {
+        this.audioManager.stopBossMusic();
+      }
       if (this.audioManager.playBossDefeatedFanfare) {
         this.audioManager.playBossDefeatedFanfare();
       } else {
@@ -749,6 +865,15 @@ export default class BossManager {
     for (const boss of this.bosses) {
       if (!boss.isAlive) continue;
 
+      if (boss.isStaggered) {
+        boss.staggerTimer -= delta;
+        if (boss.staggerTimer <= 0) {
+          boss.isStaggered = false;
+          boss.damageMultiplier = 1.0;
+        }
+        continue;
+      }
+
       boss.animTime += delta;
       const bPos = boss.mesh.position;
       const distToPlayer = Math.hypot(playerPos.x - bPos.x, playerPos.z - bPos.z);
@@ -774,57 +899,49 @@ export default class BossManager {
           }
         }
 
-        // Mechanic 1: Ancient Elk / Horned Beast (Eikthyr style)
+        // Update character mixer if glTF animated boss
+        if (boss.mesh.userData.charMixer) {
+          boss.mesh.userData.charMixer.update(delta);
+        }
+
+        // Mechanic 1: Muinainen Sarvipeto – Ukkosvaltias (Barbarian Chieftain with Glowing Antlers)
         if (boss.def.type === 'beast') {
           if (!boss.beastState) {
             boss.beastState = 'approach';
             boss.stateTimer = 0;
           }
 
-          const legs = boss.mesh.userData.legs || [];
           const hornMat = boss.mesh.userData.hornMat;
 
           if (boss.beastState === 'approach') {
-            // Smoothly rotate towards player
             const targetAng = Math.atan2(dx, dz);
-            boss.mesh.rotation.y = THREE.MathUtils.lerp(boss.mesh.rotation.y, targetAng, delta * 3.5);
-            boss.mesh.rotation.x = THREE.MathUtils.lerp(boss.mesh.rotation.x, 0, delta * 5.0);
+            boss.mesh.rotation.y = THREE.MathUtils.lerp(boss.mesh.rotation.y, targetAng, delta * 3.8);
 
-            // Trotting gait animation
-            const trotSpeed = 7.0;
-            const trotAngle = Math.sin(boss.animTime * trotSpeed) * 0.45;
-            for (const leg of legs) {
-              const sign = (leg.isFront === leg.isLeft) ? 1 : -1;
-              leg.pivot.rotation.x = trotAngle * sign;
-            }
-            const ground = this.world ? this.world.getGroundHeight(bPos.x, bPos.z) : 0;
-            boss.mesh.position.y = ground + Math.abs(Math.sin(boss.animTime * trotSpeed * 2)) * 0.08;
+            if (hornMat) hornMat.emissiveIntensity = 0.8;
 
-            if (hornMat) hornMat.emissiveIntensity = 0.7;
-
-            // Move closer if further than 4.5m
             if (distToPlayer > 4.5) {
               const moveDir = new THREE.Vector3(dx, 0, dz).normalize();
               boss.mesh.position.addScaledVector(moveDir, delta * 3.8);
-            } else if (boss.cooldown <= 0) {
-              // Close-range Hoof Stomp shockwave
-              boss.cooldown = 3.5;
-              boss.mesh.rotation.x = -0.25; // Rears hooves up
-              setTimeout(() => {
-                if (boss.isAlive && boss.mesh) {
-                  boss.mesh.rotation.x = 0;
-                  this.createShockwave(boss.mesh.position, 0xf39c12, 5.5);
-                  if (this.audioManager && this.audioManager.playExplosion) {
-                    this.audioManager.playExplosion();
+              if (boss.playAnim) boss.playAnim('Walking_A');
+            } else {
+              if (boss.playAnim) boss.playAnim('Idle_A');
+              if (boss.cooldown <= 0) {
+                boss.cooldown = 3.2;
+                if (boss.playAnim) boss.playAnim('Use_Item', false);
+                setTimeout(() => {
+                  if (boss.isAlive && boss.mesh) {
+                    this.createShockwave(boss.mesh.position, 0xf1c40f, 6.0);
+                    if (this.audioManager && this.audioManager.playExplosion) {
+                      this.audioManager.playExplosion();
+                    }
+                    if (distToPlayer < 5.2 && this.player) {
+                      this.player.takeDamage(boss.damage, boss);
+                    }
                   }
-                  if (distToPlayer < 4.8 && this.player) {
-                    this.player.takeDamage(boss.damage);
-                  }
-                }
-              }, 400);
+                }, 350);
+              }
             }
 
-            // Trigger charge windup when specialTimer expires (every ~7-8 seconds)
             if (boss.specialTimer <= 0) {
               boss.beastState = 'telegraph';
               boss.stateTimer = 1.0;
@@ -836,141 +953,177 @@ export default class BossManager {
             }
           } else if (boss.beastState === 'telegraph') {
             boss.stateTimer -= delta;
-
-            // Face player while telegraphing
             const targetAng = Math.atan2(dx, dz);
-            boss.mesh.rotation.y = THREE.MathUtils.lerp(boss.mesh.rotation.y, targetAng, delta * 4.0);
-
-            // Rearing back posture + antler electric flashing
-            boss.mesh.rotation.x = THREE.MathUtils.lerp(boss.mesh.rotation.x, -0.22, delta * 6.0);
-            for (const leg of legs) {
-              leg.pivot.rotation.x = leg.isFront ? -0.35 : 0.15;
-            }
+            boss.mesh.rotation.y = THREE.MathUtils.lerp(boss.mesh.rotation.y, targetAng, delta * 5.0);
+            if (boss.playAnim) boss.playAnim('Idle_A');
 
             if (hornMat) {
-              hornMat.emissiveIntensity = 2.5 + Math.sin(boss.animTime * 25) * 1.2;
+              hornMat.emissiveIntensity = 2.8 + Math.sin(boss.animTime * 25) * 1.5;
             }
 
             if (boss.stateTimer <= 0) {
-              // Lock charge direction firmly
               boss.beastState = 'charge';
               boss.stateTimer = 1.25;
               boss.chargeDir.set(dx, 0, dz).normalize();
               boss.mesh.rotation.y = Math.atan2(boss.chargeDir.x, boss.chargeDir.z);
+              if (boss.playAnim) boss.playAnim('Running_A');
             }
           } else if (boss.beastState === 'charge') {
             boss.stateTimer -= delta;
+            boss.mesh.position.addScaledVector(boss.chargeDir, delta * 12.5);
+            if (boss.playAnim) boss.playAnim('Running_A');
 
-            // Lower head and horns forward into battering ram posture
-            boss.mesh.rotation.x = 0.12;
-            // Charge forward strictly along locked chargeDir (no curving/bulldozing!)
-            boss.mesh.position.addScaledVector(boss.chargeDir, delta * 13.0);
-
-            // Fast galloping legs
-            const gallopAngle = Math.sin(boss.animTime * 20.0) * 0.7;
-            for (const leg of legs) {
-              leg.pivot.rotation.x = leg.isFront ? gallopAngle : -gallopAngle;
-            }
-
-            // Hit player
-            if (distToPlayer < 3.2) {
+            if (distToPlayer < 3.4) {
               if (this.player) {
-                this.player.takeDamage(boss.damage * 1.4);
+                this.player.takeDamage(boss.damage * 1.4, boss);
               }
-              this.createShockwave(boss.mesh.position, 0xe74c3c, 4.0);
+              this.createShockwave(boss.mesh.position, 0xe74c3c, 4.5);
               boss.beastState = 'recoil';
-              boss.stateTimer = 1.2;
+              boss.stateTimer = 1.1;
+              if (boss.playAnim) boss.playAnim('Idle_A');
             } else if (boss.stateTimer <= 0) {
-              // Charge ended without hitting
               boss.beastState = 'recoil';
-              boss.stateTimer = 1.0;
+              boss.stateTimer = 0.9;
+              if (boss.playAnim) boss.playAnim('Idle_A');
             }
           } else if (boss.beastState === 'recoil') {
             boss.stateTimer -= delta;
-
-            // Recoil panting/recovery pause
-            boss.mesh.rotation.x = THREE.MathUtils.lerp(boss.mesh.rotation.x, 0.05, delta * 4.0);
-            for (const leg of legs) {
-              leg.pivot.rotation.x = 0;
-            }
-            if (hornMat) hornMat.emissiveIntensity = 0.5;
-
+            if (hornMat) hornMat.emissiveIntensity = 0.6;
+            if (boss.playAnim) boss.playAnim('Idle_A');
             if (boss.stateTimer <= 0) {
               boss.beastState = 'approach';
             }
           }
         }
 
-        // Mechanic 2: Swamp Wyrm Poison Spit
+        // Mechanic 2: Suon Kauhu – Vesipeto Näkki (Swamp Lord using Skeleton_Warrior)
         else if (boss.def.type === 'wyrm') {
+          // Orbiting toxic sludge orbs animation
+          const orbs = boss.mesh.userData.sludgeOrbs || [];
+          orbs.forEach((orb, i) => {
+            const ang = (i / orbs.length) * Math.PI * 2 + boss.animTime * 2.2;
+            orb.position.x = Math.cos(ang) * 1.6;
+            orb.position.z = Math.sin(ang) * 1.6;
+            orb.position.y = 1.3 + Math.sin(boss.animTime * 3.5 + i) * 0.35;
+          });
+
           if (boss.specialTimer <= 0) {
-            boss.specialTimer = 4.5;
-            this.fireProjectile(bPos, playerPos, 0x2ecc71, 24);
+            boss.specialTimer = 4.8;
+            this.fireProjectile(bPos, playerPos, 0x2ecc71, 26, 0.5);
+            if (boss.playAnim) boss.playAnim('Use_Item', false);
             if (this.hud) {
-              if (this.hud.showBossTelegraph) this.hud.showBossTelegraph('☣️ Näkki ampuu myrkkyä!');
-              else this.hud.showNotification('☣️ Näkki ampuu myrkkyä!');
+              if (this.hud.showBossTelegraph) this.hud.showBossTelegraph('☣️ Näkki ampuu suomyrkkyä!');
+              else this.hud.showNotification('☣️ Näkki ampuu suomyrkkyä!');
             }
           }
-          if (distToPlayer > 6.0) {
+
+          if (distToPlayer > 5.5) {
             const moveDir = new THREE.Vector3(dx, 0, dz).normalize();
-            boss.mesh.position.addScaledVector(moveDir, delta * 3.8);
-          } else if (boss.cooldown <= 0) {
-            boss.cooldown = 2.0;
-            if (this.player) this.player.takeDamage(boss.damage);
+            boss.mesh.position.addScaledVector(moveDir, delta * 3.6);
+            boss.mesh.lookAt(playerPos.x, boss.mesh.position.y, playerPos.z);
+            if (boss.playAnim) boss.playAnim('Walking_A');
+          } else {
+            if (boss.playAnim && boss.currentAction !== boss.mesh.userData.charActions?.['Use_Item']) {
+              boss.playAnim('Idle_A');
+            }
+            if (boss.cooldown <= 0) {
+              boss.cooldown = 2.4;
+              if (boss.playAnim) boss.playAnim('Use_Item', false);
+              setTimeout(() => {
+                if (boss.isAlive && distToPlayer < 5.8 && this.player) {
+                  this.player.takeDamage(boss.damage, boss);
+                }
+              }, 300);
+            }
           }
         }
 
-        // Mechanic 3: Mountain Golem Boulder Throw
+        // Mechanic 3: Harjanteen Jätti – Kallionmurskaaja (Titan Granite Colossus)
         else if (boss.def.type === 'golem') {
+          // Dynamic arm swinging while moving
+          const arms = boss.mesh.userData.arms || [];
+          const speed = (boss.phase === 3) ? 5.2 : 3.2;
+
+          if (distToPlayer > 6.0) {
+            const moveDir = new THREE.Vector3(dx, 0, dz).normalize();
+            boss.mesh.position.addScaledVector(moveDir, delta * speed);
+            boss.mesh.lookAt(playerPos.x, boss.mesh.position.y, playerPos.z);
+
+            const swing = Math.sin(boss.animTime * 4.5) * 0.55;
+            if (arms[0]) arms[0].rotation.x = swing;
+            if (arms[1]) arms[1].rotation.x = -swing;
+          } else {
+            if (arms[0]) arms[0].rotation.x = 0;
+            if (arms[1]) arms[1].rotation.x = 0;
+
+              if (boss.cooldown <= 0) {
+                boss.cooldown = 2.5;
+                this.createShockwave(boss.mesh.position, 0xe74c3c, 5.0);
+                if (this.player) this.player.takeDamage(boss.damage, boss);
+              }
+          }
+
           if (boss.specialTimer <= 0) {
             boss.specialTimer = 5.5;
-            this.fireProjectile(bPos, playerPos, 0x888888, 38, 0.8);
+            this.fireProjectile(bPos, playerPos, 0x888888, 38, 0.85);
             if (this.hud) {
               if (this.hud.showBossTelegraph) this.hud.showBossTelegraph('🪨 Kallionmurskaaja heittää lohkareen!');
               else this.hud.showNotification('🪨 Kallionmurskaaja heittää lohkareen!');
             }
           }
-          const speed = (boss.phase === 3) ? 5.2 : 3.0;
-          if (distToPlayer > 6.5) {
-            const moveDir = new THREE.Vector3(dx, 0, dz).normalize();
-            boss.mesh.position.addScaledVector(moveDir, delta * speed);
-          } else if (boss.cooldown <= 0) {
-            boss.cooldown = 2.4;
-            if (this.player) this.player.takeDamage(boss.damage);
-          }
         }
 
-        // Mechanic 4: Rune Wraith Teleport & Starburst
+        // Mechanic 4: Muinainen Aave – Riimunvartija (Towering Undead Lich King)
         else if (boss.def.type === 'wraith') {
+          if (boss.mesh.userData.runeRing) {
+            boss.mesh.userData.runeRing.rotation.z += delta * 2.0;
+          }
+          if (boss.mesh.userData.innerRuneRing) {
+            boss.mesh.userData.innerRuneRing.rotation.x += delta * 1.8;
+          }
+
           if (boss.specialTimer <= 0) {
             boss.specialTimer = 5.0;
             // Teleport across arena
             const randAng = Math.random() * Math.PI * 2;
             boss.mesh.position.x = boss.def.arenaPos.x + Math.cos(randAng) * 16;
             boss.mesh.position.z = boss.def.arenaPos.z + Math.sin(randAng) * 16;
-            this.fireProjectile(boss.mesh.position, playerPos, 0x00d2d3, 30);
+            this.fireProjectile(boss.mesh.position, playerPos, 0x00d2d3, 32, 0.55);
+            if (boss.playAnim) boss.playAnim('Use_Item', false);
             if (this.hud) {
               if (this.hud.showBossTelegraph) this.hud.showBossTelegraph('💠 Riimunvartija teleporttaa & ampuu riimusäteen!');
               else this.hud.showNotification('💠 Riimunvartija teleporttaa & ampuu riimusäteen!');
             }
           }
-          if (boss.userData.runeRing) {
-            boss.userData.runeRing.rotation.z += delta * 2.0;
-          }
-          if (boss.userData.innerRuneRing) {
-            boss.userData.innerRuneRing.rotation.x += delta * 1.8;
-          }
-          if (boss.userData.charMixer) {
-            boss.userData.charMixer.update(delta);
+
+          if (distToPlayer > 6.0) {
+            const moveDir = new THREE.Vector3(dx, 0, dz).normalize();
+            boss.mesh.position.addScaledVector(moveDir, delta * 3.4);
+            boss.mesh.lookAt(playerPos.x, boss.mesh.position.y, playerPos.z);
+            if (boss.playAnim) boss.playAnim('Walking_A');
+          } else {
+            if (boss.playAnim && boss.currentAction !== boss.mesh.userData.charActions?.['Use_Item']) {
+              boss.playAnim('Idle_A');
+            }
+            if (boss.cooldown <= 0) {
+              boss.cooldown = 2.2;
+              if (boss.playAnim) boss.playAnim('Use_Item', false);
+              this.fireProjectile(boss.mesh.position, playerPos, 0x00d2d3, boss.damage * 0.7, 0.45);
+            }
           }
         }
 
-        // Mechanic 5: Shadow Dragon Breath & Cataclysm
+        // Mechanic 5: Sysipimeyden Ruhtinas – Varjodraakki (Shadow Dragon)
         else if (boss.def.type === 'dragon') {
+          // Flapping wing animation
+          const wings = boss.mesh.userData.wings || [];
+          const flap = Math.sin(boss.animTime * 5.5) * 0.45;
+          if (wings[0]) wings[0].rotation.z = flap;
+          if (wings[1]) wings[1].rotation.z = -flap;
+
           if (boss.specialTimer <= 0) {
             boss.specialTimer = 6.0;
-            // Dragon flame barrage
-            this.fireProjectile(bPos, playerPos, 0xff3838, 55, 0.6);
+            this.fireProjectile(bPos, playerPos, 0xff3838, 55, 0.75);
             if (this.hud) {
               if (this.hud.showBossTelegraph) this.hud.showBossTelegraph('🔥 Varjodraakki syöksee varjotulta!');
               else this.hud.showNotification('🔥 Varjodraakki syöksee varjotulta!');
@@ -979,9 +1132,10 @@ export default class BossManager {
           if (distToPlayer > 8.0) {
             const moveDir = new THREE.Vector3(dx, 0, dz).normalize();
             boss.mesh.position.addScaledVector(moveDir, delta * 4.8);
+            boss.mesh.lookAt(playerPos.x, boss.mesh.position.y, playerPos.z);
           } else if (boss.cooldown <= 0) {
             boss.cooldown = 1.8;
-            if (this.player) this.player.takeDamage(boss.damage);
+            if (this.player) this.player.takeDamage(boss.damage, boss);
           }
         }
 
@@ -992,7 +1146,7 @@ export default class BossManager {
     }
 
     // Manage active boss health bar visibility & battle music
-    if (nearestBoss && minDistance < 50) {
+    if (nearestBoss && minDistance < 48) {
       this.activeBoss = nearestBoss;
       this.updateBossHud(nearestBoss);
     } else {
@@ -1000,7 +1154,8 @@ export default class BossManager {
         this.bossHudEl.style.display = 'none';
       }
       this.activeBoss = null;
-      if (this.audioManager && this.audioManager.isBossMusicActive && minDistance > 60) {
+      // Stop boss battle music immediately when boss is dead or player has retreated from arena
+      if (this.audioManager && this.audioManager.isBossMusicActive) {
         this.audioManager.stopBossMusic();
       }
     }
@@ -1038,7 +1193,7 @@ export default class BossManager {
           const d = Math.hypot(pPos.x - pos.x, pPos.z - pos.z);
           if (Math.abs(d - currentRadius) < 1.4 && this.player.isGrounded) {
             hasHitPlayer = true;
-            this.player.takeDamage(22);
+            this.player.takeDamage(22, boss);
           }
         }
       }
@@ -1054,7 +1209,7 @@ export default class BossManager {
     requestAnimationFrame(expandAnim);
   }
 
-  fireProjectile(fromPos, toPos, colorHex, damage = 25, size = 0.4) {
+  fireProjectile(fromPos, toPos, colorHex, damage = 25, size = 0.4, sourceAttacker = null) {
     const geo = new THREE.SphereGeometry(size, 8, 8);
     const mat = new THREE.MeshBasicMaterial({ color: colorHex });
     const mesh = new THREE.Mesh(geo, mat);
@@ -1069,7 +1224,8 @@ export default class BossManager {
       dir,
       speed: 18.0,
       damage,
-      life: 3.5
+      life: 3.5,
+      attacker: sourceAttacker
     });
   }
 
@@ -1083,7 +1239,7 @@ export default class BossManager {
       const dist = proj.mesh.position.distanceTo(playerPos);
       if (dist < 1.8) {
         if (this.player) {
-          this.player.takeDamage(proj.damage);
+          this.player.takeDamage(proj.damage, proj.attacker || this.activeBoss);
         }
         this.scene.remove(proj.mesh);
         this.projectiles.splice(i, 1);
@@ -1116,11 +1272,16 @@ export default class BossManager {
     return this.bosses.filter(b => b.isAlive).map(b => b.mesh);
   }
 
-  // Returns all 5 boss info for the World Map & Minimap
+  // Returns all 5 boss info for the World Map & Minimap (with strict progression statuses)
   getBossMarkers() {
     return this.bossDefs.map((def, index) => {
       const isDefeated = this.defeatedBossIds.has(def.id) || (index < this.unlockedBossIndex);
-      const status = isDefeated ? 'defeated' : 'active';
+      let status = 'locked';
+      if (isDefeated) {
+        status = 'defeated';
+      } else if (index === this.unlockedBossIndex) {
+        status = 'active';
+      }
 
       return {
         id: def.id,
@@ -1128,7 +1289,8 @@ export default class BossManager {
         biome: def.biome,
         x: def.arenaPos.x,
         z: def.arenaPos.z,
-        status
+        status,
+        index
       };
     });
   }

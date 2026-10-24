@@ -20,6 +20,8 @@ export default class ResourceNode {
     this.swingSoundTimer = 0;
     this.targetNode = null;
     this.isMouseDown = false;
+    this.fallingTrees = [];
+    this.shatteredDebris = [];
 
     this.setupListeners();
   }
@@ -203,6 +205,9 @@ export default class ResourceNode {
   }
 
   update(delta, camera, controlsLocked = true) {
+    this._updateFallingTrees(delta);
+    this._updateShatteredDebris(delta);
+
     if (!controlsLocked) {
       this.isMouseDown = false;
       this.holdTimer = 0;
@@ -360,11 +365,45 @@ export default class ResourceNode {
       if (this.hud) {
         this.hud.showPickupText(`+${yieldCount} ${itemName}`);
       }
-      if (this.audioManager) this.audioManager.playMine();
+      if (this.audioManager) {
+        if (this.audioManager.playRockShatter) this.audioManager.playRockShatter();
+        else this.audioManager.playMine();
+      }
+      const pos = node.position || (node.mesh ? node.mesh.position : null);
+      if (pos) this._spawnRockShatterParticles(pos, true);
+
       if (this.questManager) this.questManager.onCollect('stone', yieldCount);
       if (this.achievementManager) this.achievementManager.onMine(1);
       if (this.player) this.player.addXP(25);
     } else if (node.type === 'tree') {
+      // 🌲 Valheim-style Falling Tree Physics Effect
+      if (node.mesh) {
+        const treeClone = node.mesh.clone(true);
+        treeClone.visible = true;
+        this.scene.add(treeClone);
+
+        const pPos = this.player ? (this.player.getPosition ? this.player.getPosition() : this.player.playerPos) : null;
+        let fallDir = new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize();
+        if (pPos && node.position) {
+          fallDir = new THREE.Vector3(node.position.x - pPos.x, 0, node.position.z - pPos.z);
+          if (fallDir.lengthSq() > 0.01) fallDir.normalize();
+          else fallDir.set(1, 0, 0);
+        }
+
+        const pitchAxis = new THREE.Vector3(-fallDir.z, 0, fallDir.x).normalize();
+
+        this.fallingTrees.push({
+          mesh: treeClone,
+          origPos: (node.position || node.mesh.position).clone(),
+          fallDir: fallDir,
+          pitchAxis: pitchAxis,
+          angle: 0,
+          angularVel: 0.45,
+          timer: 0,
+          hasCrashed: false
+        });
+      }
+
       yieldCount = Math.floor(Math.random() * 3) + 3; // 3 to 5
       this.inventory.add('wood', yieldCount);
       if (Math.random() < 0.4) {
@@ -387,8 +426,15 @@ export default class ResourceNode {
       }
       if (this.audioManager) {
         if (isLoose) this.audioManager.playHarvest('bush');
+        else if (this.audioManager.playRockShatter) this.audioManager.playRockShatter();
         else this.audioManager.playMine();
       }
+
+      if (!isLoose) {
+        const pos = node.position || (node.mesh ? node.mesh.position : null);
+        if (pos) this._spawnRockShatterParticles(pos, false);
+      }
+
       if (this.questManager) this.questManager.onCollect('stone', yieldCount);
       if (this.achievementManager) this.achievementManager.onMine(1);
       if (this.player) this.player.addXP(isLoose ? 6 : 18);
@@ -450,5 +496,146 @@ export default class ResourceNode {
 
   isAimingAtHarvestable() {
     return this.targetNode !== null && !this.targetNode.harvested;
+  }
+
+  _updateFallingTrees(delta) {
+    for (let i = this.fallingTrees.length - 1; i >= 0; i--) {
+      const ft = this.fallingTrees[i];
+      ft.timer += delta;
+      ft.angularVel += 4.5 * delta;
+      ft.angle += ft.angularVel * delta;
+
+      // Rotate tree from base pivot
+      const q = new THREE.Quaternion().setFromAxisAngle(ft.pitchAxis, ft.angle);
+      ft.mesh.quaternion.copy(q);
+
+      if (ft.angle >= Math.PI * 0.46 && !ft.hasCrashed) {
+        ft.hasCrashed = true;
+        if (this.audioManager && this.audioManager.playTreeCrash) {
+          this.audioManager.playTreeCrash();
+        }
+        this._spawnTreeImpactParticles(ft.origPos, ft.fallDir);
+      }
+
+      if (ft.hasCrashed && ft.timer > 1.8) {
+        const fade = Math.max(0, 1 - (ft.timer - 1.8) / 0.8);
+        ft.mesh.traverse((c) => {
+          if (c.isMesh && c.material) {
+            c.material.transparent = true;
+            c.material.opacity = fade;
+          }
+        });
+      }
+
+      if (ft.timer >= 2.6) {
+        this.scene.remove(ft.mesh);
+        this.fallingTrees.splice(i, 1);
+      }
+    }
+  }
+
+  _updateShatteredDebris(delta) {
+    for (let i = this.shatteredDebris.length - 1; i >= 0; i--) {
+      const deb = this.shatteredDebris[i];
+      deb.timer += delta;
+      deb.vel.y -= 20 * delta;
+      deb.mesh.position.addScaledVector(deb.vel, delta);
+      deb.mesh.rotation.x += deb.rotVel.x * delta;
+      deb.mesh.rotation.y += deb.rotVel.y * delta;
+      deb.mesh.rotation.z += deb.rotVel.z * delta;
+
+      const groundY = this.world ? this.world.getGroundHeight(deb.mesh.position.x, deb.mesh.position.z) : 0;
+      if (deb.mesh.position.y <= groundY + 0.08) {
+        deb.mesh.position.y = groundY + 0.08;
+        deb.vel.y = -deb.vel.y * 0.35; // ground bounce
+        deb.vel.x *= 0.65;
+        deb.vel.z *= 0.65;
+      }
+
+      if (deb.timer > 1.8) {
+        const s = Math.max(0, 1 - (deb.timer - 1.8) / 0.7);
+        deb.mesh.scale.setScalar(deb.initialScale * s);
+      }
+
+      if (deb.timer >= 2.5) {
+        this.scene.remove(deb.mesh);
+        this.shatteredDebris.splice(i, 1);
+      }
+    }
+  }
+
+  _spawnRockShatterParticles(pos, isOre) {
+    const count = 10;
+    const colors = isOre ? [0xb87333, 0x888888, 0xd4af37, 0x555555] : [0x7f8c8d, 0x95a5a6, 0x555555, 0x3d3d3d];
+    for (let i = 0; i < count; i++) {
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const size = 0.12 + Math.random() * 0.16;
+      const geo = new THREE.DodecahedronGeometry(size, 0);
+      const mat = new THREE.MeshLambertMaterial({ color: color });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(
+        pos.x + (Math.random() - 0.5) * 0.5,
+        pos.y + 0.4 + Math.random() * 0.6,
+        pos.z + (Math.random() - 0.5) * 0.5
+      );
+      this.scene.add(mesh);
+
+      const vel = new THREE.Vector3(
+        (Math.random() - 0.5) * 6.5,
+        Math.random() * 4.5 + 2.0,
+        (Math.random() - 0.5) * 6.5
+      );
+      const rotVel = new THREE.Vector3(
+        (Math.random() - 0.5) * 8.0,
+        (Math.random() - 0.5) * 8.0,
+        (Math.random() - 0.5) * 8.0
+      );
+
+      this.shatteredDebris.push({
+        mesh,
+        vel,
+        rotVel,
+        timer: 0,
+        initialScale: 1.0
+      });
+    }
+  }
+
+  _spawnTreeImpactParticles(basePos, fallDir) {
+    const count = 16;
+    const colors = [0x27ae60, 0x2ecc71, 0x1b4332, 0x5c4033, 0x795548];
+    const impactCenter = basePos.clone().addScaledVector(fallDir, 4.5);
+    for (let i = 0; i < count; i++) {
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const size = 0.14 + Math.random() * 0.18;
+      const geo = new THREE.BoxGeometry(size, size * 0.7, size);
+      const mat = new THREE.MeshLambertMaterial({ color: color });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(
+        impactCenter.x + (Math.random() - 0.5) * 2.2,
+        impactCenter.y + 0.2 + Math.random() * 1.2,
+        impactCenter.z + (Math.random() - 0.5) * 2.2
+      );
+      this.scene.add(mesh);
+
+      const vel = new THREE.Vector3(
+        (Math.random() - 0.5) * 5.0,
+        Math.random() * 3.5 + 1.5,
+        (Math.random() - 0.5) * 5.0
+      );
+      const rotVel = new THREE.Vector3(
+        (Math.random() - 0.5) * 6.0,
+        (Math.random() - 0.5) * 6.0,
+        (Math.random() - 0.5) * 6.0
+      );
+
+      this.shatteredDebris.push({
+        mesh,
+        vel,
+        rotVel,
+        timer: 0,
+        initialScale: 1.0
+      });
+    }
   }
 }

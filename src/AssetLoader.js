@@ -556,15 +556,20 @@ export default class AssetLoader {
       { name: 'Roof_RoundTiles_4x4', url: '/assets/village/Roof_RoundTiles_4x4.gltf' },
       { name: 'Roof_RoundTiles_6x8', url: '/assets/village/Roof_RoundTiles_6x8.gltf' },
       { name: 'Roof_Tower_RoundTiles', url: '/assets/village/Roof_Tower_RoundTiles.gltf' },
+      { name: 'Roof_Wooden_2x1', url: '/assets/village/Roof_Wooden_2x1.gltf' },
+      { name: 'Roof_Wooden_2x1_Corner', url: '/assets/village/Roof_Wooden_2x1_Corner.gltf' },
+      { name: 'Roof_Log', url: '/assets/village/Roof_Log.gltf' },
       { name: 'WindowShutters_Wide_Flat_Open', url: '/assets/village/WindowShutters_Wide_Flat_Open.gltf' },
       { name: 'Floor_WoodDark', url: '/assets/village/Floor_WoodDark.gltf' },
+      { name: 'Floor_WoodLight', url: '/assets/village/Floor_WoodLight.gltf' },
       { name: 'Floor_Brick', url: '/assets/village/Floor_Brick.gltf' },
       { name: 'Prop_Wagon', url: '/assets/village/Prop_Wagon.gltf' },
       { name: 'Prop_WoodenFence_Single', url: '/assets/village/Prop_WoodenFence_Single.gltf' },
       { name: 'Prop_WoodenFence_Extension1', url: '/assets/village/Prop_WoodenFence_Extension1.gltf' },
       { name: 'Prop_Crate', url: '/assets/village/Prop_Crate.gltf' },
       { name: 'Prop_Chimney', url: '/assets/village/Prop_Chimney.gltf' },
-      { name: 'Stairs_Exterior_Straight', url: '/assets/village/Stairs_Exterior_Straight.gltf' }
+      { name: 'Stairs_Exterior_Straight', url: '/assets/village/Stairs_Exterior_Straight.gltf' },
+      { name: 'Stairs_Exterior_Platform', url: '/assets/village/Stairs_Exterior_Platform.gltf' }
     ];
 
     const textureManifest = [

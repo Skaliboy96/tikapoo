@@ -28,6 +28,7 @@ export default class DayNightCycle {
     this.nightHemiGround = new THREE.Color(0x08120a);
 
     this.tempColor = new THREE.Color();
+    this.tempHemiColor = new THREE.Color();
   }
 
   update(delta) {
@@ -68,7 +69,7 @@ export default class DayNightCycle {
       if (this.hud) {
         this.hud.showNotification('🌙 Yö laskeutuu erämaahan... Varjopedot heräävät! Pysy nuotioiden valossa.', 5000);
       }
-      if (this.audioManager) {
+      if (this.audioManager && typeof this.audioManager.playNightWarning === 'function') {
         this.audioManager.playNightWarning();
       }
     } else if (!this.lastIsDay && this.isDay) {
@@ -94,22 +95,26 @@ export default class DayNightCycle {
     if (this.currentTime < 0.25) {
       const t = this.currentTime / 0.25;
       this.tempColor.copy(this.dawnSky).lerp(this.noonSky, t);
-      targetHemi = new THREE.Color().copy(this.dawnHemiSky).lerp(this.noonHemiSky, t);
+      this.tempHemiColor.copy(this.dawnHemiSky).lerp(this.noonHemiSky, t);
+      targetHemi = this.tempHemiColor;
       fogDensity = THREE.MathUtils.lerp(0.008, 0.006, t);
     } else if (this.currentTime < 0.5) {
       const t = (this.currentTime - 0.25) / 0.25;
       this.tempColor.copy(this.noonSky).lerp(this.duskSky, t);
-      targetHemi = new THREE.Color().copy(this.noonHemiSky).lerp(this.duskHemiSky, t);
+      this.tempHemiColor.copy(this.noonHemiSky).lerp(this.duskHemiSky, t);
+      targetHemi = this.tempHemiColor;
       fogDensity = THREE.MathUtils.lerp(0.006, 0.0075, t);
     } else if (this.currentTime < 0.75) {
       const t = (this.currentTime - 0.5) / 0.25;
       this.tempColor.copy(this.duskSky).lerp(this.nightSky, t);
-      targetHemi = new THREE.Color().copy(this.duskHemiSky).lerp(this.nightHemiSky, t);
+      this.tempHemiColor.copy(this.duskHemiSky).lerp(this.nightHemiSky, t);
+      targetHemi = this.tempHemiColor;
       fogDensity = THREE.MathUtils.lerp(0.0075, 0.012, t);
     } else {
       const t = (this.currentTime - 0.75) / 0.25;
       this.tempColor.copy(this.nightSky).lerp(this.dawnSky, t);
-      targetHemi = new THREE.Color().copy(this.nightHemiSky).lerp(this.dawnHemiSky, t);
+      this.tempHemiColor.copy(this.nightHemiSky).lerp(this.dawnHemiSky, t);
+      targetHemi = this.tempHemiColor;
       fogDensity = THREE.MathUtils.lerp(0.012, 0.008, t);
     }
 

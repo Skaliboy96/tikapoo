@@ -21,14 +21,16 @@ export default class Hotbar {
     this.highestWeaponId = null;
     this.isCustomized = !!localStorage.getItem('tikapoo_hotbar_slots');
     this.slots = [
-      { id: 'fists', key: 'X', type: 'tool', toolId: 'hands', name: 'Fists', icon: '✊', count: 1 },
-      { id: 'weapon', key: 'F', type: 'empty', toolId: null, name: 'Empty', icon: '—', count: 0 },
-      { id: 'axe', key: 'Z', type: 'empty', toolId: null, name: 'Empty', icon: '—', count: 0 },
-      { id: 'pickaxe', key: 'V', type: 'empty', toolId: null, name: 'Empty', icon: '—', count: 0 },
-      { id: 'torch', key: '5', type: 'tool', toolId: 'torch', name: 'Torch', icon: '🔥', count: 1 },
-      { id: 'hammer', key: '6', type: 'empty', toolId: null, name: 'Empty', icon: '—', count: 0 },
-      { id: 'rod', key: '7', type: 'empty', toolId: null, name: 'Empty', icon: '—', count: 0 },
-      { id: 'food', key: '8', type: 'empty', itemId: null, name: 'Empty', icon: '—', count: 0 }
+      { id: 'fists', key: '1', type: 'tool', toolId: 'hands', name: 'Nyrkit', icon: '✊', count: 1 },
+      { id: 'weapon', key: '2', type: 'empty', toolId: null, name: 'Miekka/Ase', icon: '—', count: 0 },
+      { id: 'ranged', key: '3', type: 'empty', toolId: null, name: 'Jousi/Sauva', icon: '—', count: 0 },
+      { id: 'axe', key: '4', type: 'empty', toolId: null, name: 'Kirves', icon: '—', count: 0 },
+      { id: 'pickaxe', key: '5', type: 'empty', toolId: null, name: 'Hakku', icon: '—', count: 0 },
+      { id: 'torch', key: '6', type: 'tool', toolId: 'torch', name: 'Soihtu', icon: '🔥', count: 1 },
+      { id: 'hammer', key: '7', type: 'empty', toolId: null, name: 'Vasara', icon: '—', count: 0 },
+      { id: 'rod', key: '8', type: 'empty', toolId: null, name: 'Onki', icon: '—', count: 0 },
+      { id: 'food', key: '9', type: 'empty', itemId: null, name: 'Ruoka', icon: '—', count: 0 },
+      { id: 'medicine', key: '0', type: 'empty', itemId: null, name: 'Lääkintä', icon: '—', count: 0 }
     ];
 
     this.container = null;
@@ -156,7 +158,9 @@ export default class Hotbar {
       if (document.getElementById('pause-menu')?.classList.contains('active')) return;
 
       // Dedicated keyboard shortcuts for hotbar slots
-      if (e.code === 'KeyX' || e.code === 'Digit0') {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+
+      if (e.code === 'KeyX') {
         e.preventDefault();
         this.selectSlot(0, true);
         return;
@@ -168,12 +172,12 @@ export default class Hotbar {
       }
       if (e.code === 'KeyZ') {
         e.preventDefault();
-        this.selectSlot(2, true);
+        this.selectSlot(3, true);
         return;
       }
       if (e.code === 'KeyV') {
         e.preventDefault();
-        this.selectSlot(3, true);
+        this.selectSlot(4, true);
         return;
       }
       if (e.code === 'Digit5') {
@@ -194,6 +198,16 @@ export default class Hotbar {
       if (e.code === 'Digit8') {
         e.preventDefault();
         this.selectSlot(7, true);
+        return;
+      }
+      if (e.code === 'Digit9') {
+        e.preventDefault();
+        this.selectSlot(8, true);
+        return;
+      }
+      if (e.code === 'Digit0') {
+        e.preventDefault();
+        this.selectSlot(9, true);
         return;
       }
       if (e.shiftKey) {
@@ -267,8 +281,9 @@ export default class Hotbar {
   }
 
   findNextAvailableSlot(currentIdx, direction) {
-    for (let step = 1; step <= 8; step++) {
-      const idx = (currentIdx + direction * step + 8) % 8;
+    const totalSlots = this.slots.length;
+    for (let step = 1; step <= totalSlots; step++) {
+      const idx = (currentIdx + direction * step + totalSlots) % totalSlots;
       const slot = this.slots[idx];
       if (!slot || slot.type === 'empty') continue;
       if (slot.type === 'tool') {
@@ -284,10 +299,10 @@ export default class Hotbar {
   }
 
   selectSlot(index, activate = false) {
-    if (index < 0 || index >= 8) return;
+    if (index < 0 || index >= this.slots.length) return;
     const previousSlot = this.activeSlot;
 
-    if (previousSlot === index && !activate && index !== 7) return; // Already in this slot
+    if (previousSlot === index && !activate && index !== 8 && index !== 9) return; // Already in this slot
     this.activeSlot = index;
     const slot = this.slots[index];
 
@@ -414,7 +429,7 @@ export default class Hotbar {
       this.slots[0].icon = '✊';
       this.slots[0].count = 1;
 
-      // 1. Weapon Slot (Dragon Slayer down to Bow, Staff, Swords, Spear)
+      // 1. Primary Melee Weapon Slot
       let bestWeaponId = null;
       let bestWeaponName = '';
       let bestWeaponIcon = '🗡️';
@@ -447,14 +462,6 @@ export default class Hotbar {
         bestWeaponId = 'scaleSword';
         bestWeaponName = Localization.t('tool_scaleSword', 'Scale Sword');
         bestWeaponIcon = '🗡️';
-      } else if (t.huntingBow) {
-        bestWeaponId = 'huntingBow';
-        bestWeaponName = Localization.t('tool_huntingBow', 'Hunting Bow');
-        bestWeaponIcon = '🏹';
-      } else if (t.runicStaff) {
-        bestWeaponId = 'runicStaff';
-        bestWeaponName = Localization.t('tool_runicStaff', 'Runic Staff');
-        bestWeaponIcon = '🔮';
       } else if (t.ironSword) {
         bestWeaponId = 'ironSword';
         bestWeaponName = Localization.t('tool_ironSword', 'Iron Sword');
@@ -488,19 +495,25 @@ export default class Hotbar {
         this.slots[1].count = 0;
       }
 
-      // 2. Axe Slot
-      let axeId = null;
-      let axeName = '';
-      if (t.blackMetalAxe) { axeId = 'blackMetalAxe'; axeName = Localization.t('tool_blackMetalAxe', 'Blackmetal Axe'); }
-      else if (t.ironAxe) { axeId = 'ironAxe'; axeName = Localization.t('tool_ironAxe', 'Iron Axe'); }
-      else if (t.bronzeAxe) { axeId = 'bronzeAxe'; axeName = Localization.t('tool_bronzeAxe', 'Bronze Axe'); }
-      else if (t.stoneAxe) { axeId = 'stoneAxe'; axeName = Localization.t('tool_stoneAxe', 'Stone Axe'); }
+      // 2. Ranged / Magic Weapon Slot (Bow, Staff)
+      let rangedId = null;
+      let rangedName = '';
+      let rangedIcon = '🏹';
+      if (t.huntingBow) {
+        rangedId = 'huntingBow';
+        rangedName = Localization.t('tool_huntingBow', 'Hunting Bow');
+        rangedIcon = '🏹';
+      } else if (t.runicStaff) {
+        rangedId = 'runicStaff';
+        rangedName = Localization.t('tool_runicStaff', 'Runic Staff');
+        rangedIcon = '🔮';
+      }
 
-      if (axeId) {
+      if (rangedId) {
         this.slots[2].type = 'tool';
-        this.slots[2].toolId = axeId;
-        this.slots[2].name = axeName;
-        this.slots[2].icon = '🪓';
+        this.slots[2].toolId = rangedId;
+        this.slots[2].name = rangedName;
+        this.slots[2].icon = rangedIcon;
         this.slots[2].count = 1;
       } else {
         this.slots[2].type = 'empty';
@@ -510,20 +523,19 @@ export default class Hotbar {
         this.slots[2].count = 0;
       }
 
-      // 3. Pickaxe Slot
-      let pickId = null;
-      let pickName = '';
-      if (t.silverPickaxe) { pickId = 'silverPickaxe'; pickName = Localization.t('tool_pickaxe', 'Mountain Pickaxe'); }
-      else if (t.ironPickaxe) { pickId = 'ironPickaxe'; pickName = Localization.t('tool_ironPickaxe', 'Iron Pickaxe'); }
-      else if (t.bronzePickaxe) { pickId = 'bronzePickaxe'; pickName = Localization.t('tool_bronzePickaxe', 'Bronze Pickaxe'); }
-      else if (t.antlerPickaxe) { pickId = 'antlerPickaxe'; pickName = Localization.t('tool_antlerPickaxe', 'Antler Pickaxe'); }
-      else if (t.pickaxe) { pickId = 'pickaxe'; pickName = Localization.t('tool_pickaxe', 'Stone Pickaxe'); }
+      // 3. Axe Slot
+      let axeId = null;
+      let axeName = '';
+      if (t.blackMetalAxe) { axeId = 'blackMetalAxe'; axeName = Localization.t('tool_blackMetalAxe', 'Blackmetal Axe'); }
+      else if (t.ironAxe) { axeId = 'ironAxe'; axeName = Localization.t('tool_ironAxe', 'Iron Axe'); }
+      else if (t.bronzeAxe) { axeId = 'bronzeAxe'; axeName = Localization.t('tool_bronzeAxe', 'Bronze Axe'); }
+      else if (t.stoneAxe) { axeId = 'stoneAxe'; axeName = Localization.t('tool_stoneAxe', 'Stone Axe'); }
 
-      if (pickId) {
+      if (axeId) {
         this.slots[3].type = 'tool';
-        this.slots[3].toolId = pickId;
-        this.slots[3].name = pickName;
-        this.slots[3].icon = '⛏️';
+        this.slots[3].toolId = axeId;
+        this.slots[3].name = axeName;
+        this.slots[3].icon = '🪓';
         this.slots[3].count = 1;
       } else {
         this.slots[3].type = 'empty';
@@ -533,12 +545,20 @@ export default class Hotbar {
         this.slots[3].count = 0;
       }
 
-      // 4. Torch Slot
-      if (t.torch) {
+      // 4. Pickaxe Slot
+      let pickId = null;
+      let pickName = '';
+      if (t.silverPickaxe) { pickId = 'silverPickaxe'; pickName = Localization.t('tool_pickaxe', 'Mountain Pickaxe'); }
+      else if (t.ironPickaxe) { pickId = 'ironPickaxe'; pickName = Localization.t('tool_ironPickaxe', 'Iron Pickaxe'); }
+      else if (t.bronzePickaxe) { pickId = 'bronzePickaxe'; pickName = Localization.t('tool_bronzePickaxe', 'Bronze Pickaxe'); }
+      else if (t.antlerPickaxe) { pickId = 'antlerPickaxe'; pickName = Localization.t('tool_antlerPickaxe', 'Antler Pickaxe'); }
+      else if (t.pickaxe) { pickId = 'pickaxe'; pickName = Localization.t('tool_pickaxe', 'Stone Pickaxe'); }
+
+      if (pickId) {
         this.slots[4].type = 'tool';
-        this.slots[4].toolId = 'torch';
-        this.slots[4].name = Localization.t('slot_torch', 'Torch');
-        this.slots[4].icon = '🔥';
+        this.slots[4].toolId = pickId;
+        this.slots[4].name = pickName;
+        this.slots[4].icon = '⛏️';
         this.slots[4].count = 1;
       } else {
         this.slots[4].type = 'empty';
@@ -548,12 +568,12 @@ export default class Hotbar {
         this.slots[4].count = 0;
       }
 
-      // 5. Building Hammer
-      if (t.hammer) {
-        this.slots[5].type = 'build';
-        this.slots[5].toolId = 'hammer';
-        this.slots[5].name = Localization.t('slot_hammer', 'Hammer');
-        this.slots[5].icon = '🔨';
+      // 5. Torch Slot
+      if (t.torch) {
+        this.slots[5].type = 'tool';
+        this.slots[5].toolId = 'torch';
+        this.slots[5].name = Localization.t('slot_torch', 'Torch');
+        this.slots[5].icon = '🔥';
         this.slots[5].count = 1;
       } else {
         this.slots[5].type = 'empty';
@@ -563,12 +583,12 @@ export default class Hotbar {
         this.slots[5].count = 0;
       }
 
-      // 6. Fishing Rod
-      if (t.fishingRod) {
-        this.slots[6].type = 'tool';
-        this.slots[6].toolId = 'fishingRod';
-        this.slots[6].name = Localization.t('slot_rod', 'Fishing Rod');
-        this.slots[6].icon = '🎣';
+      // 6. Building Hammer
+      if (t.hammer) {
+        this.slots[6].type = 'build';
+        this.slots[6].toolId = 'hammer';
+        this.slots[6].name = Localization.t('slot_hammer', 'Hammer');
+        this.slots[6].icon = '🔨';
         this.slots[6].count = 1;
       } else {
         this.slots[6].type = 'empty';
@@ -578,49 +598,88 @@ export default class Hotbar {
         this.slots[6].count = 0;
       }
 
-      // 7. Food / Healing
+      // 7. Fishing Rod
+      if (t.fishingRod) {
+        this.slots[7].type = 'tool';
+        this.slots[7].toolId = 'fishingRod';
+        this.slots[7].name = Localization.t('slot_rod', 'Fishing Rod');
+        this.slots[7].icon = '🎣';
+        this.slots[7].count = 1;
+      } else {
+        this.slots[7].type = 'empty';
+        this.slots[7].toolId = null;
+        this.slots[7].name = Localization.t('hotbar_empty', 'Empty');
+        this.slots[7].icon = '—';
+        this.slots[7].count = 0;
+      }
+
+      // 8. Food (Cooked Meat, Bread, Apple, Berries)
       const berryCount = (this.inventory && this.inventory.items && this.inventory.items.berry) || 0;
       const appleCount = (this.inventory && this.inventory.items && this.inventory.items.apple) || 0;
       const cookedMeatCount = (this.inventory && this.inventory.items && this.inventory.items.cookedMeat) || 0;
       const breadCount = (this.inventory && this.inventory.items && this.inventory.items.bread) || 0;
-      const bandageCount = (this.inventory && this.inventory.items && this.inventory.items.bandage) || 0;
 
       if (cookedMeatCount > 0) {
-        this.slots[7].type = 'consume';
-        this.slots[7].itemId = 'cookedMeat';
-        this.slots[7].icon = '🍖';
-        this.slots[7].name = Localization.t('item_cookedMeat', 'Cooked Meat');
-        this.slots[7].count = cookedMeatCount;
+        this.slots[8].type = 'consume';
+        this.slots[8].itemId = 'cookedMeat';
+        this.slots[8].icon = '🍖';
+        this.slots[8].name = Localization.t('item_cookedMeat', 'Cooked Meat');
+        this.slots[8].count = cookedMeatCount;
       } else if (breadCount > 0) {
-        this.slots[7].type = 'consume';
-        this.slots[7].itemId = 'bread';
-        this.slots[7].icon = '🍞';
-        this.slots[7].name = Localization.t('item_bread', 'Bread');
-        this.slots[7].count = breadCount;
+        this.slots[8].type = 'consume';
+        this.slots[8].itemId = 'bread';
+        this.slots[8].icon = '🍞';
+        this.slots[8].name = Localization.t('item_bread', 'Bread');
+        this.slots[8].count = breadCount;
       } else if (appleCount > 0) {
-        this.slots[7].type = 'consume';
-        this.slots[7].itemId = 'apple';
-        this.slots[7].icon = '🍎';
-        this.slots[7].name = Localization.t('item_apple', 'Apple');
-        this.slots[7].count = appleCount;
-      } else if (bandageCount > 0) {
-        this.slots[7].type = 'consume';
-        this.slots[7].itemId = 'bandage';
-        this.slots[7].icon = '🩹';
-        this.slots[7].name = Localization.t('slot_bandage', 'Bandage');
-        this.slots[7].count = bandageCount;
+        this.slots[8].type = 'consume';
+        this.slots[8].itemId = 'apple';
+        this.slots[8].icon = '🍎';
+        this.slots[8].name = Localization.t('item_apple', 'Apple');
+        this.slots[8].count = appleCount;
       } else if (berryCount > 0) {
-        this.slots[7].type = 'consume';
-        this.slots[7].itemId = 'berry';
-        this.slots[7].icon = '🫐';
-        this.slots[7].name = Localization.t('item_berry', 'Berries');
-        this.slots[7].count = berryCount;
+        this.slots[8].type = 'consume';
+        this.slots[8].itemId = 'berry';
+        this.slots[8].icon = '🫐';
+        this.slots[8].name = Localization.t('item_berry', 'Berries');
+        this.slots[8].count = berryCount;
       } else {
-        this.slots[7].type = 'empty';
-        this.slots[7].itemId = null;
-        this.slots[7].name = Localization.t('hotbar_empty', 'Empty');
-        this.slots[7].icon = '—';
-        this.slots[7].count = 0;
+        this.slots[8].type = 'empty';
+        this.slots[8].itemId = null;
+        this.slots[8].name = Localization.t('hotbar_empty', 'Empty');
+        this.slots[8].icon = '—';
+        this.slots[8].count = 0;
+      }
+
+      // 9. Medicine / Potions / Healing
+      const bandageCount = (this.inventory && this.inventory.items && this.inventory.items.bandage) || 0;
+      const potionHealthCount = (this.inventory && this.inventory.items && (this.inventory.items.potion_health || this.inventory.items.potion)) || 0;
+      const potionStaminaCount = (this.inventory && this.inventory.items && this.inventory.items.potion_stamina) || 0;
+
+      if (bandageCount > 0) {
+        this.slots[9].type = 'consume';
+        this.slots[9].itemId = 'bandage';
+        this.slots[9].icon = '🩹';
+        this.slots[9].name = Localization.t('slot_bandage', 'Bandage');
+        this.slots[9].count = bandageCount;
+      } else if (potionHealthCount > 0) {
+        this.slots[9].type = 'consume';
+        this.slots[9].itemId = 'potion_health';
+        this.slots[9].icon = '🧪';
+        this.slots[9].name = Localization.t('item_potion', 'Mead of Health');
+        this.slots[9].count = potionHealthCount;
+      } else if (potionStaminaCount > 0) {
+        this.slots[9].type = 'consume';
+        this.slots[9].itemId = 'potion_stamina';
+        this.slots[9].icon = '⚡';
+        this.slots[9].name = 'Kestävyysrohto';
+        this.slots[9].count = potionStaminaCount;
+      } else {
+        this.slots[9].type = 'empty';
+        this.slots[9].itemId = null;
+        this.slots[9].name = Localization.t('hotbar_empty', 'Empty');
+        this.slots[9].icon = '—';
+        this.slots[9].count = 0;
       }
     }
 

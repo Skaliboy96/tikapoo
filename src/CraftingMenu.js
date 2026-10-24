@@ -136,8 +136,44 @@ export default class CraftingMenu {
         name: '🛡️ Kivinen Tornikilpi (Stone Tower Shield)',
         type: 'tool',
         requiresWorkbench: true,
-        desc: 'Vankka kivilaatalla vahvistettu kilpi. Torjuu 45% saapuvasta vahingosta!',
+        desc: 'Vankka kivilaatalla vahvistettu kilpi. Torjuu 75% saapuvasta vahingosta ja kestää kovia iskuja!',
         cost: { stone: 7, wood: 4 }
+      },
+      {
+        id: 'bronzeShield',
+        category: 'tools',
+        name: '🛡️ Pronssikilpi (Bronze Buckler)',
+        type: 'tool',
+        requiresWorkbench: true,
+        desc: 'Kevyt ja ketterä pronssinen kupurakilpi. Loistava parry-ajoitusikkuna ja 82% torjunta!',
+        cost: { bronze: 4, wood: 4 }
+      },
+      {
+        id: 'ironShield',
+        category: 'tools',
+        name: '🛡️ Rautakilpi (Iron Banded Shield)',
+        type: 'tool',
+        requiresWorkbench: true,
+        desc: 'Rautavanteilla vahvistettu raskas kilpi. Kestää suuren määrän iskuja ja torjuu 88% vahingosta.',
+        cost: { iron: 4, wood: 4, leather: 2 }
+      },
+      {
+        id: 'silverShield',
+        category: 'tools',
+        name: '🛡️ Hopeakilpi (Silver Frost Shield)',
+        type: 'tool',
+        requiresWorkbench: true,
+        desc: 'Vuoren hopeasta taottu riimukilpi. Torjuu 93% vahingosta ja omaa valtavan torjuntakestävyyden!',
+        cost: { silver: 4, wolfPelt: 2, wood: 4 }
+      },
+      {
+        id: 'blackmetalShield',
+        category: 'tools',
+        name: '🛡️ Mustametallikilpi (Black Metal Shield)',
+        type: 'tool',
+        requiresWorkbench: true,
+        desc: 'Sysivuoren mustasta metallista takoma mestarikilpi. Huippuluokan 96% torjunta ja suurin kestävyys!',
+        cost: { blackmetal: 4, linenThread: 4 }
       },
       {
         id: 'stoneArmor',
@@ -696,9 +732,14 @@ export default class CraftingMenu {
     });
 
     if (this.closeBtn) {
-      this.closeBtn.addEventListener('click', () => {
+      const handleClose = (e) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
         this.close();
-      });
+      };
+      this.closeBtn.addEventListener('click', handleClose);
+      this.closeBtn.addEventListener('pointerdown', handleClose);
+      this.closeBtn.addEventListener('touchend', handleClose);
     }
 
     // Connect HUD quick button if available

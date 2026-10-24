@@ -205,39 +205,142 @@ export default class CharacterCreator {
     // Confirm button
     const confirmBtn = document.getElementById('char-create-confirm-btn');
     if (confirmBtn) {
-      confirmBtn.addEventListener('click', () => {
+      const handleConfirm = (e) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
         this.confirmAndStart();
-      });
+      };
+      confirmBtn.addEventListener('click', handleConfirm);
+      confirmBtn.addEventListener('pointerdown', handleConfirm);
+      confirmBtn.addEventListener('touchend', handleConfirm);
     }
 
     // Back button
     const backBtn = document.getElementById('char-create-back-btn');
     if (backBtn) {
-      backBtn.addEventListener('click', () => {
+      const handleBack = (e) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
         this.close();
         const mm = document.getElementById('main-menu');
         if (mm) mm.style.display = 'flex';
+      };
+      backBtn.addEventListener('click', handleBack);
+      backBtn.addEventListener('pointerdown', handleBack);
+      backBtn.addEventListener('touchend', handleBack);
+    }
+
+    // Randomize button
+    const randBtn = document.getElementById('char-btn-random');
+    if (randBtn) {
+      randBtn.addEventListener('click', () => {
+        this.randomize();
       });
     }
 
-    // Turntable mouse drag controls
+    // Quick Rotate Left/Right buttons
+    const rotLeft = document.getElementById('char-btn-rot-left');
+    if (rotLeft) {
+      rotLeft.addEventListener('click', () => {
+        this.turntableAngle -= Math.PI / 4;
+      });
+    }
+    const rotRight = document.getElementById('char-btn-rot-right');
+    if (rotRight) {
+      rotRight.addEventListener('click', () => {
+        this.turntableAngle += Math.PI / 4;
+      });
+    }
+
+    // Preset Chips
+    document.querySelectorAll('[data-char-preset]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.applyPreset(btn.dataset.charPreset);
+      });
+    });
+
+    // Turntable touch & mouse drag controls
     if (this.previewCanvas) {
-      this.previewCanvas.addEventListener('mousedown', (e) => {
+      const startDrag = (clientX) => {
         this.isDragging = true;
-        this.prevMouseX = e.clientX;
-      });
-
-      window.addEventListener('mousemove', (e) => {
+        this.prevMouseX = clientX;
+      };
+      const moveDrag = (clientX) => {
         if (!this.isDragging) return;
-        const deltaX = e.clientX - this.prevMouseX;
-        this.prevMouseX = e.clientX;
+        const deltaX = clientX - this.prevMouseX;
+        this.prevMouseX = clientX;
         this.turntableAngle += deltaX * 0.015;
-      });
-
-      window.addEventListener('mouseup', () => {
+      };
+      const endDrag = () => {
         this.isDragging = false;
-      });
+      };
+
+      this.previewCanvas.addEventListener('mousedown', (e) => startDrag(e.clientX));
+      window.addEventListener('mousemove', (e) => moveDrag(e.clientX));
+      window.addEventListener('mouseup', endDrag);
+
+      this.previewCanvas.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          startDrag(e.touches[0].clientX);
+        }
+      }, { passive: true });
+      window.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1 && this.isDragging) {
+          moveDrag(e.touches[0].clientX);
+        }
+      }, { passive: true });
+      window.addEventListener('touchend', endDrag, { passive: true });
+      window.addEventListener('touchcancel', endDrag, { passive: true });
     }
+  }
+
+  applyPreset(presetKey) {
+    if (presetKey === 'warrior') {
+      this.config.gender = 'male';
+      this.config.name = 'Eerik';
+      this.config.hairStyle = 'short';
+      this.config.hairColor = 0xe6c280; // Blonde
+      this.config.skinColor = 0xf5d0b5; // Fair
+      this.config.clothingColor = 0x2e5339; // Forest Green
+    } else if (presetKey === 'ranger') {
+      this.config.gender = 'female';
+      this.config.name = 'Aino';
+      this.config.hairStyle = 'ponytail';
+      this.config.hairColor = 0x3d2817; // Chestnut
+      this.config.skinColor = 0xdba77a; // Tanned
+      this.config.clothingColor = 0x4a3c2c; // Hunter Brown
+    } else if (presetKey === 'shaman') {
+      this.config.gender = 'female';
+      this.config.name = 'Mielikki';
+      this.config.hairStyle = 'long';
+      this.config.hairColor = 0xf0f0f0; // Platinum
+      this.config.skinColor = 0xf5d0b5; // Fair
+      this.config.clothingColor = 0x233d54; // Mystic Blue
+    }
+    this._syncUIFromConfig();
+    this.buildPreviewModel();
+  }
+
+  randomize() {
+    const genders = ['male', 'female'];
+    const hairStyles = ['short', 'long', 'ponytail', 'bald'];
+    const hairColors = [0xe6c280, 0x3d2817, 0x8a3324, 0x1a1a1a, 0x9e9e9e, 0xf0f0f0];
+    const skinTones = [0xf5d0b5, 0xdba77a, 0xaa7855, 0x6b4423];
+    const clothes = [0x2e5339, 0x4a3c2c, 0x233d54, 0x5c2429, 0x2d3436, 0x8a7b64];
+    const maleNames = ['Eerik', 'Tapio', 'Väinö', 'Ilmari', 'Ukko', 'Ahto', 'Kaleva'];
+    const femaleNames = ['Aino', 'Mielikki', 'Tuulikki', 'Kyllikki', 'Ilmatar', 'Tellervo'];
+
+    this.config.gender = genders[Math.floor(Math.random() * genders.length)];
+    this.config.name = this.config.gender === 'female'
+      ? femaleNames[Math.floor(Math.random() * femaleNames.length)]
+      : maleNames[Math.floor(Math.random() * maleNames.length)];
+    this.config.hairStyle = hairStyles[Math.floor(Math.random() * hairStyles.length)];
+    this.config.hairColor = hairColors[Math.floor(Math.random() * hairColors.length)];
+    this.config.skinColor = skinTones[Math.floor(Math.random() * skinTones.length)];
+    this.config.clothingColor = clothes[Math.floor(Math.random() * clothes.length)];
+
+    this._syncUIFromConfig();
+    this.buildPreviewModel();
   }
 
   buildPreviewModel() {
@@ -269,7 +372,21 @@ export default class CharacterCreator {
     }
   }
 
+  _resizePreview() {
+    if (!this.renderer || !this.previewCanvas || !this.camera) return;
+    const rect = this.previewCanvas.getBoundingClientRect();
+    const width = rect.width || 360;
+    const height = rect.height || 440;
+    this.camera.aspect = width / height;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(width, height, false);
+  }
+
   open() {
+    if (this._loopReq) {
+      cancelAnimationFrame(this._loopReq);
+      this._loopReq = null;
+    }
     this.isOpen = true;
     if (this.container) {
       this.container.style.display = 'flex';
@@ -278,6 +395,7 @@ export default class CharacterCreator {
       Localization.applyToDOM();
     }
     this._initThreePreview();
+    this._resizePreview();
     this._syncUIFromConfig();
     this.buildPreviewModel();
     this.clock.start();
@@ -286,6 +404,10 @@ export default class CharacterCreator {
 
   close() {
     this.isOpen = false;
+    if (this._loopReq) {
+      cancelAnimationFrame(this._loopReq);
+      this._loopReq = null;
+    }
     if (this.container) {
       this.container.style.display = 'none';
     }
@@ -305,8 +427,11 @@ export default class CharacterCreator {
   }
 
   _loop() {
-    if (!this.isOpen) return;
-    requestAnimationFrame(() => this._loop());
+    if (!this.isOpen) {
+      this._loopReq = null;
+      return;
+    }
+    this._loopReq = requestAnimationFrame(() => this._loop());
 
     const delta = this.clock.getDelta();
 

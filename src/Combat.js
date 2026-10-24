@@ -1031,6 +1031,7 @@ export default class Combat {
             this.audioManager.playExplosion();
           }
         }
+        this._disposeMesh(p.mesh);
         this.scene.remove(p.mesh);
         this.projectiles.splice(i, 1);
       }
@@ -1061,9 +1062,26 @@ export default class Combat {
         v.mesh.scale.set(s, s, s);
       }
       if (v.duration <= 0) {
+        this._disposeMesh(v.mesh);
         this.scene.remove(v.mesh);
         this.vfxList.splice(i, 1);
       }
     }
+  }
+
+  _disposeMesh(obj) {
+    if (!obj) return;
+    obj.traverse((child) => {
+      if (child.geometry) {
+        child.geometry.dispose();
+      }
+      if (child.material) {
+        if (Array.isArray(child.material)) {
+          child.material.forEach(m => m && m.dispose && m.dispose());
+        } else if (child.material.dispose) {
+          child.material.dispose();
+        }
+      }
+    });
   }
 }

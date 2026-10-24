@@ -29,6 +29,8 @@ import MobileControls from './MobileControls.js';
 import Localization from './Localization.js';
 import DevMode from './DevMode.js';
 import SaveSystem from './SaveSystem.js';
+import RagdollManager from './RagdollManager.js';
+import AccountSystem from './AccountSystem.js';
 
 window.addEventListener('error', (event) => {
   console.warn('Recovered from unhandled runtime error:', event.message, event.filename, event.lineno);
@@ -129,7 +131,11 @@ async function init() {
   const world = new World(scene, assetLoader);
   await new Promise((resolve) => setTimeout(resolve, 30));
 
+  // 3D Physical Ragdoll physics simulation for characters and creatures on death
+  const ragdollManager = new RagdollManager(scene, world);
+
   const player = new Player(scene, camera, controls, inventory, hud, audioManager, assetLoader, world);
+  player.ragdollManager = ragdollManager;
   await new Promise((resolve) => setTimeout(resolve, 20));
 
   const buildingSystem = new BuildingSystem(scene, inventory, hud, audioManager, assetLoader, controls);
@@ -149,6 +155,7 @@ async function init() {
   const fishingSystem = new FishingSystem(scene, world, player, inventory, hud, audioManager, questManager);
   fishingSystem.achievementManager = achievementManager;
   player.buildingSystem = buildingSystem;
+  buildingSystem.player = player;
   inventory.buildingSystem = buildingSystem;
   inventory.player = player;
 
@@ -162,6 +169,7 @@ async function init() {
   resourceNode.achievementManager = achievementManager;
   const enemyManager = new EnemyManager(scene, world, inventory, hud, audioManager, questManager, assetLoader, lootManager);
   enemyManager.achievementManager = achievementManager;
+  enemyManager.ragdollManager = ragdollManager;
   const combat = new Combat(scene, camera, player, enemyManager, inventory, hud, audioManager, assetLoader, animalManager, bossManager);
   const dayNightCycle = new DayNightCycle(scene, world, hud, audioManager, questManager);
 
@@ -205,6 +213,9 @@ async function init() {
     hud
   });
 
+  // Built-in User Account & Profile Save System (No external file handling needed)
+  const accountSystem = new AccountSystem(saveSystem);
+
   // HUD Quick Action Buttons
   const btnSkills = document.getElementById('open-skills-btn');
   if (btnSkills) {
@@ -225,7 +236,7 @@ async function init() {
     btnBuild.addEventListener('click', (e) => {
       e.stopPropagation();
       if (inventory.tools && inventory.tools.hammer) {
-        if (inventory.hotbar) inventory.hotbar.selectSlot(5, true);
+        if (inventory.hotbar) inventory.hotbar.selectSlot(6, true);
         else buildingSystem.setHammerActive(true);
       }
       buildingSystem.toggleBuildMenu();
@@ -243,6 +254,17 @@ async function init() {
     btnMap.addEventListener('click', (e) => {
       e.stopPropagation();
       mapScreen.open();
+    });
+  }
+  const btnPause = document.getElementById('open-pause-btn');
+  if (btnPause) {
+    btnPause.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pMenu = document.getElementById('pause-menu');
+      if (pMenu) {
+        pMenu.classList.toggle('active');
+        if (controls) controls.isLocked = !pMenu.classList.contains('active');
+      }
     });
   }
 
@@ -359,12 +381,16 @@ async function init() {
   // --- Main Menu Save / Continue / Load Buttons ---
   const menuContinueBtn = document.getElementById('menu-continue-btn');
   if (menuContinueBtn) {
-    if (saveSystem.hasSave()) {
+    if (saveSystem.hasSave() || (accountSystem && accountSystem.loadCurrentProfile())) {
       menuContinueBtn.style.display = 'block';
     }
     menuContinueBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      saveSystem.loadFromLocalStorage();
+      if (accountSystem && accountSystem.isLoggedIn() && accountSystem.loadCurrentProfile()) {
+        saveSystem.applySaveData(accountSystem.loadCurrentProfile());
+      } else {
+        saveSystem.loadFromLocalStorage();
+      }
       startGame();
     });
   }
@@ -435,8 +461,160 @@ async function init() {
     });
   }
 
+  // --- User Account & Cloud/Internal Profile Save Handlers ---
+  const menuAccountBtn = document.getElementById('menu-account-btn');
+  if (menuAccountBtn) {
+    menuAccountBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openModal('modal-account');
+      updateAccountUI();
+    });
+  }
+
+  const pauseAccountBtn = document.getElementById('pause-account-btn');
+  if (pauseAccountBtn) {
+    pauseAccountBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openModal('modal-account');
+      updateAccountUI();
+    });
+  }
+
+  const updateAccountUI = () => {
+    if (!accountSystem) return;
+    const isLogged = accountSystem.isLoggedIn();
+    const username = accountSystem.getCurrentUsername();
+    const userBadgeText = isLogged ? `👤 ${username}` : '👤 Vieras';
+
+    const menuBadge = document.getElementById('menu-user-badge');
+    if (menuBadge) menuBadge.textContent = userBadgeText;
+
+    const pauseBadge = document.getElementById('pause-user-badge');
+    if (pauseBadge) pauseBadge.textContent = isLogged ? `👤 ${username}` : '👤 Vieras';
+
+    const statusBadge = document.getElementById('account-status-badge');
+    if (statusBadge) {
+      statusBadge.textContent = isLogged ? `✅ Kirjautunut: ${username}` : '👤 Ei kirjautunut';
+      statusBadge.style.color = isLogged ? '#2ecc71' : '#f1c40f';
+    }
+
+    const saveNowBtn = document.getElementById('acc-save-now-btn');
+    if (saveNowBtn) saveNowBtn.style.display = isLogged ? 'block' : 'none';
+
+    const logoutBtn = document.getElementById('acc-logout-btn');
+    if (logoutBtn) logoutBtn.style.display = isLogged ? 'block' : 'none';
+
+    const loginBtn = document.getElementById('acc-login-btn');
+    const registerBtn = document.getElementById('acc-register-btn');
+    if (loginBtn) loginBtn.style.display = isLogged ? 'none' : 'block';
+    if (registerBtn) registerBtn.style.display = isLogged ? 'none' : 'block';
+
+    const userInput = document.getElementById('acc-username-input');
+    const passInput = document.getElementById('acc-password-input');
+    if (userInput && isLogged) userInput.value = username;
+    if (passInput && isLogged) passInput.value = '';
+
+    if (menuContinueBtn && (saveSystem.hasSave() || (accountSystem && accountSystem.loadCurrentProfile()))) {
+      menuContinueBtn.style.display = 'block';
+    }
+  };
+
+  updateAccountUI();
+
+  const accLoginBtn = document.getElementById('acc-login-btn');
+  const accRegisterBtn = document.getElementById('acc-register-btn');
+  const accSaveNowBtn = document.getElementById('acc-save-now-btn');
+  const accLogoutBtn = document.getElementById('acc-logout-btn');
+  const accMsgArea = document.getElementById('account-msg-area');
+
+  if (accLoginBtn) {
+    accLoginBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const user = (document.getElementById('acc-username-input')?.value || '').trim();
+      const pass = (document.getElementById('acc-password-input')?.value || '').trim();
+      const res = accountSystem.login(user, pass);
+      if (accMsgArea) {
+        accMsgArea.textContent = res.message;
+        accMsgArea.style.color = res.success ? '#2ecc71' : '#e74c3c';
+      }
+      if (res.success) {
+        updateAccountUI();
+        const savedData = accountSystem.loadCurrentProfile();
+        if (savedData) {
+          saveSystem.applySaveData(savedData);
+          if (hud) hud.showNotification(`💾 Profiilin tallennus ladattu käyttäjälle ${res.profile.username}!`, 4000);
+        }
+        setTimeout(() => {
+          closeModal('modal-account');
+        }, 900);
+      }
+    });
+  }
+
+  if (accRegisterBtn) {
+    accRegisterBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const user = (document.getElementById('acc-username-input')?.value || '').trim();
+      const pass = (document.getElementById('acc-password-input')?.value || '').trim();
+      const res = accountSystem.register(user, pass);
+      if (accMsgArea) {
+        accMsgArea.textContent = res.message;
+        accMsgArea.style.color = res.success ? '#2ecc71' : '#e74c3c';
+      }
+      if (res.success) {
+        updateAccountUI();
+        const payload = saveSystem.createSavePayload();
+        accountSystem.saveCurrentProfile(payload);
+        if (hud) hud.showNotification(`🎉 Tili luotu ja edistyminen tallennettu käyttäjälle ${res.profile.username}!`, 4500);
+        setTimeout(() => {
+          closeModal('modal-account');
+        }, 900);
+      }
+    });
+  }
+
+  if (accSaveNowBtn) {
+    accSaveNowBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (accountSystem.isLoggedIn()) {
+        const payload = saveSystem.createSavePayload();
+        accountSystem.saveCurrentProfile(payload);
+        saveSystem.saveToLocalStorage();
+        if (accMsgArea) {
+          accMsgArea.textContent = `💾 Tallennettu tilille onnistuneesti! (${new Date().toLocaleTimeString()})`;
+          accMsgArea.style.color = '#2ecc71';
+        }
+        if (hud) hud.showNotification(`💾 Edistyminen tallennettu tilillesi: ${accountSystem.getCurrentUsername()}!`, 3500);
+        if (audioManager && audioManager.playPickup) audioManager.playPickup();
+      }
+    });
+  }
+
+  if (accLogoutBtn) {
+    accLogoutBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      accountSystem.logout();
+      updateAccountUI();
+      if (accMsgArea) {
+        accMsgArea.textContent = 'Kirjauduttu ulos.';
+        accMsgArea.style.color = '#f1c40f';
+      }
+      if (hud) hud.showNotification('👤 Kirjauduttu ulos käyttäjätililtä.', 3000);
+    });
+  }
+
+  // Auto-save progress to account every 25 seconds
+  setInterval(() => {
+    if (isGameStarted && player && !player.isDead && accountSystem && accountSystem.isLoggedIn()) {
+      const payload = saveSystem.createSavePayload();
+      accountSystem.saveCurrentProfile(payload);
+      saveSystem.saveToLocalStorage();
+    }
+  }, 25000);
+
   document.querySelectorAll('.modal-close').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    const handleClose = (e) => {
+      if (e.cancelable) e.preventDefault();
       e.stopPropagation();
       const target = btn.getAttribute('data-close');
       if (target) closeModal(target);
@@ -445,7 +623,10 @@ async function init() {
           (!npcManager || !npcManager.activeNPC)) {
         pauseMenu.classList.add('active');
       }
-    });
+    };
+    btn.addEventListener('click', handleClose);
+    btn.addEventListener('pointerdown', handleClose);
+    btn.addEventListener('touchend', handleClose);
   });
 
   // --- Graphics & Gameplay Settings System (Very Low to Ultra) ---
@@ -750,6 +931,20 @@ async function init() {
     // Gracefully handle browser pointer lock cooldown rejection without UI lockup
   });
 
+  const isAnyGameMenuOpen = () => {
+    return (craftingMenu && craftingMenu.isOpen) ||
+           (backpackScreen && backpackScreen.isOpen) ||
+           (mapScreen && mapScreen.isOpen) ||
+           (skillTree && skillTree.isOpen) ||
+           (characterCreator && characterCreator.isOpen) ||
+           (pauseMenu && pauseMenu.classList.contains('active')) ||
+           (mainMenu && mainMenu.style.display !== 'none') ||
+           document.querySelector('.menu-modal.active') ||
+           document.querySelector('#death-screen.active') ||
+           (npcManager && npcManager.activeNPC !== null) ||
+           (devMode && (devMode.isActive || devMode.isPromptOpen));
+  };
+
   controls.addEventListener('lock', () => {
     if (crosshair && isGameStarted) crosshair.style.display = 'block';
     if (pauseMenu) pauseMenu.classList.remove('active');
@@ -757,21 +952,14 @@ async function init() {
 
   controls.addEventListener('unlock', () => {
     if (mobileControls && mobileControls.isTouchDevice) return;
-    if (crosshair) crosshair.style.display = 'none';
+    if (isAnyGameMenuOpen() && crosshair) crosshair.style.display = 'none';
     if (!isGameStarted) return;
 
     const now = performance.now();
     // Prevent immediate bounce-back into pause menu if we just resumed or closed an in-game screen
-    if (now - lastResumeTime < 350 || now - lastMenuCloseTime < 350) return;
+    if (now - lastResumeTime < 800 || now - lastMenuCloseTime < 800) return;
 
-    const anyMenuOpen = craftingMenu.isOpen || mapScreen.isOpen || backpackScreen.isOpen ||
-                        (skillTree && skillTree.isOpen) ||
-                        (npcManager && npcManager.activeNPC !== null) ||
-                        (devMode && (devMode.isActive || devMode.isPromptOpen)) ||
-                        (characterCreator && characterCreator.isOpen) ||
-                        document.querySelector('.menu-modal.active') ||
-                        document.querySelector('#dev-password-modal.active');
-    if (!anyMenuOpen && pauseMenu) {
+    if (!isAnyGameMenuOpen() && pauseMenu) {
       pauseMenu.style.display = '';
       pauseMenu.classList.add('active');
     }
@@ -782,22 +970,59 @@ async function init() {
       pauseMenu.style.display = '';
       pauseMenu.classList.remove('active');
     }
+    if (crosshair && isGameStarted) crosshair.style.display = 'block';
     lastResumeTime = performance.now();
+    lastMenuCloseTime = performance.now();
     window.restoreGameFocus();
   };
 
+  // Seamless mouse movement camera look when resuming from ESC before pointer lock completes
+  const _eulerCam = new THREE.Euler(0, 0, 0, 'YXZ');
+  window.addEventListener('mousemove', (e) => {
+    if (!isGameStarted || isAnyGameMenuOpen() || player.isDead) return;
+
+    if (!controls.isLocked) {
+      const movementX = e.movementX || 0;
+      const movementY = e.movementY || 0;
+      if (Math.abs(movementX) > 0 || Math.abs(movementY) > 0) {
+        const speed = (controls.pointerSpeed || 1.0) * 0.002;
+        _eulerCam.setFromQuaternion(camera.quaternion);
+        _eulerCam.y -= movementX * speed;
+        _eulerCam.x -= movementY * speed;
+        _eulerCam.x = Math.max(-Math.PI * 0.48, Math.min(Math.PI * 0.48, _eulerCam.x));
+        camera.quaternion.setFromEuler(_eulerCam);
+      }
+
+      if (performance.now() - lastResumeTime > 250) {
+        safeLockControls();
+      }
+    }
+  });
+
   if (pauseResumeBtn) {
-    pauseResumeBtn.addEventListener('click', (e) => {
+    const handleResume = (e) => {
+      if (e.cancelable) e.preventDefault();
       e.stopPropagation();
       resumeGame();
-    });
+    };
+    pauseResumeBtn.addEventListener('click', handleResume);
+    pauseResumeBtn.addEventListener('pointerdown', handleResume);
+    pauseResumeBtn.addEventListener('touchend', handleResume);
   }
 
   const pauseSaveBtn = document.getElementById('pause-save-btn');
   if (pauseSaveBtn) {
     pauseSaveBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      saveSystem.exportSaveToFile();
+      const payload = saveSystem.createSavePayload();
+      saveSystem.saveToLocalStorage();
+      if (accountSystem && accountSystem.isLoggedIn()) {
+        accountSystem.saveCurrentProfile(payload);
+        if (hud) hud.showNotification(`💾 Edistyminen tallennettu tilillesi: ${accountSystem.getCurrentUsername()}!`, 4000);
+      } else {
+        if (hud) hud.showNotification(`💾 Tallennettu laitteelle! Avaa TILI valikosta tallentaaksesi pysyvästi profiilille.`, 4500);
+      }
+      if (audioManager && audioManager.playPickup) audioManager.playPickup();
     });
   }
 
@@ -861,32 +1086,125 @@ async function init() {
     }
   });
 
-  // --- Restart Game System ---
+  // --- In-Game Instant Restart System (No full browser reload!) ---
   const restartGame = () => {
     if (audioManager) audioManager.ensureContext();
     const isFi = (typeof Localization !== 'undefined' && Localization.lang === 'en') ? false : true;
     const msg = isFi
       ? 'Haluatko varmasti aloittaa alusta? Kaikki tallentamaton edistyminen nollataan.'
       : 'Are you sure you want to restart? All unsaved progress will be reset.';
-    if (window.confirm(msg)) {
-      try {
-        localStorage.removeItem('tikapoo_savegame');
-        localStorage.removeItem('tikapoo_daynight');
-        localStorage.removeItem('tikapoo_quests');
-        localStorage.removeItem('tikapoo_skills');
-        localStorage.removeItem('tikapoo_world_edits');
-        localStorage.removeItem('tikapoo_character');
-      } catch (e) {}
-      window.location.reload();
+    if (!window.confirm(msg)) return;
+
+    try {
+      localStorage.removeItem('tikapoo_savegame');
+      localStorage.removeItem('tikapoo_daynight');
+      localStorage.removeItem('tikapoo_quests');
+      localStorage.removeItem('tikapoo_skills');
+      localStorage.removeItem('tikapoo_world_edits');
+      localStorage.removeItem('tikapoo_character');
+      localStorage.removeItem('tikapoo_defeated_boss_ids');
+      localStorage.removeItem('tikapoo_boss_progress');
+      localStorage.removeItem('tikapoo_achievements');
+    } catch (e) {}
+
+    // 1. Reset player stats, state and position to spawn point (0, 0)
+    if (player) {
+      player.health = player.maxHealth || 100;
+      player.stamina = player.maxStamina || 100;
+      player.hunger = 100;
+      player.thirst = 100;
+      player.energy = 100;
+      player.level = 1;
+      player.xp = 0;
+      player.xpToNext = 100;
+      player.isDead = false;
+      player.activeEffects = [];
+
+      const startY = world ? world.getGroundHeight(0, 0) + 0.2 : 5.0;
+      if (player.playerPos) player.playerPos.set(0, startY, 0);
+      if (player.group) player.group.position.set(0, startY, 0);
+      if (controls && controls.getObject) {
+        controls.getObject().position.set(0, startY, 0);
+      }
+      player.unequipCurrentTool();
+    }
+
+    // 2. Reset Inventory and restore starter items
+    if (inventory) {
+      inventory.items = {
+        stick: 6,
+        stone: 6,
+        wood: 12,
+        food_apple: 4,
+        potion_health: 1
+      };
+      inventory.equippedTool = null;
+      inventory.equippedArmor = null;
+      inventory.updateUI();
+      inventory.updateQuickslotsUI();
+    }
+
+    // 3. Reset DayNightCycle to morning 09:00
+    if (dayNightCycle) {
+      dayNightCycle.time = 0.375;
+    }
+
+    // 4. Reset BossManager to Boss 0 (Sarvipeto)
+    if (bossManager) {
+      bossManager.defeatedBossIds = new Set();
+      bossManager.unlockedBossIndex = 0;
+      if (bossManager.bossHudEl) bossManager.bossHudEl.style.display = 'none';
+      bossManager.spawnActiveBosses();
+    }
+
+    // 5. Reset Enemies in world
+    if (enemyManager) {
+      enemyManager.enemies.forEach(e => {
+        if (e.mesh) scene.remove(e.mesh);
+      });
+      enemyManager.enemies = [];
+      enemyManager.spawnInitialBiomeEnemies();
+    }
+
+    // 6. Reset Quests & SkillTree
+    if (questManager && questManager.resetQuests) {
+      questManager.resetQuests();
+    }
+    if (skillTree) {
+      skillTree.unlockedSkills = new Set();
+      skillTree.availablePoints = 0;
+    }
+
+    // 7. Stop boss music if playing and resume ambient
+    if (audioManager) {
+      audioManager.stopBossMusic();
+      audioManager.playLevelUp();
+    }
+
+    // 8. Close pause menu and unpause
+    isPaused = false;
+    if (pauseMenuEl) pauseMenuEl.classList.remove('active');
+    if (mobileControls) mobileControls.syncUIState();
+
+    if (hud) {
+      hud.updateVitals(player);
+      hud.showNotification(
+        isFi ? '🎮 Peli nollattu! Tervetuloa takaisin Pohjolaan!' : '🎮 Game reset! Welcome back to Pohjola!',
+        5000
+      );
     }
   };
 
   const pauseRestartBtn = document.getElementById('pause-restart-btn');
   if (pauseRestartBtn) {
-    pauseRestartBtn.addEventListener('click', (e) => {
+    const handleRestart = (e) => {
+      if (e.cancelable) e.preventDefault();
       e.stopPropagation();
       restartGame();
-    });
+    };
+    pauseRestartBtn.addEventListener('click', handleRestart);
+    pauseRestartBtn.addEventListener('pointerdown', handleRestart);
+    pauseRestartBtn.addEventListener('touchend', handleRestart);
   }
 
   // Global ESC key and browser protection handler
@@ -1233,19 +1551,25 @@ async function init() {
 
   // --- Keyboard: E for Interactions ---
   window.addEventListener('keydown', (e) => {
-    if (!controls.isLocked || !isGameStarted) return;
+    if (!isGameStarted || isAnyGameMenuOpen() || (player && player.isDead)) return;
 
     if (e.code === 'KeyE') {
       triggerInteraction();
     }
   });
 
-  // --- Mouse Interaction Handling (Combat vs Building vs Harvesting) ---
+  // --- Mouse Interaction Handling (Combat vs Building vs Harvesting vs Shield Block/Parry) ---
   window.addEventListener('mousedown', (e) => {
-    if (!controls.isLocked || !isGameStarted) return;
+    if (!isGameStarted || isAnyGameMenuOpen() || (player && player.isDead)) return;
 
-    if (e.button === 0) { // Left Click
-      if (buildingSystem.isPlacing()) {
+    if (!controls.isLocked) {
+      safeLockControls();
+    }
+
+    if (e.button === 0) { // Left Click: Attack / Build / Demolish / Action
+      if (buildingSystem.isDemolishMode) {
+        buildingSystem.tryDemolish();
+      } else if (buildingSystem.isPlacing()) {
         buildingSystem.tryPlace(world);
       } else if (inventory && inventory.equippedTool === 'fishingRod') {
         fishingSystem.onAction();
@@ -1255,6 +1579,26 @@ async function init() {
         // Melee attack enemy or air swing
         combat.performAttack();
       }
+    } else if (e.button === 2) { // Right Click: Shield Block & Timed Parry
+      e.preventDefault();
+      if (player && player.startBlock) {
+        player.startBlock();
+      }
+    }
+  });
+
+  window.addEventListener('mouseup', (e) => {
+    if (e.button === 2) {
+      if (player && player.stopBlock) {
+        player.stopBlock();
+      }
+    }
+  });
+
+  // Prevent browser context menu during gameplay so right-click shield guard feels seamless
+  window.addEventListener('contextmenu', (e) => {
+    if (isGameStarted && !isAnyGameMenuOpen()) {
+      e.preventDefault();
     }
   });
 
@@ -1313,7 +1657,7 @@ async function init() {
       }
     }
 
-    const locked = controls.isLocked;
+    const activeInput = (!isAnyGameMenuOpen() && !player.isDead);
 
     // Update modules
     player.update(delta, world, combat);
@@ -1322,14 +1666,15 @@ async function init() {
     world.update(delta, player.getPosition());
     dayNightCycle.update(delta);
     lootManager.update(delta, player.getPosition());
+    ragdollManager.update(delta);
     animalManager.update(delta, player.getPosition());
     fishingSystem.update(delta);
-    resourceNode.update(delta, camera, locked);
-    buildingSystem.update(delta, camera, locked, world);
+    resourceNode.update(delta, camera, activeInput);
+    buildingSystem.update(delta, camera, activeInput, world);
     enemyManager.update(delta, player.getPosition(), dayNightCycle, player, camera);
     bossManager.update(delta, player.getPosition());
     combat.update(delta);
-    npcManager.update(delta, camera, locked);
+    npcManager.update(delta, camera, activeInput);
     if (mobileControls) mobileControls.update(delta);
 
     // Contextual interaction tooltips for gravestones, chests, campfire and water
@@ -1404,11 +1749,58 @@ async function init() {
     const currentBiome = getBiomeKey(pPos.x, pPos.z);
     audioManager.updateBiomeMusic(currentBiome, delta);
 
+    // Biome environmental hazards & gear requirements
+    if (typeof biomeHazardTimer === 'undefined') window.biomeHazardTimer = 0;
+    window.biomeHazardTimer += delta;
+    if (window.biomeHazardTimer >= 3.0) {
+      window.biomeHazardTimer = 0;
+      const isFi = (typeof Localization !== 'undefined' && Localization.lang === 'en') ? false : true;
+
+      if (currentBiome === 'mountain') {
+        const hasColdArmor = inventory && (inventory.equippedArmor === 'armor_wolf' || inventory.equippedArmor === 'armor_silver' || inventory.equippedArmor === 'armor_blackmetal');
+        const nearFire = buildingSystem && buildingSystem.campfires && buildingSystem.campfires.some(c => Math.hypot(c.position.x - pPos.x, c.position.z - pPos.z) < 8.0);
+        if (!hasColdArmor && !nearFire) {
+          player.takeDamage(2);
+          hud.showNotification(
+            isFi ? '❄️ Jäätävä tunturipakkanen! Tarvitset susiturkin tai nuotion lämmön!' : '❄️ Freezing mountain cold! You need wolf armor or fire warmth!',
+            3000
+          );
+        }
+      } else if (currentBiome === 'ashlands') {
+        const hasHeatArmor = inventory && (inventory.equippedArmor === 'armor_blackmetal' || inventory.equippedArmor === 'armor_flametal');
+        if (!hasHeatArmor) {
+          player.takeDamage(3);
+          hud.showNotification(
+            isFi ? '🔥 Sysivuoren polttava pätsi! Tarvitset mustan metallin varusteet!' : '🔥 Scorching ashlands heat! You need black metal armor!',
+            3000
+          );
+        }
+      }
+    }
+
+    // Locked Boss Altar Proximity Warning
+    if (bossManager && bossManager.bossDefs) {
+      for (let bi = bossManager.unlockedBossIndex + 1; bi < bossManager.bossDefs.length; bi++) {
+        const bDef = bossManager.bossDefs[bi];
+        if (Math.hypot(pPos.x - bDef.arenaPos.x, pPos.z - bDef.arenaPos.z) < 22) {
+          if (!window.lastLockedBossNotify || performance.now() - window.lastLockedBossNotify > 9000) {
+            window.lastLockedBossNotify = performance.now();
+            const prevBoss = bossManager.bossDefs[bi - 1];
+            const isFi = (typeof Localization !== 'undefined' && Localization.lang === 'en') ? false : true;
+            hud.showNotification(
+              isFi ? `🔒 ${bDef.name} nukkuu sinetöitynä! Kukista ensin ${prevBoss.name}!` : `🔒 ${bDef.name} is sealed! Defeat ${prevBoss.name} first!`,
+              4500
+            );
+          }
+        }
+      }
+    }
+
     // Dynamic Boss Battle Music (when near alive boss)
     const bosses = bossManager ? bossManager.bosses : [];
     const activeBossNear = bosses.find(b => b && b.isAlive && b.mesh && b.mesh.position.distanceTo(pPos) < 50);
     if (activeBossNear) {
-      audioManager.startBossMusic(activeBossNear);
+      audioManager.startBossMusic(activeBossNear.def || activeBossNear);
     } else if (audioManager.isBossMusicActive) {
       audioManager.stopBossMusic();
     }

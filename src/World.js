@@ -977,6 +977,9 @@ export default class World {
       const chest = this.wildChests[chestIndex];
       if (chest.glowMarker) this.scene.remove(chest.glowMarker);
       if (chest.glowLight) this.scene.remove(chest.glowLight);
+      if (chest.position) {
+        this.colliders = this.colliders.filter(c => !(c.type === 'circle' && c.name === 'wildChest' && Math.hypot(c.x - chest.position.x, c.z - chest.position.z) < 0.2));
+      }
       this.wildChests.splice(chestIndex, 1);
     }
 
@@ -1049,6 +1052,12 @@ export default class World {
         const dx = x - closestX;
         const dz = z - closestZ;
         if (dx * dx + dz * dz < playerRadius * playerRadius) {
+          // If the player is already penetrating/inside (e.g. wall built directly on player),
+          // allow stepping outwards toward the exterior so player never gets permanently stuck
+          const isInside = (x >= c.minX && x <= c.maxX && z >= c.minZ && z <= c.maxZ);
+          if (isInside) {
+            continue;
+          }
           return true;
         }
       }
@@ -2244,13 +2253,33 @@ export default class World {
   }
 
   generateDecorations() {
-    const decoModels = [
-      'Flower_3_Group', 'Flower_4_Group', 'Clover_1',
-      'Fern_1', 'Plant_1', 'Plant_7',
-      'Mushroom_Common', 'Mushroom_Laetiporus'
-    ];
+    // Rich, diverse biome-specific vegetation and environmental dressing
+    const biomeDecos = {
+      meadows: [
+        'Flower_3_Group', 'Flower_4_Group', 'Clover_1', 'Fern_1',
+        'Plant_1', 'Plant_7', 'Bush_Common_Flowers', 'Grass_Common_Tall'
+      ],
+      blackforest: [
+        'WoodLog_Moss', 'TreeStump_Moss', 'Fern_1', 'Rock_Moss_1',
+        'Mushroom_Common', 'Mushroom_Laetiporus', 'Rock_Moss_2'
+      ],
+      swamp: [
+        'Lilypad', 'Plant_1', 'Plant_7', 'TreeStump_Moss',
+        'Mushroom_Laetiporus', 'DeadTree_2'
+      ],
+      mountain: [
+        'Pebble_Round_1', 'Rock_Medium_1', 'Rock_Medium_2', 'DeadTree_3'
+      ],
+      plains: [
+        'Grass_Wispy_Tall', 'Grass_Common_Tall', 'Clover_1',
+        'Flower_3_Group', 'Plant_1'
+      ],
+      ashlands: [
+        'DeadTree_1', 'Rock_Medium_3'
+      ]
+    };
 
-    const count = 120;
+    const count = isMobileDevice ? 220 : 540;
 
     for (let i = 0; i < count; i++) {
       const x = (Math.random() - 0.5) * 850;
@@ -2258,14 +2287,28 @@ export default class World {
 
       const riverX = -16 + Math.sin(z * 0.015) * 20;
       const distToRiver = Math.abs(x - riverX);
-      if (distToRiver < 22) continue;
 
       const y = this.getGroundHeight(x, z);
-      if (y < 1.4) continue;
 
-      const chosenName = decoModels[Math.floor(Math.random() * decoModels.length)];
-      let scale = 0.8 + Math.random() * 0.5;
+      // Keep starter camp clear
+      if (Math.hypot(x, z) < 16) continue;
+      if (x > -45 && x < 22 && z > -40 && z < 18) continue;
+
+      const biome = getBiomeKey(x, z) || 'meadows';
+      const models = biomeDecos[biome] || biomeDecos.meadows;
+      const chosenName = models[Math.floor(Math.random() * models.length)];
+
+      // Water lilypads spawn near river
+      if (chosenName === 'Lilypad') {
+        if (distToRiver > 18 || y > 1.2) continue;
+      } else {
+        if (distToRiver < 18 || y < 1.4) continue;
+      }
+
+      let scale = 0.85 + Math.random() * 0.45;
       if (chosenName.includes('Mushroom')) scale *= 1.4;
+      else if (chosenName.includes('WoodLog')) scale *= 1.1;
+      else if (chosenName.includes('TreeStump')) scale *= 1.0;
 
       const rot = Math.random() * Math.PI * 2;
       const mesh = this._placeModel(chosenName, x, z, scale, rot);
@@ -2394,6 +2437,7 @@ export default class World {
       child.userData.wildChest = chestObj;
     });
 
+    this.addCircleCollider(x, z, 0.65, 'wildChest');
     this.wildChests.push(chestObj);
     return chestObj;
   }
@@ -2448,6 +2492,7 @@ export default class World {
     };
 
     if (!this.tombstones) this.tombstones = [];
+    this.addCircleCollider(x, z, 0.65, 'tombstone');
     this.tombstones.push(tombstone);
     return tombstone;
   }
@@ -2456,6 +2501,9 @@ export default class World {
     if (!tombstone) return;
     if (tombstone.mesh) {
       this.scene.remove(tombstone.mesh);
+    }
+    if (tombstone.position) {
+      this.colliders = this.colliders.filter(c => !(c.type === 'circle' && c.name === 'tombstone' && Math.hypot(c.x - tombstone.position.x, c.z - tombstone.position.z) < 0.2));
     }
     if (this.tombstones) {
       this.tombstones = this.tombstones.filter(t => t !== tombstone);

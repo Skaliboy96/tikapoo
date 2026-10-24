@@ -11,8 +11,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=MedievalSharp&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/index-BFTRcKBv.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-h0Kk4Ftd.css">
+  <script type="module" crossorigin src="/assets/index-B_iuVXQY.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-Betk3mde.css">
 </head>
 <body>
   <!-- Canvas container / WebGL rendering context -->
@@ -45,82 +45,198 @@
   <!-- Top Center System Notifications -->
   <div id="notification"></div>
 
-  <!-- Player HUD: Health, Stamina, Hunger, Mana, Level (Sleek Horizontal Bar) -->
-  <div id="hud" class="hud-horizontal">
-    <!-- Level & Rested Buff Header -->
-    <div class="hud-top-meta">
-      <div class="hud-level-badge">
-        <span id="player-level-badge" data-i18n="hud_level">🏆 Taso 1</span>
-        <div class="hud-xp-bar-bg">
-          <div id="xp-fill" class="hud-xp-fill" style="width: 0%"></div>
+  <!-- Player HUD: Authentic Nordic RPG HUD Layout matching PC & Mobile references -->
+  <div id="hud" class="hud-main-root">
+    <!-- TOP-LEFT: Vitals Cluster (Heart Orb + Stamina, Hunger, Thirst) & Party List -->
+    <div id="hud-vitals-container" class="hud-vitals-container">
+      <div class="hud-vitals-top-row">
+        <!-- PC Heart Medallion -->
+        <div id="hud-heart-orb" class="hud-heart-orb" title="Terveys / Health">
+          <div class="heart-gem-glow"></div>
+          <svg class="heart-icon-svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>
+          <div id="heart-hp-text" class="heart-hp-text">100</div>
         </div>
-        <span id="xp-val" class="hud-xp-val">0/100 XP</span>
+
+        <!-- Stacked Vitals Bars -->
+        <div class="hud-bars-stack">
+          <!-- 1. Health Bar (Visible in mobile mode or compact) -->
+          <div class="bar-container bar-health-mobile">
+            <div class="bar-label">
+              <span data-i18n="hud_health">❤️ TERVEYS</span>
+              <span id="health-val">100/100</span>
+            </div>
+            <div class="bar">
+              <div id="health-fill" class="bar-fill health"></div>
+            </div>
+          </div>
+
+          <!-- 2. Stamina Bar -->
+          <div class="bar-container">
+            <div class="bar-label">
+              <span data-i18n="hud_stamina">⚡ KESTÄVYYS</span>
+              <span id="stamina-val">100/100</span>
+            </div>
+            <div class="bar">
+              <div id="stamina-fill" class="bar-fill stamina"></div>
+            </div>
+          </div>
+
+          <!-- 3. Hunger Bar -->
+          <div class="bar-container">
+            <div class="bar-label">
+              <span data-i18n="hud_hunger">🍖 NÄLKÄ</span>
+              <span id="hunger-val">100/100</span>
+            </div>
+            <div class="bar">
+              <div id="hunger-fill" class="bar-fill hunger"></div>
+            </div>
+          </div>
+
+          <!-- 4. Thirst / Mana Bar -->
+          <div class="bar-container">
+            <div class="bar-label">
+              <span data-i18n="hud_thirst">💧 JANO</span>
+              <span id="thirst-val">100/100</span>
+            </div>
+            <div class="bar">
+              <div id="thirst-fill" class="bar-fill thirst"></div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div id="rested-buff-badge" class="rested-badge" style="display: none;">
-        🛋️ <span data-i18n="hud_rested">Levännyt</span> <span id="rested-timer-val">05:00</span>
+
+      <!-- Party / Companions Widget (PC View) -->
+      <div id="hud-party-container" class="hud-party-container">
+        <div class="hud-party-header">🐺 RYHMÄ</div>
+        <div class="hud-party-row">
+          <span class="party-avatar">🐺</span>
+          <div class="party-info">
+            <div class="party-name">Susi (Lemmikki)</div>
+            <div class="party-hp-bar"><div class="party-hp-fill" style="width: 100%;"></div></div>
+          </div>
+        </div>
+        <div class="hud-party-row">
+          <span class="party-avatar">🏹</span>
+          <div class="party-info">
+            <div class="party-name">Metsästäjä</div>
+            <div class="party-hp-bar"><div class="party-hp-fill" style="width: 90%;"></div></div>
+          </div>
+        </div>
+        <div class="hud-party-row">
+          <span class="party-avatar">🛡️</span>
+          <div class="party-info">
+            <div class="party-name">Soturi</div>
+            <div class="party-hp-bar"><div class="party-hp-fill" style="width: 100%;"></div></div>
+          </div>
+        </div>
       </div>
-      <div id="hud-biome-tag" class="hud-biome-badge">AARNIOMETSÄ</div>
+
+      <!-- Mobile Chat Circle Button -->
+      <button id="mbtn-chat-toggle" class="mbtn-circle-btn" title="Keskustelu &amp; Loki">💬</button>
     </div>
 
-    <!-- Horizontal Status Bars Cluster -->
-    <div class="hud-bars-row">
-      <!-- 1. Health Bar -->
-      <div class="bar-container">
-        <div class="bar-label">
-          <span data-i18n="hud_health">❤️ TERVEYS</span>
-          <span id="health-val">100/100</span>
-        </div>
-        <div class="bar">
-          <div id="health-fill" class="bar-fill health"></div>
-        </div>
+    <!-- TOP-RIGHT: Compass Minimap & Quest Log -->
+    <div id="hud-top-right-group" class="hud-top-right-group">
+      <!-- Mini-map with Compass Cardinals -->
+      <div id="minimap-container">
+        <canvas id="minimap" width="150" height="150"></canvas>
+        <div class="minimap-cardinal cardinal-n">N</div>
+        <div class="minimap-cardinal cardinal-e">E</div>
+        <div class="minimap-cardinal cardinal-s">S</div>
+        <div class="minimap-cardinal cardinal-w">W</div>
+        <button id="hud-fullscreen-btn" class="hud-fs-btn" title="Koko näyttö / Fullscreen">⛶</button>
       </div>
 
-      <!-- 2. Stamina Bar -->
-      <div class="bar-container">
-        <div class="bar-label">
-          <span data-i18n="hud_stamina">⚡ KESTÄVYYS</span>
-          <span id="stamina-val">100/100</span>
-        </div>
-        <div class="bar">
-          <div id="stamina-fill" class="bar-fill stamina"></div>
-        </div>
+      <!-- Mobile Action Coins beside / below Minimap -->
+      <div id="mobile-top-action-coins" class="mobile-action-coins">
+        <button id="mbtn-backpack" class="mobile-action-coin" title="Reppu">🎒</button>
+        <button id="mbtn-quests" class="mobile-action-coin" title="Tehtävät">📜</button>
+        <button id="mbtn-build-coin" class="mobile-action-coin build-coin-highlight" title="Rakennus">🔨</button>
       </div>
 
-      <!-- 3. Hunger Bar -->
-      <div class="bar-container">
-        <div class="bar-label">
-          <span data-i18n="hud_hunger">🍖 NÄLKÄ</span>
-          <span id="hunger-val">100/100</span>
-        </div>
-        <div class="bar">
-          <div id="hunger-fill" class="bar-fill hunger"></div>
-        </div>
-      </div>
-
-      <!-- 4. Mana Bar -->
-      <div class="bar-container">
-        <div class="bar-label">
-          <span data-i18n="hud_mana">🔮 MANA</span>
-          <span id="mana-val">100/100</span>
-        </div>
-        <div class="bar">
-          <div id="mana-fill" class="bar-fill mana"></div>
-        </div>
+      <!-- Quest Log directly underneath Minimap -->
+      <div id="quest-log" class="quest-log-box">
+        <div class="quest-log-header">📋 TEHTÄVÄT</div>
+        <div id="quest-log-entries"></div>
       </div>
     </div>
 
-    <!-- Quick action buttons -->
-    <div class="hud-buttons-row">
-      <button id="open-craft-btn" class="hud-btn hud-btn-craft"><span data-i18n="btn_craft">⚒️ VALMISTA [C]</span></button>
-      <button id="open-build-btn" class="hud-btn hud-btn-build"><span data-i18n="btn_build">🔨 RAKENNA [B]</span></button>
-      <button id="open-backpack-btn" class="hud-btn hud-btn-bp"><span data-i18n="btn_backpack">🎒 TAVARAT [I]</span></button>
-      <button id="open-skills-btn" class="hud-btn hud-btn-skills"><span data-i18n="btn_skills">⭐ TAIDOT [O]</span></button>
-      <button id="open-map-btn" class="hud-btn hud-btn-map"><span data-i18n="btn_map">🗺️ KARTTA [M]</span></button>
+    <!-- BOTTOM-LEFT: Translucent Chat & Log Window (PC) -->
+    <div id="chat-box" class="chat-box">
+      <div class="chat-tabs">
+        <button id="chat-tab-chat" class="chat-tab active">Keskustelu</button>
+        <button id="chat-tab-log" class="chat-tab">Loki</button>
+      </div>
+      <div id="chat-messages" class="chat-messages">
+        <div class="chat-msg system"><span class="chat-time">12:00</span> <span class="chat-tag">[Järjestelmä]</span> Tervetuloa Tikapoon maailmaan!</div>
+        <div class="chat-msg system"><span class="chat-time">12:00</span> <span class="chat-tag">[Vihje]</span> Avaa rakennusvalikko painamalla [B] tai klikkaa RAKENNUS-nappia.</div>
+      </div>
+      <div class="chat-input-row">
+        <input id="chat-input" type="text" placeholder="Kirjoita viesti... [Enter]" maxlength="140" autocomplete="off" />
+        <button id="chat-send-btn">Lähetä</button>
+      </div>
+    </div>
+
+    <!-- BOTTOM-CENTER: Level, Golden XP bar, Hotbar & Quick Menu Buttons -->
+    <div id="hud-bottom-cluster" class="hud-bottom-cluster">
+      <!-- Centered Level, XP, Biome & Rested Meta -->
+      <div class="hud-center-meta">
+        <div class="hud-level-badge">
+          <span id="player-level-badge" data-i18n="hud_level">🏆 Taso 1</span>
+          <div class="hud-xp-bar-bg">
+            <div id="xp-fill" class="hud-xp-fill" style="width: 0%"></div>
+          </div>
+          <span id="xp-val" class="hud-xp-val">0/100 XP</span>
+        </div>
+        <div id="rested-buff-badge" class="rested-badge" style="display: none;">
+          🛋️ <span data-i18n="hud_rested">Levännyt</span> <span id="rested-timer-val">05:00</span>
+        </div>
+        <div id="hud-biome-tag" class="hud-biome-badge">AARNIOMETSÄ</div>
+      </div>
+
+      <!-- Hotbar + Right Menu Actions Row -->
+      <div class="hud-hotbar-row">
+        <!-- Hotbar (10 slots) -->
+        <div id="hotbar" class="hotbar-container"></div>
+
+        <!-- Menu Action Buttons Row -->
+        <div id="hud-hotbar-actions" class="hud-hotbar-actions">
+          <button id="open-backpack-btn" class="hud-btn hud-btn-bp" title="Reppu [I]">
+            <span class="hud-btn-icon">🎒</span>
+            <span class="hud-btn-text">Reppu</span>
+            <span class="hud-btn-key">[I]</span>
+          </button>
+          <button id="open-craft-btn" class="hud-btn hud-btn-craft" title="Paja [C]">
+            <span class="hud-btn-icon">⚒️</span>
+            <span class="hud-btn-text">Paja</span>
+            <span class="hud-btn-key">[C]</span>
+          </button>
+          <button id="open-map-btn" class="hud-btn hud-btn-map" title="Kartta [M]">
+            <span class="hud-btn-icon">🗺️</span>
+            <span class="hud-btn-text">Kartta</span>
+            <span class="hud-btn-key">[M]</span>
+          </button>
+          <button id="open-skills-btn" class="hud-btn hud-btn-skills" title="Taidot [O]">
+            <span class="hud-btn-icon">⭐</span>
+            <span class="hud-btn-text">Taidot</span>
+            <span class="hud-btn-key">[O]</span>
+          </button>
+          <button id="open-build-btn" class="hud-btn hud-btn-build build-highlight" title="Rakennustila [B]">
+            <span class="hud-btn-icon">🔨</span>
+            <span class="hud-btn-text">RAKENNUS</span>
+            <span class="hud-btn-key">[B]</span>
+          </button>
+          <button id="open-pause-btn" class="hud-btn hud-btn-pause" title="Valikko [Esc]">
+            <span class="hud-btn-icon">⚙️</span>
+            <span class="hud-btn-text">Valikko</span>
+            <span class="hud-btn-key">[Esc]</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
-
-  <!-- Action Bar / Hotbar (Valheim 8 slots) -->
-  <div id="hotbar" class="hotbar-container"></div>
 
   <!-- Inventory Top Right (Hidden by request: accessible via [I] key) -->
   <div id="inventory-display" style="display: none !important;">
@@ -137,6 +253,17 @@
     </div>
   </div>
 
+  <!-- Shield Block & Parry Guard Bar -->
+  <div id="shield-block-container" class="shield-block-container" style="display: none;">
+    <div class="shield-block-header">
+      <span class="shield-block-icon">🛡️</span>
+      <span id="shield-block-text">KILVEN KESTÄVYYS: 75/75</span>
+    </div>
+    <div class="shield-block-bar-bg">
+      <div id="shield-block-bar-fill" class="shield-block-bar-fill" style="width: 100%;"></div>
+    </div>
+  </div>
+
   <!-- Damage Numbers Overlay -->
   <div id="damage-numbers"></div>
 
@@ -146,12 +273,7 @@
     <div id="game-clock-phase">☀️ Keskipäivä</div>
   </div>
 
-  <!-- Mini-map bottom right -->
-  <div id="minimap-container">
-    <canvas id="minimap" width="150" height="150"></canvas>
-    <div class="minimap-compass">N</div>
-    <button id="hud-fullscreen-btn" class="hud-fs-btn" title="Koko näyttö / Fullscreen">⛶</button>
-  </div>
+
 
   <!-- FPS Counter (Top Right) -->
   <div id="fps-counter" class="fps-counter-badge" style="display: none;">60 FPS</div>
@@ -325,11 +447,7 @@
     </div>
   </div>
 
-  <!-- ===== QUEST LOG (always visible, bottom left above HUD) ===== -->
-  <div id="quest-log">
-    <div class="quest-log-header">📋 TEHTÄVÄT</div>
-    <div id="quest-log-entries"></div>
-  </div>
+
 
   <!-- ===== NORDIC MAIN MENU ===== -->
   <div id="main-menu" class="main-menu-overlay">
@@ -338,6 +456,7 @@
       <div class="menu-brand">
         <div class="menu-rune">ᛏ ᛁ ᚲ ᚨ ᛈ ᛟ ᛟ</div>
         <h1 class="menu-title">TIKAPOO</h1>
+        <div id="menu-user-badge" class="menu-user-badge">👤 Vieras (Ei tallennettu tiliin)</div>
       </div>
 
       <div class="menu-nav">
@@ -347,8 +466,8 @@
         <button id="menu-play-btn" class="menu-btn menu-btn-primary">
           <span class="btn-text" data-i18n="menu_play">ALOITA SEIKKAILU</span>
         </button>
-        <button id="menu-load-btn" class="menu-btn">
-          <span class="btn-text" data-i18n="menu_load">📂 LATAA TALLENNUS (.JSON)</span>
+        <button id="menu-account-btn" class="menu-btn" style="background: rgba(52, 152, 219, 0.18); border-color: #3498db;">
+          <span class="btn-text">👤 KÄYTTÄJÄTILI / TALLENNUKSET</span>
         </button>
         <button id="menu-char-btn" class="menu-btn">
           <span class="btn-text" data-i18n="menu_char">LUO / MUOKKAA HAHMOA</span>
@@ -382,11 +501,26 @@
         <!-- 3D Turntable Preview -->
         <div class="char-preview-panel">
           <canvas id="char-preview-canvas" width="360" height="480"></canvas>
-          <div class="char-preview-hint" data-i18n="cc_turntable_hint">🔄 Drag with mouse to rotate character</div>
+          <div class="char-preview-controls">
+            <button id="char-btn-rot-left" class="char-tool-btn" title="Käännä vasemmalle">↺</button>
+            <button id="char-btn-random" class="char-tool-btn char-btn-rand">🎲 Satunnainen</button>
+            <button id="char-btn-rot-right" class="char-tool-btn" title="Käännä oikealle">↻</button>
+          </div>
+          <div class="char-preview-hint" data-i18n="cc_turntable_hint">🔄 Pyöritä hahmoa pyyhkäisemällä tai hiirellä</div>
         </div>
 
         <!-- Customization Controls -->
         <div class="char-options-panel">
+          <!-- Quick Presets -->
+          <div class="char-option-group">
+            <label class="char-group-label">⚔️ Valmiit arkkityypit</label>
+            <div class="char-btn-row char-btn-wrap">
+              <button class="char-preset-chip" data-char-preset="warrior">🛡️ Viikinkisoturi</button>
+              <button class="char-preset-chip" data-char-preset="ranger">🏹 Eränkävijä</button>
+              <button class="char-preset-chip" data-char-preset="shaman">🔮 Tietäjä</button>
+            </div>
+          </div>
+
           <!-- Name -->
           <div class="char-option-group">
             <label class="char-group-label" data-i18n="cc_name">Character Name</label>
@@ -698,15 +832,68 @@
       </div>
     </div>
 
+  <!-- ===== CINEMATIC RED DEATH SCREEN ===== -->
+  <div id="death-screen" class="death-screen-overlay" style="display: none;">
+    <div class="death-screen-box">
+      <div class="death-rune-symbol">☠️</div>
+      <h1 class="death-title" data-i18n="death_title">SINÄ KUOLIT</h1>
+      <p class="death-subtitle" data-i18n="death_subtitle">Pohjolan hyinen viima vei voimasi... Tavarat putosivat kuolinpaikkasi hautakivelle 🪦.</p>
+      <div class="death-actions">
+        <button id="death-respawn-btn" class="death-btn-respawn">
+          <span>⚔️ SYNNY UUDELLEEN (RESPAWN)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Account & Save Profile Modal -->
+  <div id="modal-account" class="menu-modal">
+    <div class="modal-box account-modal-box">
+      <div class="modal-header">
+        <h2>👤 KÄYTTÄJÄTILI &amp; TALLENNUKSET</h2>
+        <button class="modal-close" data-close="modal-account">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 20px;">
+        <p style="font-size: 13px; color: #bbb; margin-bottom: 16px;">
+          Luo tili tai kirjaudu sisään. Kaikki peliedistyminen (tavarat, taidot, taso ja varusteet) tallentuvat automaattisesti profiiliisi ilman tiedostojen latailua!
+        </p>
+        <div id="account-status-badge" class="menu-user-badge" style="width: 100%; justify-content: center; margin-bottom: 16px;">👤 Ei kirjautunut</div>
+
+        <div class="account-form-group">
+          <label>Käyttäjätunnus / Pelaajanimi:</label>
+          <input type="text" id="acc-username-input" class="account-input" placeholder="Esim. PohjolanSoturi" maxlength="24">
+        </div>
+
+        <div class="account-form-group">
+          <label>Salasana:</label>
+          <input type="password" id="acc-password-input" class="account-input" placeholder="Salasana..." maxlength="32">
+        </div>
+
+        <div id="account-msg-area" class="account-msg"></div>
+
+        <div class="account-btn-row">
+          <button id="acc-login-btn" class="menu-btn menu-btn-primary" style="flex: 1;">KIRJAUDU</button>
+          <button id="acc-register-btn" class="menu-btn" style="flex: 1; background: rgba(46, 204, 113, 0.25); border-color: #2ecc71;">LUO TILI</button>
+        </div>
+
+        <div style="margin-top: 14px; display: flex; gap: 8px;">
+          <button id="acc-save-now-btn" class="menu-btn" style="flex: 1; display: none; background: rgba(241, 196, 15, 0.2); border-color: #f1c40f;">💾 Tallenna nyt</button>
+          <button id="acc-logout-btn" class="menu-btn" style="flex: 1; display: none; background: rgba(231, 76, 60, 0.2); border-color: #e74c3c;">Kirjaudu ulos</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- In-game Pause Menu -->
   <div id="pause-menu" class="pause-menu-overlay">
     <div class="pause-box">
       <h2 data-i18n="pause_title">PELI PYSÄYTETTY</h2>
+      <div id="pause-user-badge" class="menu-user-badge" style="justify-content: center;">👤 Vieras</div>
       <button id="pause-resume-btn" class="menu-btn menu-btn-primary"><span class="btn-text" data-i18n="pause_resume">JATKA PELIÄ</span></button>
       <button id="pause-fullscreen-btn" class="menu-btn" style="background: rgba(241, 196, 15, 0.12); border-color: rgba(241, 196, 15, 0.4);"><span class="btn-text" data-i18n="pause_fullscreen">⛶ KOKO NÄYTTÖ (FULLSCREEN)</span></button>
       <button id="pause-restart-btn" class="menu-btn" style="background: rgba(231, 76, 60, 0.22); border-color: #e74c3c;"><span class="btn-text" data-i18n="pause_restart">🔄 ALOITA ALUSTA (RESTART)</span></button>
-      <button id="pause-save-btn" class="menu-btn" style="background: rgba(46, 204, 113, 0.2); border-color: #2ecc71;"><span class="btn-text" data-i18n="pause_save">💾 TALLENNA PELI (EXPORT)</span></button>
-      <button id="pause-load-btn" class="menu-btn"><span class="btn-text" data-i18n="pause_load">📂 LATAA TALLENNUS (IMPORT)</span></button>
+      <button id="pause-save-btn" class="menu-btn" style="background: rgba(46, 204, 113, 0.2); border-color: #2ecc71;"><span class="btn-text">💾 TALLENNA EDISTYMINEN</span></button>
+      <button id="pause-account-btn" class="menu-btn" style="background: rgba(52, 152, 219, 0.2); border-color: #3498db;"><span class="btn-text">👤 KÄYTTÄJÄTILI / TALLENNUKSET</span></button>
       <button id="pause-settings-btn" class="menu-btn"><span class="btn-text" data-i18n="pause_settings">ASETUKSET</span></button>
       <button id="pause-instructions-btn" class="menu-btn"><span class="btn-text" data-i18n="pause_instructions">OHJEET</span></button>
       <button id="pause-dev-btn" class="menu-btn menu-btn-dev"><span class="btn-text" data-i18n="pause_dev">🛠️ Dev Mode</span></button>

@@ -33,6 +33,11 @@ class LocalizationManager {
         pause_dev: '🛠️ Dev Mode',
         pause_quit: 'MAIN MENU',
 
+        // Death Screen
+        death_title: 'YOU DIED',
+        death_subtitle: 'The freezing winds of Pohjola claimed your life... Your belongings dropped onto a gravestone 🪦.',
+        death_respawn: '⚔️ RESPAWN',
+
         // Backpack Equipment Slots
         bp_slot_helmet: 'HELMET',
         bp_slot_armor: 'ARMOR',
@@ -325,6 +330,11 @@ class LocalizationManager {
         pause_instructions: 'OHJEET',
         pause_dev: '🛠️ Dev Mode',
         pause_quit: 'PÄÄVALIKKOON',
+
+        // Death Screen
+        death_title: 'SINÄ KUOLIT',
+        death_subtitle: 'Pohjolan hyinen viima vei voimasi... Tavarat putosivat kuolinpaikkasi hautakivelle 🪦.',
+        death_respawn: '⚔️ SYNNY UUDELLEEN (RESPAWN)',
 
         // Backpack Equipment Slots
         bp_slot_helmet: 'KYPÄRÄ',

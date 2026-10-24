@@ -15,27 +15,40 @@ const BIOME_ENEMIES = {
       type: 'meadow_boar',
       name: 'Villikarju (Wild Boar)',
       skeletonModel: null,
-      maxHealth: 35,
-      damage: 7,
+      maxHealth: 40,
+      damage: 8,
       scale: 0.85,
       color: 0x5a3e28,
       eyeColor: 0x884422,
       weapon: null,
-      speed: 2.2,
-      drops: { meat: 2, leather: 1 }
+      speed: 2.3,
+      drops: { meat: 2, leather: 2 }
     },
     {
       type: 'meadow_greyling',
       name: 'Luunoutaja (Skeleton Minion)',
       skeletonModel: 'Skeleton_Minion',
-      maxHealth: 45,
-      damage: 9,
+      maxHealth: 50,
+      damage: 10,
       scale: 0.95,
       color: 0xcccccc,
       eyeColor: 0xf1c40f,
       weapon: 'Skeleton_Blade',
-      speed: 2.2,
-      drops: { wood: 2, resin: 2, bone: 2, stone: 1 }
+      speed: 2.3,
+      drops: { wood: 3, resin: 2, bone: 2, stone: 2 }
+    },
+    {
+      type: 'meadow_wolf',
+      name: 'Nuori Metsäsusi (Timber Wolf)',
+      skeletonModel: null,
+      maxHealth: 65,
+      damage: 14,
+      scale: 0.95,
+      color: 0x7f8c8d,
+      eyeColor: 0xe67e22,
+      weapon: null,
+      speed: 3.8,
+      drops: { wolfPelt: 1, meat: 2, bone: 2 }
     }
   ],
   blackForest: [
@@ -43,28 +56,54 @@ const BIOME_ENEMIES = {
       type: 'forest_greydwarf',
       name: 'Mustametsän Luusoturi (Skeleton Warrior)',
       skeletonModel: 'Skeleton_Warrior',
-      maxHealth: 90,
-      damage: 16,
+      maxHealth: 105,
+      damage: 18,
       scale: 1.05,
       color: 0x3d434d,
       eyeColor: 0xe67e22,
       weapon: 'Skeleton_Blade',
       shield: 'Skeleton_Shield_Large_A',
       speed: 2.5,
-      drops: { wood: 3, resin: 2, copperOre: 1, bone: 3 }
+      drops: { wood: 4, resin: 3, copperOre: 2, bone: 3 }
     },
     {
       type: 'forest_shaman',
       name: 'Varjoluuranko Nekromantikko (Skeleton Mage)',
       skeletonModel: 'Skeleton_Mage',
-      maxHealth: 80,
-      damage: 20,
+      maxHealth: 90,
+      damage: 22,
       scale: 1.0,
       color: 0x223326,
       eyeColor: 0x2ecc71,
       weapon: 'Skeleton_Staff',
-      speed: 2.3,
-      drops: { bone: 3, resin: 3, bronze: 1 }
+      speed: 2.4,
+      drops: { bone: 4, resin: 3, bronze: 1 }
+    },
+    {
+      type: 'forest_archer',
+      name: 'Metsän Luurankojousimies (Skeleton Crossbowman)',
+      skeletonModel: 'Skeleton_Rogue',
+      maxHealth: 85,
+      damage: 20,
+      scale: 1.0,
+      color: 0x4b6584,
+      eyeColor: 0x00d2d3,
+      weapon: 'Skeleton_Crossbow',
+      speed: 2.6,
+      drops: { arrows: 8, bone: 3, wood: 4 }
+    },
+    {
+      type: 'forest_brute',
+      name: 'Mustametsän Murskaaja (Forest Brute)',
+      skeletonModel: 'Skeleton_Warrior',
+      maxHealth: 160,
+      damage: 26,
+      scale: 1.3,
+      color: 0x2c3e50,
+      eyeColor: 0xff4757,
+      weapon: 'Skeleton_Axe',
+      speed: 2.1,
+      drops: { tinOre: 2, copperOre: 2, bone: 5, stone: 6 }
     }
   ],
   swamp: [
@@ -72,28 +111,54 @@ const BIOME_ENEMIES = {
       type: 'swamp_draugr',
       name: 'Suon Kiroussoturi Draugr (Draugr Skeleton)',
       skeletonModel: 'Skeleton_Warrior',
-      maxHealth: 160,
-      damage: 28,
+      maxHealth: 180,
+      damage: 30,
       scale: 1.15,
       color: 0x203628,
       eyeColor: 0x00cec9,
       weapon: 'Skeleton_Axe',
       shield: 'Skeleton_Shield_Small_A',
-      speed: 2.5,
-      drops: { ironOre: 2, bone: 4, leather: 2 }
+      speed: 2.6,
+      drops: { ironOre: 2, bone: 4, leather: 3 }
     },
     {
       type: 'swamp_slime',
       name: 'Myrkkylieju (Poison Slime)',
       skeletonModel: null,
-      maxHealth: 110,
-      damage: 22,
-      scale: 0.9,
+      maxHealth: 130,
+      damage: 24,
+      scale: 0.95,
       color: 0x10ac84,
       eyeColor: 0x1dd1a1,
       weapon: null,
-      speed: 1.8,
-      drops: { slime: 2, ironOre: 1 }
+      speed: 1.9,
+      drops: { slime: 3, ironOre: 1 }
+    },
+    {
+      type: 'swamp_archer',
+      name: 'Suon Draugr Jousiampuja (Draugr Crossbow)',
+      skeletonModel: 'Skeleton_Rogue',
+      maxHealth: 150,
+      damage: 28,
+      scale: 1.1,
+      color: 0x1b4332,
+      eyeColor: 0x2ecc71,
+      weapon: 'Skeleton_Crossbow',
+      speed: 2.7,
+      drops: { ironOre: 2, bone: 4, arrows: 10 }
+    },
+    {
+      type: 'swamp_abomination',
+      name: 'Mätäsuon Hirviö (Bog Creeper)',
+      skeletonModel: 'Skeleton_Warrior',
+      maxHealth: 260,
+      damage: 38,
+      scale: 1.35,
+      color: 0x0f241a,
+      eyeColor: 0x2ed573,
+      weapon: 'Skeleton_Axe',
+      speed: 2.2,
+      drops: { ironOre: 4, slime: 4, bone: 6 }
     }
   ],
   mountain: [
@@ -101,28 +166,54 @@ const BIOME_ENEMIES = {
       type: 'mountain_wolf',
       name: 'Tunturisusi (Frost Wolf)',
       skeletonModel: null,
-      maxHealth: 180,
-      damage: 34,
-      scale: 1.1,
+      maxHealth: 210,
+      damage: 36,
+      scale: 1.15,
       color: 0xdfe6e9,
       eyeColor: 0x74b9ff,
       weapon: null,
-      speed: 4.2,
-      drops: { wolfPelt: 2, fang: 3, silverOre: 1 }
+      speed: 4.3,
+      drops: { wolfPelt: 3, fang: 3, silverOre: 1 }
+    },
+    {
+      type: 'mountain_drake',
+      name: 'Jäädraakki (Frost Drake)',
+      skeletonModel: 'Skeleton_Rogue',
+      maxHealth: 230,
+      damage: 42,
+      scale: 1.2,
+      color: 0xa4b0be,
+      eyeColor: 0x00d2d3,
+      weapon: 'Skeleton_Crossbow',
+      speed: 3.2,
+      drops: { silverOre: 2, bone: 4 }
     },
     {
       type: 'mountain_golem',
       name: 'Jääharjanteen Luujätti (Frost Skeleton Brute)',
       skeletonModel: 'Skeleton_Warrior',
-      maxHealth: 340,
-      damage: 48,
-      scale: 1.45,
+      maxHealth: 380,
+      damage: 50,
+      scale: 1.5,
       color: 0x747d8c,
       eyeColor: 0x70a1ff,
       weapon: 'Skeleton_Blade',
       shield: 'Skeleton_Shield_Large_A',
-      speed: 2.2,
-      drops: { stone: 15, silverOre: 2, bone: 5 }
+      speed: 2.3,
+      drops: { stone: 18, silverOre: 3, bone: 6 }
+    },
+    {
+      type: 'mountain_berserker',
+      name: 'Tunturin Hurjapää (Mountain Berserker)',
+      skeletonModel: 'Skeleton_Warrior',
+      maxHealth: 320,
+      damage: 46,
+      scale: 1.3,
+      color: 0x57606f,
+      eyeColor: 0x3867d6,
+      weapon: 'Skeleton_Axe',
+      speed: 2.8,
+      drops: { silverOre: 3, wolfPelt: 2, bone: 5 }
     }
   ],
   runePlains: [
@@ -130,27 +221,41 @@ const BIOME_ENEMIES = {
       type: 'plains_berserker',
       name: 'Riimuluuranko Salamurhaaja (Skeleton Rogue)',
       skeletonModel: 'Skeleton_Rogue',
-      maxHealth: 380,
-      damage: 54,
+      maxHealth: 420,
+      damage: 56,
       scale: 1.25,
       color: 0x1e272e,
       eyeColor: 0x00d2d3,
       weapon: 'Skeleton_Blade',
-      speed: 3.0,
-      drops: { blackMetalScrap: 2, bone: 4 }
+      speed: 3.2,
+      drops: { blackMetalScrap: 3, bone: 5 }
     },
     {
       type: 'plains_wraith',
       name: 'Riimumestari Luumaagi (Ancient Lich Mage)',
       skeletonModel: 'Skeleton_Mage',
-      maxHealth: 300,
-      damage: 48,
+      maxHealth: 340,
+      damage: 52,
       scale: 1.2,
       color: 0x3d1c47,
       eyeColor: 0x9b59b6,
       weapon: 'Skeleton_Staff',
       speed: 3.1,
-      drops: { blackMetalScrap: 2, shadow_essence: 2, bone: 4 }
+      drops: { blackMetalScrap: 3, shadow_essence: 3, bone: 5 }
+    },
+    {
+      type: 'plains_sentinel',
+      name: 'Arkaaninen Riimuritarivartija (Rune Knight Sentinel)',
+      skeletonModel: 'Skeleton_Warrior',
+      maxHealth: 480,
+      damage: 62,
+      scale: 1.35,
+      color: 0x2c1f3d,
+      eyeColor: 0x8854d0,
+      weapon: 'Skeleton_Blade',
+      shield: 'Skeleton_Shield_Large_A',
+      speed: 2.8,
+      drops: { blackMetalScrap: 4, artisanCore: 1, bone: 6 }
     }
   ],
   ashlands: [
@@ -158,28 +263,41 @@ const BIOME_ENEMIES = {
       type: 'ash_demon',
       name: 'Sysiluun Sotapäällikkö (Ash Skeleton Warrior)',
       skeletonModel: 'Skeleton_Warrior',
-      maxHealth: 540,
-      damage: 66,
+      maxHealth: 580,
+      damage: 70,
       scale: 1.35,
       color: 0x1c0b0b,
       eyeColor: 0xff4757,
       weapon: 'Skeleton_Blade',
       shield: 'Skeleton_Shield_Large_A',
-      speed: 2.9,
-      drops: { flametalOre: 2, coal: 4, bone: 5 }
+      speed: 3.0,
+      drops: { flametalOre: 3, coal: 5, bone: 6 }
     },
     {
       type: 'ash_dragonkin',
       name: 'Sysiluun Varjo (Ash Skeleton Rogue)',
       skeletonModel: 'Skeleton_Rogue',
-      maxHealth: 620,
-      damage: 72,
+      maxHealth: 660,
+      damage: 76,
       scale: 1.4,
       color: 0x2f1414,
       eyeColor: 0xff6b81,
       weapon: 'Skeleton_Axe',
-      speed: 3.3,
-      drops: { flametalOre: 3, dragonSteel: 1, shadow_essence: 3, bone: 5 }
+      speed: 3.4,
+      drops: { flametalOre: 4, dragonSteel: 2, shadow_essence: 4, bone: 6 }
+    },
+    {
+      type: 'ash_drake',
+      name: 'Hornan Tulielementaali (Infernal Fiend)',
+      skeletonModel: 'Skeleton_Mage',
+      maxHealth: 520,
+      damage: 68,
+      scale: 1.3,
+      color: 0x3a0d0d,
+      eyeColor: 0xff3838,
+      weapon: 'Skeleton_Staff',
+      speed: 3.2,
+      drops: { flametalOre: 3, dragonCrown: 1, coal: 6 }
     }
   ]
 };
@@ -194,13 +312,22 @@ export default class EnemyManager {
     this.questManager = questManager;
     this.assetLoader = assetLoader || null;
     this.lootManager = lootManager || null;
+    this.ragdollManager = null;
 
     this.enemies = [];
-    this.maxEnemies = 42;
+    const isMobileDevice = (typeof window !== 'undefined') && (
+      window.innerWidth <= 900 ||
+      ('ontouchstart' in window) ||
+      (navigator && navigator.maxTouchPoints > 0)
+    );
+    this.isMobile = isMobileDevice;
+    this.maxEnemies = isMobileDevice ? 15 : 36;
     this.spawnRadiusMin = 22;
-    this.spawnRadiusMax = 95;
+    this.spawnRadiusMax = isMobileDevice ? 65 : 95;
+    this.spawnTimer = 0;
 
     this.particles = [];
+    this.lingeringCorpses = [];
 
     // Pre-populate each biome with patrolling enemies on startup
     setTimeout(() => {
@@ -209,28 +336,31 @@ export default class EnemyManager {
   }
 
   spawnInitialBiomeEnemies() {
-    // 1. Black Forest (6 enemies)
-    for (let i = 0; i < 6; i++) {
+    const countPerBiome = this.isMobile ? 2 : 5;
+    // 1. Black Forest
+    for (let i = 0; i < countPerBiome; i++) {
       this.spawnAt(-85 - Math.random() * 45, -85 - Math.random() * 45, 'blackForest');
     }
-    // 2. Swamp (6 enemies)
-    for (let i = 0; i < 6; i++) {
+    // 2. Swamp
+    for (let i = 0; i < countPerBiome; i++) {
       this.spawnAt(-100 - Math.random() * 45, 95 + Math.random() * 45, 'swamp');
     }
-    // 3. Mountain (6 enemies)
-    for (let i = 0; i < 6; i++) {
+    // 3. Mountain
+    for (let i = 0; i < countPerBiome; i++) {
       this.spawnAt(100 + Math.random() * 45, -100 - Math.random() * 45, 'mountain');
     }
-    // 4. Rune Plains (6 enemies)
-    for (let i = 0; i < 6; i++) {
+    // 4. Rune Plains
+    for (let i = 0; i < countPerBiome; i++) {
       this.spawnAt(125 + Math.random() * 45, (Math.random() - 0.5) * 60, 'runePlains');
     }
-    // 5. Ashlands (6 enemies)
-    for (let i = 0; i < 6; i++) {
+    // 5. Ashlands
+    for (let i = 0; i < countPerBiome; i++) {
       this.spawnAt((Math.random() - 0.5) * 70, 185 + Math.random() * 55, 'ashlands');
     }
-    // 6. Meadows (8 roaming creatures across valley and hills)
-    const meadowSpawns = [
+    // 6. Meadows (peaceful starter creatures)
+    const meadowSpawns = this.isMobile ? [
+      { x: -32, z: 22 }, { x: 28, z: -25 }, { x: 38, z: 35 }
+    ] : [
       { x: -32, z: 22 }, { x: 28, z: -25 }, { x: -45, z: -32 }, { x: 38, z: 35 },
       { x: -28, z: 52 }, { x: 50, z: -42 }, { x: -55, z: 38 }, { x: 45, z: -15 }
     ];
@@ -277,7 +407,8 @@ export default class EnemyManager {
       animTimer: Math.random() * 10,
       isAlive: true,
       hasBeenHit: false,
-      isBossMinion: false
+      isBossMinion: false,
+      isRigMedium: !!blueprint.skeletonModel
     };
 
     if (actions['Zombie_Idle_Loop']) {
@@ -304,8 +435,42 @@ export default class EnemyManager {
       enemy.currentAction = newAction;
     };
 
+    enemy.isStaggered = false;
+    enemy.staggerTimer = 0;
+    enemy.damageMultiplier = 1.0;
+
+    enemy.stagger = (duration = 2.0, damageMult = 2.0) => {
+      if (!enemy.isAlive) return;
+      enemy.isStaggered = true;
+      enemy.staggerTimer = duration;
+      enemy.damageMultiplier = damageMult;
+      enemy.state = 'staggered';
+      enemy.cooldownTimer = duration + 0.6;
+
+      enemy.playAnim('Hit_Knockback', false);
+      if (enemy.mesh) {
+        enemy.mesh.rotation.x -= 0.35;
+      }
+
+      if (enemy.flashMaterials) {
+        enemy.flashMaterials.forEach(m => {
+          if (m.color) m.color.setHex(0xf1c40f);
+        });
+        setTimeout(() => {
+          if (enemy.flashMaterials) {
+            enemy.flashMaterials.forEach((m, idx) => {
+              if (m.color && enemy.originalColors[idx]) m.color.copy(enemy.originalColors[idx]);
+            });
+          }
+        }, 500);
+      }
+    };
+
     enemy.takeDamage = (amount) => {
       if (!enemy.isAlive) return;
+      if (enemy.isStaggered) {
+        amount = Math.round(amount * (enemy.damageMultiplier || 2.0));
+      }
       enemy.health -= amount;
       enemy.hasBeenHit = true;
       enemy.state = 'chase';
@@ -586,8 +751,26 @@ export default class EnemyManager {
         enemy.currentAction = newAction;
       },
 
+      isStaggered: false,
+      staggerTimer: 0,
+      damageMultiplier: 1.0,
+
+      stagger: (duration = 2.0, damageMult = 2.0) => {
+        if (!enemy.isAlive) return;
+        enemy.isStaggered = true;
+        enemy.staggerTimer = duration;
+        enemy.damageMultiplier = damageMult;
+        enemy.state = 'staggered';
+        enemy.cooldownTimer = duration + 0.6;
+        enemy.playAnim('Hit_Knockback', false);
+        if (enemy.mesh) enemy.mesh.rotation.x -= 0.35;
+      },
+
       takeDamage: (amount) => {
         if (!enemy.isAlive) return;
+        if (enemy.isStaggered) {
+          amount = Math.round(amount * (enemy.damageMultiplier || 2.0));
+        }
         enemy.health -= amount;
         enemy.hasBeenHit = true;
         enemy.state = 'chase';
@@ -643,17 +826,27 @@ export default class EnemyManager {
 
     this.enemies = this.enemies.filter(e => e.isAlive);
 
-    // Spawn replacements actively across world
-    if (this.enemies.length < targetCount && Math.random() < 0.16) {
+    // Spawn replacements actively across world with throttled timer
+    this.spawnTimer = (this.spawnTimer || 0) - delta;
+    if (this.enemies.length < targetCount && this.spawnTimer <= 0) {
+      this.spawnTimer = this.isMobile ? 3.5 : 2.0;
       this.spawnEnemy(playerPos, dayNight);
     }
 
     const currentSpeed = isNight ? 2.8 : 2.2;
     const aggroRadius = isNight ? 15 : 10;
     const attackRadius = 2.4;
+    const cullingDistance = this.isMobile ? 65 : 110;
 
     for (const enemy of this.enemies) {
       if (!enemy.isAlive) continue;
+
+      const distToPlayer = enemy.mesh.position.distanceTo(playerPos);
+
+      // Distance culling: Skip updating animations/mixers if beyond visual range on mobile
+      if (distToPlayer > cullingDistance) {
+        continue;
+      }
 
       enemy.animTimer += delta;
       if (enemy.cooldownTimer > 0) {
@@ -669,7 +862,18 @@ export default class EnemyManager {
         enemy.hpGroup.quaternion.copy(enemy.mesh.quaternion).invert().multiply(camera.quaternion);
       }
 
-      const distToPlayer = enemy.mesh.position.distanceTo(playerPos);
+      // Check Stagger state from Player Shield Parry
+      if (enemy.isStaggered) {
+        enemy.staggerTimer -= delta;
+        if (enemy.staggerTimer <= 0) {
+          enemy.isStaggered = false;
+          enemy.damageMultiplier = 1.0;
+          if (enemy.mesh) enemy.mesh.rotation.x = 0;
+          enemy.state = 'chase';
+        }
+        continue; // Incapacitated by parry stagger!
+      }
+
       const isHostileBiome = enemy.biome !== 'meadows';
       // Biome enemies (Greydwarf, Draugr, Wolf, Berserker, Drake) are territorial and actively aggro!
       const shouldAggro = (distToPlayer <= aggroRadius && (isHostileBiome || isNight)) ||
@@ -680,12 +884,12 @@ export default class EnemyManager {
       if (shouldAggro) {
         if (enemy.state !== 'chase') {
           enemy.state = 'chase';
-          enemy.playAnim('Zombie_Walk_Fwd_Loop');
+          enemy.playAnim('Walking_A');
         }
       } else if (distToPlayer > aggroRadius * 1.5) {
         if (enemy.state !== 'idle') {
           enemy.state = 'idle';
-          enemy.playAnim('Zombie_Idle_Loop');
+          enemy.playAnim('Idle_A');
         }
       }
 
@@ -699,11 +903,24 @@ export default class EnemyManager {
 
           if (distToPlayer > attackRadius * 0.8) {
             enemy.mesh.position.addScaledVector(dir, currentSpeed * delta);
+            enemy.playAnim('Walking_A');
+          } else {
+            if (enemy.cooldownTimer > 0) {
+              enemy.playAnim('Idle_A');
+            }
           }
         }
 
         const baseGround = this.world ? this.world.getGroundHeight(enemy.mesh.position.x, enemy.mesh.position.z) : 0;
-        enemy.mesh.position.y = baseGround;
+        const isMoving = distToPlayer > attackRadius * 0.8;
+        const stepBob = isMoving ? Math.abs(Math.sin(enemy.animTimer * 8.5)) * 0.05 : 0;
+        enemy.mesh.position.y = baseGround + stepBob;
+
+        // Procedural animal gait bob & sway for mobs without skinned bones
+        if (!enemy.mixer) {
+          enemy.mesh.rotation.z = isMoving ? Math.sin(enemy.animTimer * 10) * 0.08 : 0;
+          enemy.mesh.position.y = baseGround + (isMoving ? Math.abs(Math.sin(enemy.animTimer * 10)) * 0.12 : 0);
+        }
 
         // Attack when in range
         if (distToPlayer <= attackRadius && enemy.cooldownTimer <= 0) {
@@ -743,8 +960,7 @@ export default class EnemyManager {
 
           setTimeout(() => {
             if (enemy.isAlive && enemy.state === 'chase') {
-              const walkAnim = enemy.isRigMedium ? 'Walking_A' : 'Zombie_Walk_Fwd_Loop';
-              enemy.playAnim(walkAnim);
+              enemy.playAnim('Walking_A');
             }
           }, 550);
         }
@@ -760,31 +976,94 @@ export default class EnemyManager {
 
         const wanderDir = new THREE.Vector3().subVectors(enemy.wanderTarget, enemy.mesh.position);
         wanderDir.y = 0;
-        if (wanderDir.length() > 0.5) {
+        const isWandering = wanderDir.length() > 0.5;
+
+        if (isWandering) {
           wanderDir.normalize();
           enemy.mesh.lookAt(enemy.wanderTarget.x, enemy.mesh.position.y, enemy.wanderTarget.z);
           enemy.mesh.position.addScaledVector(wanderDir, 1.3 * delta);
+          enemy.playAnim('Walking_A');
+        } else {
+          enemy.playAnim('Idle_A');
         }
 
         const baseGround = this.world ? this.world.getGroundHeight(enemy.mesh.position.x, enemy.mesh.position.z) : 0;
-        enemy.mesh.position.y = baseGround;
+        const stepBob = isWandering ? Math.abs(Math.sin(enemy.animTimer * 8.5)) * 0.04 : 0;
+        enemy.mesh.position.y = baseGround + stepBob;
+
+        if (!enemy.mixer) {
+          enemy.mesh.rotation.z = isWandering ? Math.sin(enemy.animTimer * 8) * 0.06 : 0;
+          enemy.mesh.position.y = baseGround + (isWandering ? Math.abs(Math.sin(enemy.animTimer * 8)) * 0.08 : 0);
+        }
+      }
+    }
+
+    // Update lingering death corpses
+    for (let i = this.lingeringCorpses.length - 1; i >= 0; i--) {
+      const corpse = this.lingeringCorpses[i];
+      corpse.timer += delta;
+      if (corpse.mixer) {
+        corpse.mixer.update(delta);
+      }
+      if (corpse.timer >= corpse.maxLife - corpse.fadeDuration) {
+        const remaining = corpse.maxLife - corpse.timer;
+        const progress = Math.max(0, Math.min(1, remaining / corpse.fadeDuration));
+        corpse.mesh.position.y -= delta * 0.05; // slowly sink into the earth
+        corpse.mesh.traverse((child) => {
+          if (child.isMesh && child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach(m => m.opacity = progress);
+            } else {
+              child.material.opacity = progress;
+            }
+          }
+        });
+      }
+      if (corpse.timer >= corpse.maxLife) {
+        this.scene.remove(corpse.mesh);
+        this.lingeringCorpses.splice(i, 1);
       }
     }
 
     this.updateParticles(delta);
   }
 
-  killEnemy(enemy, isNight = false) {
+  killEnemy(enemy, isNight = false, hitDir = null) {
     if (!enemy.isAlive) return;
     enemy.isAlive = false;
 
+    // Realistic death animation & limp collapse to ground
     if (enemy.playAnim) {
       enemy.playAnim('Death_A', false);
-    }
-
-    setTimeout(() => {
+      if (enemy.currentAction) {
+        enemy.currentAction.clampWhenFinished = true;
+        enemy.currentAction.loop = THREE.LoopOnce;
+      }
+      // Clone materials so dissolve fade does not affect living characters
+      enemy.mesh.traverse((child) => {
+        if (child.isMesh && child.material) {
+          child.material = Array.isArray(child.material)
+            ? child.material.map(m => m.clone())
+            : child.material.clone();
+          child.material.transparent = true;
+        }
+      });
+      this.lingeringCorpses.push({
+        mesh: enemy.mesh,
+        mixer: enemy.mesh.userData.charMixer || enemy.mixer || null,
+        timer: 0,
+        maxLife: 13.0, // stays limp on the ground for 13s
+        fadeDuration: 3.5
+      });
+    } else if (this.ragdollManager && enemy.mesh) {
+      const dir = hitDir || (enemy.lastHitDir ? enemy.lastHitDir : new THREE.Vector3((Math.random() - 0.5), 0, (Math.random() - 0.5)));
+      this.ragdollManager.spawnRagdoll(enemy.mesh, dir, 0.9, false);
       this.scene.remove(enemy.mesh);
-    }, 650);
+    } else {
+      setTimeout(() => {
+        if (enemy.mesh) this.scene.remove(enemy.mesh);
+      }, 5000);
+    }
 
     this.spawnDeathParticles(enemy.mesh.position);
 
@@ -814,11 +1093,14 @@ export default class EnemyManager {
   }
 
   spawnDeathParticles(pos) {
-    const pGeo = new THREE.BoxGeometry(0.18, 0.18, 0.18);
-    const pMat = new THREE.MeshBasicMaterial({ color: 0x9b59b6 });
+    if (!this._sharedParticleGeo) {
+      this._sharedParticleGeo = new THREE.BoxGeometry(0.18, 0.18, 0.18);
+      this._sharedParticleMat = new THREE.MeshBasicMaterial({ color: 0x9b59b6 });
+    }
 
-    for (let i = 0; i < 22; i++) {
-      const mesh = new THREE.Mesh(pGeo, pMat);
+    const count = this.isMobile ? 10 : 20;
+    for (let i = 0; i < count; i++) {
+      const mesh = new THREE.Mesh(this._sharedParticleGeo, this._sharedParticleMat);
       mesh.position.copy(pos);
       mesh.position.y += 0.7;
 
