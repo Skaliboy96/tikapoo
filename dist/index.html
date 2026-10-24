@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>Survival RPG - 3D Browser RPG</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=MedievalSharp&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="/assets/index-DXVp1nql.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DhMXYEGt.css">
+</head>
+<body>
+  <!-- Canvas container / WebGL rendering context -->
+  <div id="game-container"></div>
+
+  <!-- Red Flash on Damage -->
+  <div id="flash-overlay"></div>
+
+  <!-- Reticle / Crosshair -->
+  <div id="crosshair">+</div>
+
+  <!-- Interaction Tooltip -->
+  <div id="tooltip"></div>
+
+  <!-- Epic Boss Health Bar (Top Center) -->
+  <div id="boss-hud" class="boss-hud-container">
+    <div class="boss-hud-header">
+      <span id="boss-hud-name" class="boss-hud-name">Metsän Kauhu – Sarvipeto</span>
+      <span id="boss-hud-biome" class="boss-hud-biome">AARNIOMETSÄ</span>
+    </div>
+    <div class="boss-hud-bar-bg">
+      <div id="boss-hud-bar-fill" class="boss-hud-bar-fill"></div>
+    </div>
+    <div class="boss-hud-subtext">
+      <span id="boss-hud-phase" class="boss-hud-phase">Vaihe 1</span>
+      <span id="boss-hud-hp-val" class="boss-hud-hp-val">1200 / 1200</span>
+    </div>
+  </div>
+
+  <!-- Top Center System Notifications -->
+  <div id="notification"></div>
+
+  <!-- Player HUD: Health, Stamina, Hunger, Mana, Level (Sleek Horizontal Bar) -->
+  <div id="hud" class="hud-horizontal">
+    <!-- Level & Rested Buff Header -->
+    <div class="hud-top-meta">
+      <div class="hud-level-badge">
+        <span id="player-level-badge" data-i18n="hud_level">🏆 Taso 1</span>
+        <div class="hud-xp-bar-bg">
+          <div id="xp-fill" class="hud-xp-fill" style="width: 0%"></div>
+        </div>
+        <span id="xp-val" class="hud-xp-val">0/100 XP</span>
+      </div>
+      <div id="rested-buff-badge" class="rested-badge" style="display: none;">
+        🛋️ <span data-i18n="hud_rested">Levännyt</span> <span id="rested-timer-val">05:00</span>
+      </div>
+      <div id="hud-biome-tag" class="hud-biome-badge">AARNIOMETSÄ</div>
+    </div>
+
+    <!-- Horizontal Status Bars Cluster -->
+    <div class="hud-bars-row">
+      <!-- 1. Health Bar -->
+      <div class="bar-container">
+        <div class="bar-label">
+          <span data-i18n="hud_health">❤️ TERVEYS</span>
+          <span id="health-val">100/100</span>
+        </div>
+        <div class="bar">
+          <div id="health-fill" class="bar-fill health"></div>
+        </div>
+      </div>
+
+      <!-- 2. Stamina Bar -->
+      <div class="bar-container">
+        <div class="bar-label">
+          <span data-i18n="hud_stamina">⚡ KESTÄVYYS</span>
+          <span id="stamina-val">100/100</span>
+        </div>
+        <div class="bar">
+          <div id="stamina-fill" class="bar-fill stamina"></div>
+        </div>
+      </div>
+
+      <!-- 3. Hunger Bar -->
+      <div class="bar-container">
+        <div class="bar-label">
+          <span data-i18n="hud_hunger">🍖 NÄLKÄ</span>
+          <span id="hunger-val">100/100</span>
+        </div>
+        <div class="bar">
+          <div id="hunger-fill" class="bar-fill hunger"></div>
+        </div>
+      </div>
+
+      <!-- 4. Mana Bar -->
+      <div class="bar-container">
+        <div class="bar-label">
+          <span data-i18n="hud_mana">🔮 MANA</span>
+          <span id="mana-val">100/100</span>
+        </div>
+        <div class="bar">
+          <div id="mana-fill" class="bar-fill mana"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick action buttons -->
+    <div class="hud-buttons-row">
+      <button id="open-craft-btn" class="hud-btn hud-btn-craft"><span data-i18n="btn_craft">⚒️ VALMISTA [C]</span></button>
+      <button id="open-build-btn" class="hud-btn hud-btn-build"><span data-i18n="btn_build">🔨 RAKENNA [B]</span></button>
+      <button id="open-backpack-btn" class="hud-btn hud-btn-bp"><span data-i18n="btn_backpack">🎒 TAVARAT [I]</span></button>
+      <button id="open-skills-btn" class="hud-btn hud-btn-skills"><span data-i18n="btn_skills">⭐ TAIDOT [O]</span></button>
+      <button id="open-map-btn" class="hud-btn hud-btn-map"><span data-i18n="btn_map">🗺️ KARTTA [M]</span></button>
+    </div>
+  </div>
+
+  <!-- Action Bar / Hotbar (Valheim 8 slots) -->
+  <div id="hotbar" class="hotbar-container"></div>
+
+  <!-- Inventory Top Right (Hidden by request: accessible via [I] key) -->
+  <div id="inventory-display" style="display: none !important;">
+    <div class="inv-header">INVENTORY</div>
+    <div id="inventory-items"></div>
+    <div id="equipped-tool" class="equipped-slot">Equipped: Bare Hands</div>
+  </div>
+
+  <!-- Harvest Progress Bar (appears when holding LMB on node) -->
+  <div id="harvest-progress-container">
+    <div id="harvest-label">Harvesting...</div>
+    <div class="harvest-bar">
+      <div id="harvest-fill"></div>
+    </div>
+  </div>
+
+  <!-- Damage Numbers Overlay -->
+  <div id="damage-numbers"></div>
+
+  <!-- In-Game Digital Clock HUD -->
+  <div id="game-clock-container">
+    <div id="game-clock-time">Klo 09:30</div>
+    <div id="game-clock-phase">☀️ Keskipäivä</div>
+  </div>
+
+  <!-- Mini-map bottom right -->
+  <div id="minimap-container">
+    <canvas id="minimap" width="150" height="150"></canvas>
+    <div class="minimap-compass">N</div>
+  </div>
+
+  <!-- FPS Counter (Top Right) -->
+  <div id="fps-counter" class="fps-counter-badge" style="display: none;">60 FPS</div>
+
+  <!-- Crafting Menu Modal -->
+  <div id="crafting-menu">
+    <div class="crafting-modal">
+      <div class="crafting-header">
+        <h2 id="crafting-header-title">CRAFTING &amp; SURVIVAL</h2>
+        <button id="close-crafting-btn" class="close-btn">&times;</button>
+      </div>
+      <div class="crafting-body">
+        <div id="crafting-tabs-container" class="crafting-tabs"></div>
+        <div id="recipe-list" class="recipe-grid"></div>
+      </div>
+      <div class="crafting-footer">
+        <small id="crafting-footer-hint">Press [C] or [ESC] to return to game</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MAP SCREEN (M key) ===== -->
+  <div id="map-screen">
+    <div class="map-modal">
+      <div class="map-header">
+        <span class="map-title">🗺️ KARTTA</span>
+        <div class="map-header-right">
+          <span class="map-hint">[M] tai [ESC] sulkee</span>
+          <button id="map-close-btn" class="close-btn">✕</button>
+        </div>
+      </div>
+      <div class="map-body">
+        <div class="map-canvas-container">
+          <canvas id="map-canvas" width="600" height="600"></canvas>
+          <div class="map-zoom-controls">
+            <button id="map-zoom-in-btn" class="map-zoom-btn" title="Lähennä / Zoom In">+</button>
+            <button id="map-zoom-out-btn" class="map-zoom-btn" title="Loitonna / Zoom Out">−</button>
+            <button id="map-zoom-reset-btn" class="map-zoom-btn" title="Keskitä / Reset">⊙</button>
+          </div>
+          <div class="map-zoom-hint">🔍 Rullaa hiirtä zoomataksesi, raahaa siirtääksesi karttaa</div>
+        </div>
+        <div class="map-sidebar">
+          <div class="map-sidebar-title">SELITE</div>
+          <div id="map-legend"></div>
+          <div class="map-sidebar-title" style="margin-top:16px;">SIJAINTI</div>
+          <div id="map-coords" class="map-coords">X: 0 &nbsp; Z: 0</div>
+          <div class="map-sidebar-title" style="margin-top:16px;">AKTIIVISET TEHTÄVÄT</div>
+          <div id="map-quests"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== BACKPACK / INVENTORY SCREEN (I key) ===== -->
+  <div id="backpack-screen">
+    <div class="backpack-modal">
+      <div class="backpack-header">
+        <span class="backpack-title">🎒 TAVARALUETTELO &amp; VARUSTEET [I]</span>
+        <div class="backpack-header-right">
+          <span class="map-hint">[I] tai [ESC] sulkee</span>
+          <button id="backpack-close-btn" class="close-btn">✕</button>
+        </div>
+      </div>
+      <div class="backpack-body">
+        <!-- Left: character equipment & vitals -->
+        <div class="backpack-char-panel">
+          <div class="backpack-char-title">🛡️ VARUSTEET &amp; OMINAISUUDET</div>
+          <div id="bp-equipment" class="bp-equipment-grid"></div>
+          <div class="bp-stats-card">
+            <div class="bp-stat-row"><span>⚔️ Hyökkäysvoima:</span><span id="bp-stat-atk">15 DMG</span></div>
+            <div class="bp-stat-row"><span>🛡️ Suojaus:</span><span id="bp-stat-def">0%</span></div>
+            <div class="bp-stat-row"><span>❤️ Terveys:</span><span id="bp-stat-hp">100/100</span></div>
+            <div class="bp-stat-row"><span>🍗 Nälkä:</span><span id="bp-stat-hunger">100/100</span></div>
+            <div class="bp-stat-row"><span>⚖️ Paino:</span><span id="bp-stat-weight">18 / 300 kg</span></div>
+          </div>
+        </div>
+        <!-- Right: items -->
+        <div class="backpack-items-panel">
+          <div class="bp-section-title">🎒 TAVARAT (24 PAIKKAA)</div>
+          <div id="bp-items-grid" class="bp-items-grid"></div>
+          <div class="bp-hints">
+            <span>[1-8] Pikapalkin valinnat</span>
+            <span>[V] Kamera (1st/3rd person)</span>
+            <span>[C/TAB] Valmistus</span>
+            <span>[B] Reppu</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== NPC DIALOGUE ===== -->
+  <div id="npc-dialogue">
+    <div class="npc-dialogue-modal">
+      <div class="npc-dialogue-header">
+        <span class="npc-portrait">👤</span>
+        <span id="npc-dialogue-name" class="npc-name">NPC</span>
+        <button id="npc-dialogue-close" class="close-btn">✕</button>
+      </div>
+      <div class="npc-dialogue-speech">
+        <p id="npc-dialogue-text"></p>
+      </div>
+      <div class="npc-quests-title">TEHTÄVÄT</div>
+      <div id="npc-dialogue-quests" class="npc-quests-list"></div>
+      <div class="npc-dialogue-footer">[E] tai ✕ sulkee</div>
+    </div>
+  </div>
+
+  <!-- ===== QUEST LOG (always visible, bottom left above HUD) ===== -->
+  <div id="quest-log">
+    <div class="quest-log-header">📋 TEHTÄVÄT</div>
+    <div id="quest-log-entries"></div>
+  </div>
+
+  <!-- ===== NORDIC MAIN MENU ===== -->
+  <div id="main-menu" class="main-menu-overlay">
+    <div class="menu-backdrop"></div>
+    <div class="menu-container">
+      <div class="menu-brand">
+        <div class="menu-rune">ᛏ ᛁ ᚲ ᚨ ᛈ ᛟ ᛟ</div>
+        <h1 class="menu-title">TIKAPOO</h1>
+      </div>
+
+      <div class="menu-nav">
+        <button id="menu-play-btn" class="menu-btn menu-btn-primary">
+          <span class="btn-text" data-i18n="menu_play">ALOITA SEIKKAILU</span>
+        </button>
+        <button id="menu-char-btn" class="menu-btn">
+          <span class="btn-text" data-i18n="menu_char">LUO / MUOKKAA HAHMOA</span>
+        </button>
+        <button id="menu-instructions-btn" class="menu-btn">
+          <span class="btn-text" data-i18n="menu_instructions">PELIOHJEET &amp; NÄPPÄIMET</span>
+        </button>
+        <button id="menu-lore-btn" class="menu-btn">
+          <span class="btn-text" data-i18n="menu_lore">KYLÄT &amp; MAAILMA</span>
+        </button>
+        <button id="menu-settings-btn" class="menu-btn">
+          <span class="btn-text" data-i18n="menu_settings">ASETUKSET</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== NORDIC CHARACTER CREATOR ===== -->
+  <div id="character-creator" class="char-creator-overlay" style="display: none;">
+    <div class="char-creator-container">
+      <div class="char-creator-header">
+        <div class="char-rune-title">ᚺ ᚨ ᚺ ᛗ ᛟ • ᛚ ᚢ ᛟ ᚾ ᛏ ᛁ</div>
+        <h2>Luo Pohjolan Selviytyjä</h2>
+        <p>Valitse ulkomuotosi, sukupuolesi ja varusteesi ennen astumista erämaahan</p>
+      </div>
+
+      <div class="char-creator-content">
+        <!-- 3D Turntable Preview -->
+        <div class="char-preview-panel">
+          <canvas id="char-preview-canvas" width="360" height="480"></canvas>
+          <div class="char-preview-hint">🔄 Käännä hahmoa raahaamalla hiirellä</div>
+        </div>
+
+        <!-- Customization Controls -->
+        <div class="char-options-panel">
+          <!-- Name -->
+          <div class="char-option-group">
+            <label class="char-group-label">Hahmon Nimi</label>
+            <input id="char-name-input" type="text" class="char-text-input" value="Eerik" maxlength="18" placeholder="Kirjoita nimi...">
+          </div>
+
+          <!-- Gender -->
+          <div class="char-option-group">
+            <label class="char-group-label">Sukupuoli</label>
+            <div class="char-btn-row">
+              <button class="char-toggle-btn active" data-char-gender="male">🧔 Mies</button>
+              <button class="char-toggle-btn" data-char-gender="female">👩 Nainen</button>
+            </div>
+          </div>
+
+          <!-- Head style: Hood vs Exposed Head -->
+          <div class="char-option-group">
+            <label class="char-group-label">Päähine &amp; Pää</label>
+            <div class="char-btn-row">
+              <button class="char-toggle-btn active" data-char-head="hood">🧕 Erämiehen Huppu</button>
+              <button class="char-toggle-btn" data-char-head="hair">🧑 Avopäinen Viikinki</button>
+            </div>
+          </div>
+
+          <!-- Hair Style (when hair chosen) -->
+          <div id="char-hair-style-row" class="char-option-group" style="display: none;">
+            <label class="char-group-label">Hiustyyli</label>
+            <div class="char-btn-row char-btn-wrap">
+              <button class="char-toggle-btn active" data-char-hair-style="short">✂️ Lyhyet</button>
+              <button class="char-toggle-btn" data-char-hair-style="long">💇 Pitkät</button>
+              <button class="char-toggle-btn" data-char-hair-style="ponytail">👱 Ponnari</button>
+              <button class="char-toggle-btn" data-char-hair-style="bald">🪓 Kalju</button>
+            </div>
+          </div>
+
+          <!-- Hair Color -->
+          <div class="char-option-group">
+            <label class="char-group-label">Hiusten Väri</label>
+            <div class="char-swatch-row">
+              <button class="char-swatch-btn" data-char-hair-color="d4a559" style="background:#d4a559" title="Vaalea"></button>
+              <button class="char-swatch-btn active" data-char-hair-color="3d2817" style="background:#3d2817" title="Kastanja"></button>
+              <button class="char-swatch-btn" data-char-hair-color="8a3324" style="background:#8a3324" title="Punainen"></button>
+              <button class="char-swatch-btn" data-char-hair-color="1a1a1a" style="background:#1a1a1a" title="Musta"></button>
+              <button class="char-swatch-btn" data-char-hair-color="9e9e9e" style="background:#9e9e9e" title="Harmaa"></button>
+            </div>
+          </div>
+
+          <!-- Skin Tone -->
+          <div class="char-option-group">
+            <label class="char-group-label">Ihonväri</label>
+            <div class="char-swatch-row">
+              <button class="char-swatch-btn active" data-char-skin="f5d0b5" style="background:#f5d0b5" title="Pohjoisen vaalea"></button>
+              <button class="char-swatch-btn" data-char-skin="dba77a" style="background:#dba77a" title="Päivettynyt"></button>
+              <button class="char-swatch-btn" data-char-skin="aa7855" style="background:#aa7855" title="Sään karaisema"></button>
+            </div>
+          </div>
+
+          <!-- Starting Clothing Color -->
+          <div class="char-option-group">
+            <label class="char-group-label">Aloitusvaatteiden Väri</label>
+            <div class="char-swatch-row">
+              <button class="char-swatch-btn active" data-char-cloth="2e5339" style="background:#2e5339" title="Havunvihreä"></button>
+              <button class="char-swatch-btn" data-char-cloth="4a3c2c" style="background:#4a3c2c" title="Eränruskea"></button>
+              <button class="char-swatch-btn" data-char-cloth="233d54" style="background:#233d54" title="Pohjolansininen"></button>
+              <button class="char-swatch-btn" data-char-cloth="5c2429" style="background:#5c2429" title="Viininpunainen"></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="char-creator-actions">
+        <button id="char-create-back-btn" class="char-action-btn char-btn-back">⬅️ TAKAISIN VALIKKOON</button>
+        <button id="char-create-confirm-btn" class="char-action-btn char-btn-confirm">⚔️ VAHVISTA &amp; ASTU POHJOLAAN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Instructions Modal -->
+  <div id="modal-instructions" class="menu-modal">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h2>📜 Peliohjeet ja Näppäimet</h2>
+          <button class="modal-close" data-close="modal-instructions">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="guide-grid">
+            <div class="guide-card">
+              <h3>🎮 Liikkuminen</h3>
+              <ul>
+                <li><strong>W, A, S, D</strong> : Liiku eteen, taakse, sivuille</li>
+                <li><strong>Shift</strong> : Sprintti (kuluttaa kestävyyttä)</li>
+                <li><strong>Space</strong> : Hyppy</li>
+                <li><strong>V</strong> : Vaihda kuvakulmaa (3rd person / 1st person)</li>
+                <li><strong>Hiiri</strong> : Katso ympärille</li>
+              </ul>
+            </div>
+            <div class="guide-card">
+              <h3>⚔️ Toiminnot & Työkalut</h3>
+              <ul>
+                <li><strong>1 – 8</strong> : Pikapalkin esineet (Aseet, Onki, Vasara, Ruoka)</li>
+                <li><strong>Vasen hiiri (pohjassa)</strong> : Kerää puuta, kiveä tai marjoja</li>
+                <li><strong>Vasen hiiri</strong> : Iske miekalla tai heitä onki veteen</li>
+                <li><strong>E</strong> : Puhu kyläläisille tai paista ruokaa leiritulella</li>
+              </ul>
+            </div>
+            <div class="guide-card">
+              <h3>🎒 Valikot & Hallinta</h3>
+              <ul>
+                <li><strong>C / Tab</strong> : Valmistusvalikko (Aseet, työkalut, varusteet)</li>
+                <li><strong>B</strong> : Reppu & hahmon varusteet</li>
+                <li><strong>M</strong> : Koko maailmankartta ja maamerkit</li>
+                <li><strong>Esc</strong> : Pysäytä peli / Taukovalikko</li>
+              </ul>
+            </div>
+            <div class="guide-card">
+              <h3>🔥 Selviytymissäännöt</h3>
+              <ul>
+                <li>Syö marjoja, paistettua lihaa ja kalaa pysyäksesi kylläisenä.</li>
+                <li>Leirituli tuo lämpöä, valoa ja paistaa raa'an lihan ja kalan herkulliseksi!</li>
+                <li>Yöllä pimeys tuo vaarallisia varjopetoja — pysy kylän tai tulien suojassa!</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- World Lore Modal -->
+    <div id="modal-lore" class="menu-modal">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h2>🗺️ Kylät ja Maailman Kolkat</h2>
+          <button class="modal-close" data-close="modal-lore">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="lore-card">
+            <h3>🏛️ Keskuskylä (The Valley Settlement)</h3>
+            <p>Laakson sydämessä sijaitseva suojaisa kylä. Täältä löydät Päällikön Suurtuvan, Sepän Pajan, Vilkkaat Kauppakojut sekä kylänvanhin Einarin ja seppä Ilmarin.</p>
+          </div>
+          <div class="lore-card">
+            <h3>⚓ Satamakylä (Fishermen's Haven)</h3>
+            <p>Joen mutkaan rakennettu kalastajayhteisö pitkine laitureineen ja savustamoineen. Joesta voit kalastaa taimenia, haukia ja kultalohia. Kalastaja Toivo opastaa laiturilla.</p>
+          </div>
+          <div class="lore-card">
+            <h3>🏰 Metsävartion Linnake (Highland Fortress)</h3>
+            <p>Pohjoisen harjanteen laella seisova kivinen vartiotorni ja varuskuntatupa. Vartiotornin laelta avautuu esteetön näkymä koko laaksoon.</p>
+          </div>
+          <div class="lore-card">
+            <h3>🔮 Muinainen Pyhäkkö (Ancient Sanctuary)</h3>
+            <p>Itäisillä kukkuloilla lepäävät sammaloituneet riimuholvit, joiden keskellä sykkii arvoituksellinen hehkuva turkoosi kristalli.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="modal-settings" class="menu-modal">
+      <div class="modal-box modal-box-wide">
+        <div class="modal-header">
+          <h2>⚙️ Grafiikka- ja Peli-Asetukset</h2>
+          <button class="modal-close" data-close="modal-settings">✕</button>
+        </div>
+        <div class="modal-body settings-grid">
+          <!-- Graphics Section -->
+          <div class="settings-section">
+            <h3 class="settings-section-title">🖥️ Grafiikka &amp; Suorituskyky</h3>
+
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <label for="shadow-quality-select">Varjojen laatu (Shadow Quality)</label>
+                <small>Pehmeät varjot ja varjokartan resoluutio</small>
+              </div>
+              <select id="shadow-quality-select">
+                <option value="very_low">Erittäin matala (Pois / Max FPS)</option>
+                <option value="low">Matala (512x512)</option>
+                <option value="medium">Keskitaso (1024x1024)</option>
+                <option value="high" selected>Korkea (2048x2048 PCF)</option>
+                <option value="ultra">Ultra (4096x4096 Pehmeä PCF)</option>
+              </select>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <label for="render-dist-select">Piirtoetäisyys &amp; Sumu</label>
+                <small>Maaston ja metsän näkyvyysetäisyys</small>
+              </div>
+              <select id="render-dist-select">
+                <option value="very_low">Erittäin matala (400m)</option>
+                <option value="low">Matala (650m)</option>
+                <option value="medium" selected>Keskitaso (900m)</option>
+                <option value="high">Korkea (1200m)</option>
+                <option value="ultra">Ultra (1600m)</option>
+              </select>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <label for="foliage-density-select">Kasvillisuuden &amp; Ruohon tiheys</label>
+                <small>Tuulessa huojuvien heinien ja saniaisten määrä</small>
+              </div>
+              <select id="foliage-density-select">
+                <option value="very_low">Erittäin matala (Pois)</option>
+                <option value="low">Matala (2 500 kpl)</option>
+                <option value="medium">Keskitaso (5 000 kpl)</option>
+                <option value="high" selected>Korkea (10 000 kpl)</option>
+                <option value="ultra">Ultra (15 000 kpl)</option>
+              </select>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <label for="resolution-select">Resoluution skaalaus (Render Scale)</label>
+                <small>Sisäinen renderöintitarkkuus</small>
+              </div>
+              <select id="resolution-select">
+                <option value="very_low">Erittäin matala (0.75x)</option>
+                <option value="low">Matala (1.0x)</option>
+                <option value="medium" selected>Keskitaso (1.25x)</option>
+                <option value="high">Korkea (1.5x)</option>
+                <option value="ultra">Ultra (2.0x Native)</option>
+              </select>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <label for="fps-counter-select" data-i18n="setting_fps">Näytä FPS / Show FPS</label>
+                <small data-i18n="setting_fps_sub">Ruudunpäivitysnopeuden mittari</small>
+              </div>
+              <select id="fps-counter-select">
+                <option value="off" selected>Pois (Off)</option>
+                <option value="on">Päällä (On)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Gameplay & Audio Section -->
+          <div class="settings-section">
+            <h3 class="settings-section-title">🎮 Pelattavuus &amp; Äänet</h3>
+
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <label for="language-select">Kieli / Language</label>
+                <small>Pelin kieli (English / Suomi)</small>
+              </div>
+              <select id="language-select">
+                <option value="en" selected>English (EN)</option>
+                <option value="fi">Suomi (FI)</option>
+              </select>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <label for="fov-slider">Näkökenttä (FOV): <span id="fov-val">75°</span></label>
+                <small>Kameran laajuus asteina (60° – 105°)</small>
+              </div>
+              <input type="range" id="fov-slider" min="60" max="105" value="75">
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <label for="mouse-sensitivity-slider">Hiiren herkkyys (Mouse Sensitivity): <span id="mouse-sensitivity-val">100%</span></label>
+                <small>Kameran kääntymisnopeus hiirtä liikutettaessa</small>
+              </div>
+              <input type="range" id="mouse-sensitivity-slider" min="20" max="250" value="100">
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <label for="camera-pref-select">Oletuskuvakulma</label>
+                <small>Vaihda pelissä myös [V]-näppäimellä</small>
+              </div>
+              <select id="camera-pref-select">
+                <option value="3rd" selected>Kolmas persoona (Valheim-tyyli)</option>
+                <option value="1st">Ensimmäinen persoona (FPS)</option>
+              </select>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <label for="master-volume-slider">Pää-äänenvoimakkuus (Master): <span id="master-volume-val">80%</span></label>
+                <small>Kaikkien pelin äänten yleistaso</small>
+              </div>
+              <input type="range" id="master-volume-slider" min="0" max="100" value="80">
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <label for="music-volume-slider">Taustamusiikki (Music): <span id="music-volume-val">65%</span></label>
+                <small>Nordic-soittimet, harppu, huilu ja melodiat</small>
+              </div>
+              <input type="range" id="music-volume-slider" min="0" max="100" value="65">
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <label for="sfx-volume-slider">Ääniefektit (SFX): <span id="sfx-volume-val">85%</span></label>
+                <small>Hakkuu, louhinta, taistelu, askeleet ja loitsut</small>
+              </div>
+              <input type="range" id="sfx-volume-slider" min="0" max="100" value="85">
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <label for="ambient-volume-slider">Ympäristön äänet (Ambient): <span id="ambient-volume-val">70%</span></label>
+                <small>Metsän tuuli, purot, nuotion rätinä ja yöäänet</small>
+              </div>
+              <input type="range" id="ambient-volume-slider" min="0" max="100" value="70">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  <!-- In-game Pause Menu -->
+  <div id="pause-menu" class="pause-menu-overlay">
+    <div class="pause-box">
+      <h2 data-i18n="pause_title">PELI PYSÄYTETTY</h2>
+      <button id="pause-resume-btn" class="menu-btn menu-btn-primary"><span class="btn-text" data-i18n="pause_resume">JATKA PELIÄ</span></button>
+      <button id="pause-settings-btn" class="menu-btn"><span class="btn-text" data-i18n="pause_settings">ASETUKSET</span></button>
+      <button id="pause-instructions-btn" class="menu-btn"><span class="btn-text" data-i18n="pause_instructions">OHJEET</span></button>
+      <button id="pause-dev-btn" class="menu-btn menu-btn-dev"><span class="btn-text">🛠️ DEVAUSTILA (kissa)</span></button>
+      <button id="pause-quit-btn" class="menu-btn"><span class="btn-text" data-i18n="pause_quit">PÄÄVALIKKOON</span></button>
+    </div>
+  </div>
+
+  <!-- ===== DEVELOPER / CREATIVE MODE OVERLAY ===== -->
+  <div id="dev-mode-panel" class="dev-panel-container" style="display: none;">
+    <div class="dev-toolbar">
+      <div class="dev-brand">🛠️ DEV CREATIVE MODE</div>
+      <button id="dev-pause-toggle" class="dev-btn active">⏸️ Simulaatio: PYSÄYTETTY</button>
+      <button id="dev-fly-toggle" class="dev-btn active">🕊️ Vapaa Lento: PÄÄLLÄ</button>
+      <div class="dev-speed-group">
+        <span>Lentonopeus:</span>
+        <button class="dev-speed-btn" data-speed="1">1x</button>
+        <button class="dev-speed-btn active" data-speed="3">3x</button>
+        <button class="dev-speed-btn" data-speed="8">8x</button>
+      </div>
+      <button id="dev-godmode-btn" class="dev-btn">🛡️ Kuolemattomuus: POIS</button>
+      <button id="dev-give-items-btn" class="dev-btn">🎒 Anna Kaikki Resurssit (999)</button>
+      <button id="dev-close-btn" class="dev-btn dev-btn-exit">✕ Poistu Devaustilasta [ESC]</button>
+    </div>
+
+    <!-- Inspector floating card for object under crosshair / clicked -->
+    <div id="dev-inspector" class="dev-inspector-card" style="display: none;">
+      <div class="dev-insp-header">
+        <span id="dev-insp-title">Valittu Kohde</span>
+        <span id="dev-insp-type" class="dev-tag">Puu</span>
+      </div>
+      <div class="dev-insp-body">
+        <div class="dev-coord-row">
+          <span>Sijainti:</span>
+          <span id="dev-insp-pos">X: 0, Y: 0, Z: 0</span>
+        </div>
+        <div class="dev-insp-actions">
+          <button id="dev-delete-obj-btn" class="dev-action-btn dev-btn-danger">🗑️ Poista kohde (Delete)</button>
+          <button id="dev-tp-to-obj-btn" class="dev-action-btn">📍 Siirry kohteelle</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dev Spawn & Teleport Drawer -->
+    <div class="dev-bottom-drawer">
+      <div class="dev-tab-row">
+        <span class="dev-drawer-label">Spawn Kohteita:</span>
+        <button class="dev-spawn-btn" data-spawn="tree_birch">🌲 Koivu</button>
+        <button class="dev-spawn-btn" data-spawn="tree_pine">🌲 Mänty</button>
+        <button class="dev-spawn-btn" data-spawn="rock">🪨 Kivi</button>
+        <button class="dev-spawn-btn" data-spawn="chest">🎁 Aarrearkku</button>
+        <button class="dev-spawn-btn" data-spawn="workbench">🔨 Työpöytä</button>
+        <button class="dev-spawn-btn" data-spawn="campfire">🔥 Nuotio</button>
+        <button class="dev-spawn-btn" data-spawn="boar">🐗 Karju</button>
+        <button class="dev-spawn-btn" data-spawn="skeleton">👹 Luuranko</button>
+      </div>
+      <div class="dev-tab-row" style="margin-top: 6px;">
+        <span class="dev-drawer-label">Teleporttaa:</span>
+        <button class="dev-tp-btn" data-x="0" data-z="0">🏛️ Keskuskylä</button>
+        <button class="dev-tp-btn" data-x="50" data-z="-45">⚓ Satama</button>
+        <button class="dev-tp-btn" data-x="-95" data-z="-95">🌲 Mustametsä</button>
+        <button class="dev-tp-btn" data-x="-110" data-z="110">🌿 Kirottu Suo</button>
+        <button class="dev-tp-btn" data-x="110" data-z="-110">❄️ Jäävuoret</button>
+        <button class="dev-tp-btn" data-x="140" data-z="0">🌾 Tasangot</button>
+        <button class="dev-tp-btn" data-x="-45" data-z="-35">🔥 Sarvipeto (Boss 1)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dev Password Prompt Modal -->
+  <div id="dev-password-modal" class="menu-modal" style="display: none;">
+    <div class="modal-box" style="max-width: 380px;">
+      <div class="modal-header">
+        <h2>🛠️ Kehittäjätila (Dev Mode)</h2>
+        <button id="dev-pw-close-btn" class="modal-close">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 22px; text-align: center;">
+        <p style="margin-bottom: 14px; font-size: 13px; color: #bdc3c7;">Syötä ylläpitäjän salasana avataksesi maailmanmuokkauksen ja lennon:</p>
+        <input type="password" id="dev-password-input" class="char-text-input" placeholder="Salasana (kissa)..." style="text-align: center; font-size: 16px; margin-bottom: 14px; width: 85%;">
+        <div id="dev-pw-error" style="color: #e74c3c; font-size: 12px; margin-bottom: 10px; display: none;">Väärä salasana!</div>
+        <button id="dev-pw-submit-btn" class="menu-btn menu-btn-primary" style="width: 100%;">AVAA DEVAUSTILA</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Screen -->
+  <div id="loading-screen">
+    <div class="loading-content">
+      <h2>LOADING WORLD...</h2>
+      <div class="loading-bar-bg">
+        <div id="loading-bar"></div>
+      </div>
+      <div id="loading-text">Initialising...</div>
+    </div>
+  </div>
+
+  <!-- Game Bootstrap -->
+</body>
+</html>
