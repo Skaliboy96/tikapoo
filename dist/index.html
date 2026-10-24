@@ -11,8 +11,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=MedievalSharp&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/index-Cv8XfLZD.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-CrSclYrq.css">
+  <script type="module" crossorigin src="/assets/index-C66p5lMV.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-BRgHo0vq.css">
 </head>
 <body>
   <!-- Canvas container / WebGL rendering context -->
@@ -215,28 +215,92 @@
         </div>
       </div>
       <div class="backpack-body">
-        <!-- Left: character equipment & vitals -->
+        <!-- Left: Live 3D Character Paperdoll & Equipment -->
         <div class="backpack-char-panel">
-          <div class="backpack-char-title" data-i18n="bp_char_title">🛡️ EQUIPMENT &amp; ATTRIBUTES</div>
-          <div id="bp-equipment" class="bp-equipment-grid"></div>
+          <div class="backpack-char-title" data-i18n="bp_char_title">🛡️ HAHMO &amp; VARUSTEET</div>
+
+          <!-- Live 3D Paperdoll with surrounding equipment slots -->
+          <div class="bp-paperdoll-wrapper">
+            <!-- Left equipment slots -->
+            <div class="bp-slots-col bp-slots-left">
+              <div class="bp-slot-box" data-slot="head" title="Kypärä / Päähine (Helmet)">
+                <span class="bp-slot-type-label">PÄÄ</span>
+                <span class="bp-slot-icon" id="bp-icon-head">🧕</span>
+                <span class="bp-slot-item-label" id="bp-label-head">Huppu</span>
+              </div>
+              <div class="bp-slot-box" data-slot="chest" title="Rintapanssari (Armor)">
+                <span class="bp-slot-type-label">KEHO</span>
+                <span class="bp-slot-icon" id="bp-icon-chest">🥋</span>
+                <span class="bp-slot-item-label" id="bp-label-chest">Tunika</span>
+              </div>
+              <div class="bp-slot-box" data-slot="legs" title="Housut / Säärisuojat (Legs)">
+                <span class="bp-slot-type-label">JALAT</span>
+                <span class="bp-slot-icon" id="bp-icon-legs">👖</span>
+                <span class="bp-slot-item-label" id="bp-label-legs">Housut</span>
+              </div>
+            </div>
+
+            <!-- Center live 3D character viewport -->
+            <div class="bp-paperdoll-viewport">
+              <canvas id="bp-paperdoll-canvas" width="160" height="210"></canvas>
+            </div>
+
+            <!-- Right equipment slots -->
+            <div class="bp-slots-col bp-slots-right">
+              <div class="bp-slot-box" data-slot="weapon" title="Pääase (Main Weapon)">
+                <span class="bp-slot-type-label">ASE</span>
+                <span class="bp-slot-icon" id="bp-icon-weapon">⚔️</span>
+                <span class="bp-slot-item-label" id="bp-label-weapon">Miekka</span>
+              </div>
+              <div class="bp-slot-box" data-slot="shield" title="Kilpi / Sivukäsi (Offhand)">
+                <span class="bp-slot-type-label">KILPI</span>
+                <span class="bp-slot-icon" id="bp-icon-shield">🛡️</span>
+                <span class="bp-slot-item-label" id="bp-label-shield">Kilpi</span>
+              </div>
+              <div class="bp-slot-box" data-slot="tool" title="Työkalu / Vasara (Utility)">
+                <span class="bp-slot-type-label">VYÖ</span>
+                <span class="bp-slot-icon" id="bp-icon-tool">🔨</span>
+                <span class="bp-slot-item-label" id="bp-label-tool">Vasara</span>
+              </div>
+            </div>
+          </div>
+
           <div class="bp-stats-card">
-            <div class="bp-stat-row"><span data-i18n="bp_atk">⚔️ Attack Power:</span><span id="bp-stat-atk">15 DMG</span></div>
-            <div class="bp-stat-row"><span data-i18n="bp_def">🛡️ Defense:</span><span id="bp-stat-def">0%</span></div>
-            <div class="bp-stat-row"><span data-i18n="bp_hp">❤️ Health:</span><span id="bp-stat-hp">100/100</span></div>
-            <div class="bp-stat-row"><span data-i18n="bp_hunger">🍗 Hunger:</span><span id="bp-stat-hunger">100/100</span></div>
-            <div class="bp-stat-row"><span data-i18n="bp_weight">⚖️ Carry Weight:</span><span id="bp-stat-weight">18 / 300 kg</span></div>
+            <div class="bp-stat-row"><span data-i18n="bp_atk">⚔️ Hyökkäysvoima:</span><span id="bp-stat-atk">15 DMG</span></div>
+            <div class="bp-stat-row"><span data-i18n="bp_def">🛡️ Suojaus:</span><span id="bp-stat-def">0%</span></div>
+            <div class="bp-stat-row"><span data-i18n="bp_hp">❤️ Terveys:</span><span id="bp-stat-hp">100/100</span></div>
+            <div class="bp-stat-row"><span data-i18n="bp_hunger">🍗 Nälkä:</span><span id="bp-stat-hunger">100/100</span></div>
+            <div class="bp-stat-row"><span data-i18n="bp_weight">⚖️ Kantopaino:</span><span id="bp-stat-weight">18 / 300 kg</span></div>
           </div>
         </div>
-        <!-- Right: items -->
+
+        <!-- Right: items + drop actions + hotbar reorder -->
         <div class="backpack-items-panel">
-          <div class="bp-section-title" data-i18n="bp_items_title">🎒 INVENTORY (24 SLOTS)</div>
+          <div class="bp-panel-top-row">
+            <div class="bp-section-title" data-i18n="bp_items_title">🎒 INVENTORY (24 SLOTS)</div>
+            <div id="bp-item-actions-bar" class="bp-actions-bar" style="display: none;">
+              <span id="bp-selected-item-name" class="bp-selected-name">Valittu esine</span>
+              <button id="bp-drop-one-btn" class="bp-btn-drop">🗑️ Pudota 1</button>
+              <button id="bp-drop-all-btn" class="bp-btn-drop">🗑️ Pudota kaikki</button>
+            </div>
+          </div>
+
           <div id="bp-items-grid" class="bp-items-grid"></div>
+
+          <!-- Hotbar / Action Bar Reordering Row -->
+          <div class="bp-hotbar-reorder-section">
+            <div class="bp-hotbar-reorder-title">
+              <span>⚡ ACTION BAR [1-8] (KLIKKAA TAI RAAHAA JÄRJESTÄÄKSESI):</span>
+            </div>
+            <div id="bp-hotbar-reorder-grid" class="bp-hotbar-reorder-grid"></div>
+          </div>
+
           <div class="bp-hints">
-            <span data-i18n="hint_hotbar">[1-8] Hotbar</span>
-            <span data-i18n="hint_cam">[V] Camera View</span>
-            <span data-i18n="hint_zoom">[CTRL+Wheel] Camera Zoom</span>
-            <span data-i18n="hint_craft">[C] Crafting</span>
-            <span data-i18n="hint_build">[B] Build</span>
+            <span data-i18n="hint_hotbar">[1-8] Pikanäppäimet</span>
+            <span>[F5] / [P] Kamera</span>
+            <span data-i18n="hint_zoom">[CTRL+Rulla] Zoomaus</span>
+            <span data-i18n="hint_craft">[C] Valmistus</span>
+            <span data-i18n="hint_build">[B] Rakennus</span>
           </div>
         </div>
       </div>
@@ -300,57 +364,59 @@
     <div class="char-creator-container">
       <div class="char-creator-header">
         <div class="char-rune-title">ᚺ ᚨ ᚺ ᛗ ᛟ • ᛚ ᚢ ᛟ ᚾ ᛏ ᛁ</div>
-        <h2>Luo Pohjolan Selviytyjä</h2>
-        <p>Valitse ulkomuotosi, sukupuolesi ja varusteesi ennen astumista erämaahan</p>
+        <h2 data-i18n="cc_title">Luo Pohjolan Selviytyjä</h2>
+        <p data-i18n="cc_subtitle">Valitse ulkomuotosi, tyylisi ja varusteesi ennen astumista erämaahan</p>
       </div>
 
       <div class="char-creator-content">
         <!-- 3D Turntable Preview -->
         <div class="char-preview-panel">
           <canvas id="char-preview-canvas" width="360" height="480"></canvas>
-          <div class="char-preview-hint">🔄 Käännä hahmoa raahaamalla hiirellä</div>
+          <div class="char-preview-hint" data-i18n="cc_turntable_hint">🔄 Käännä hahmoa raahaamalla hiirellä</div>
         </div>
 
         <!-- Customization Controls -->
         <div class="char-options-panel">
           <!-- Name -->
           <div class="char-option-group">
-            <label class="char-group-label">Hahmon Nimi</label>
+            <label class="char-group-label" data-i18n="cc_name">Hahmon Nimi</label>
             <input id="char-name-input" type="text" class="char-text-input" value="Eerik" maxlength="18" placeholder="Kirjoita nimi...">
           </div>
 
           <!-- Gender -->
           <div class="char-option-group">
-            <label class="char-group-label">Sukupuoli</label>
+            <label class="char-group-label" data-i18n="cc_gender">Sukupuoli</label>
             <div class="char-btn-row">
-              <button class="char-toggle-btn active" data-char-gender="male">🧔 Mies</button>
-              <button class="char-toggle-btn" data-char-gender="female">👩 Nainen</button>
+              <button class="char-toggle-btn active" data-char-gender="male" data-i18n="cc_male">🧔 Mies</button>
+              <button class="char-toggle-btn" data-char-gender="female" data-i18n="cc_female">👩 Nainen</button>
             </div>
           </div>
 
-          <!-- Head style: Hood vs Exposed Head -->
+          <!-- Starting Outfit / Archetype Style -->
           <div class="char-option-group">
-            <label class="char-group-label">Päähine &amp; Pää</label>
-            <div class="char-btn-row">
-              <button class="char-toggle-btn active" data-char-head="hood">🧕 Erämiehen Huppu</button>
-              <button class="char-toggle-btn" data-char-head="hair">🧑 Avopäinen Viikinki</button>
+            <label class="char-group-label" data-i18n="cc_style_label">Aloitusasu &amp; Tyyli</label>
+            <div class="char-btn-row char-btn-wrap">
+              <button class="char-toggle-btn active" data-char-style="rogue" data-i18n="cc_style_rogue">🗡️ Seikkailija (Tunika &amp; Hiukset)</button>
+              <button class="char-toggle-btn" data-char-style="ranger" data-i18n="cc_style_ranger">🏹 Eränkävijä (Huppu &amp; Viitta)</button>
+              <button class="char-toggle-btn" data-char-style="barbarian" data-i18n="cc_style_warrior">⚔️ Soturi (Viikinkiasu)</button>
+              <button class="char-toggle-btn" data-char-style="mage" data-i18n="cc_style_mage">🔮 Maagi (Riimukaapu)</button>
             </div>
           </div>
 
-          <!-- Hair Style (when hair chosen) -->
-          <div id="char-hair-style-row" class="char-option-group" style="display: none;">
-            <label class="char-group-label">Hiustyyli</label>
+          <!-- Hair Style -->
+          <div id="char-hair-style-row" class="char-option-group">
+            <label class="char-group-label" data-i18n="cc_hair_style">Hiustyyli</label>
             <div class="char-btn-row char-btn-wrap">
-              <button class="char-toggle-btn active" data-char-hair-style="short">✂️ Lyhyet</button>
-              <button class="char-toggle-btn" data-char-hair-style="long">💇 Pitkät</button>
-              <button class="char-toggle-btn" data-char-hair-style="ponytail">👱 Ponnari</button>
-              <button class="char-toggle-btn" data-char-hair-style="bald">🪓 Kalju</button>
+              <button class="char-toggle-btn active" data-char-hair-style="short" data-i18n="cc_hair_short">✂️ Lyhyet</button>
+              <button class="char-toggle-btn" data-char-hair-style="long" data-i18n="cc_hair_long">💇 Pitkät</button>
+              <button class="char-toggle-btn" data-char-hair-style="ponytail" data-i18n="cc_hair_ponytail">👱 Ponnari</button>
+              <button class="char-toggle-btn" data-char-hair-style="bald" data-i18n="cc_hair_bald">🪓 Kalju</button>
             </div>
           </div>
 
           <!-- Hair Color -->
           <div class="char-option-group">
-            <label class="char-group-label">Hiusten Väri</label>
+            <label class="char-group-label" data-i18n="cc_hair_color">Hiusten Väri</label>
             <div class="char-swatch-row">
               <button class="char-swatch-btn" data-char-hair-color="d4a559" style="background:#d4a559" title="Vaalea"></button>
               <button class="char-swatch-btn active" data-char-hair-color="3d2817" style="background:#3d2817" title="Kastanja"></button>
@@ -362,7 +428,7 @@
 
           <!-- Skin Tone -->
           <div class="char-option-group">
-            <label class="char-group-label">Ihonväri</label>
+            <label class="char-group-label" data-i18n="cc_skin_color">Ihonväri</label>
             <div class="char-swatch-row">
               <button class="char-swatch-btn active" data-char-skin="f5d0b5" style="background:#f5d0b5" title="Pohjoisen vaalea"></button>
               <button class="char-swatch-btn" data-char-skin="dba77a" style="background:#dba77a" title="Päivettynyt"></button>
@@ -372,7 +438,7 @@
 
           <!-- Starting Clothing Color -->
           <div class="char-option-group">
-            <label class="char-group-label">Aloitusvaatteiden Väri</label>
+            <label class="char-group-label" data-i18n="cc_cloth_color">Vaatteiden Väri</label>
             <div class="char-swatch-row">
               <button class="char-swatch-btn active" data-char-cloth="2e5339" style="background:#2e5339" title="Havunvihreä"></button>
               <button class="char-swatch-btn" data-char-cloth="4a3c2c" style="background:#4a3c2c" title="Eränruskea"></button>
@@ -384,8 +450,8 @@
       </div>
 
       <div class="char-creator-actions">
-        <button id="char-create-back-btn" class="char-action-btn char-btn-back">⬅️ TAKAISIN VALIKKOON</button>
-        <button id="char-create-confirm-btn" class="char-action-btn char-btn-confirm">⚔️ VAHVISTA &amp; ASTU POHJOLAAN</button>
+        <button id="char-create-back-btn" class="char-action-btn char-btn-back" data-i18n="cc_back">⬅️ TAKAISIN VALIKKOON</button>
+        <button id="char-create-confirm-btn" class="char-action-btn char-btn-confirm" data-i18n="cc_confirm">⚔️ VAHVISTA &amp; ASTU POHJOLAAN</button>
       </div>
     </div>
   </div>
@@ -475,18 +541,18 @@
     <div id="modal-settings" class="menu-modal">
       <div class="modal-box modal-box-wide">
         <div class="modal-header">
-          <h2>⚙️ Grafiikka- ja Peli-Asetukset</h2>
+          <h2 data-i18n="settings_header">⚙️ Grafiikka- ja Peli-Asetukset</h2>
           <button class="modal-close" data-close="modal-settings">✕</button>
         </div>
         <div class="modal-body settings-grid">
           <!-- Graphics Section -->
           <div class="settings-section">
-            <h3 class="settings-section-title">🖥️ Grafiikka &amp; Suorituskyky</h3>
+            <h3 class="settings-section-title" data-i18n="setting_graphics_section">🖥️ Grafiikka &amp; Suorituskyky</h3>
 
             <div class="setting-row">
               <div class="setting-label-group">
-                <label for="shadow-quality-select">Varjojen laatu (Shadow Quality)</label>
-                <small>Pehmeät varjot ja varjokartan resoluutio</small>
+                <label for="shadow-quality-select" data-i18n="setting_shadows">Varjojen laatu</label>
+                <small data-i18n="setting_shadows_sub">Pehmeät varjot ja varjokartan resoluutio</small>
               </div>
               <select id="shadow-quality-select">
                 <option value="very_low">Erittäin matala (Pois / Max FPS)</option>
@@ -499,8 +565,8 @@
 
             <div class="setting-row">
               <div class="setting-label-group">
-                <label for="render-dist-select">Piirtoetäisyys &amp; Sumu</label>
-                <small>Maaston ja metsän näkyvyysetäisyys</small>
+                <label for="render-dist-select" data-i18n="setting_render_dist">Piirtoetäisyys &amp; Sumu</label>
+                <small data-i18n="setting_render_dist_sub">Maaston ja metsän näkyvyysetäisyys</small>
               </div>
               <select id="render-dist-select">
                 <option value="very_low">Erittäin matala (400m)</option>
@@ -513,8 +579,8 @@
 
             <div class="setting-row">
               <div class="setting-label-group">
-                <label for="foliage-density-select">Kasvillisuuden &amp; Ruohon tiheys</label>
-                <small>Tuulessa huojuvien heinien ja saniaisten määrä</small>
+                <label for="foliage-density-select" data-i18n="setting_foliage">Kasvillisuuden &amp; Ruohon tiheys</label>
+                <small data-i18n="setting_foliage_sub">Tuulessa huojuvien heinien ja saniaisten määrä</small>
               </div>
               <select id="foliage-density-select">
                 <option value="very_low">Erittäin matala (Pois)</option>
@@ -527,8 +593,8 @@
 
             <div class="setting-row">
               <div class="setting-label-group">
-                <label for="resolution-select">Resoluution skaalaus (Render Scale)</label>
-                <small>Sisäinen renderöintitarkkuus</small>
+                <label for="resolution-select" data-i18n="setting_render_scale">Resoluution skaalaus (Render Scale)</label>
+                <small data-i18n="setting_render_scale_sub">Sisäinen renderöintitarkkuus</small>
               </div>
               <select id="resolution-select">
                 <option value="very_low">Erittäin matala (0.75x)</option>
@@ -553,12 +619,12 @@
 
           <!-- Gameplay & Audio Section -->
           <div class="settings-section">
-            <h3 class="settings-section-title">🎮 Pelattavuus &amp; Äänet</h3>
+            <h3 class="settings-section-title" data-i18n="setting_gameplay_section">🎮 Pelattavuus &amp; Äänet</h3>
 
             <div class="setting-row">
               <div class="setting-label-group">
-                <label for="language-select">Kieli / Language</label>
-                <small>Pelin kieli (English / Suomi)</small>
+                <label for="language-select" data-i18n="setting_language">Kieli / Language</label>
+                <small data-i18n="setting_language_sub">Pelin kieli (English / Suomi)</small>
               </div>
               <select id="language-select">
                 <option value="en" selected>English (EN)</option>
@@ -568,24 +634,24 @@
 
             <div class="setting-row">
               <div class="setting-label-group">
-                <label for="fov-slider">Näkökenttä (FOV): <span id="fov-val">75°</span></label>
-                <small>Kameran laajuus asteina (60° – 105°)</small>
+                <label for="fov-slider" data-i18n="setting_fov">Näkökenttä (FOV): <span id="fov-val">75°</span></label>
+                <small data-i18n="setting_fov_sub">Kameran laajuus asteina (60° – 105°)</small>
               </div>
               <input type="range" id="fov-slider" min="60" max="105" value="75">
             </div>
 
             <div class="setting-row">
               <div class="setting-label-group">
-                <label for="mouse-sensitivity-slider">Hiiren herkkyys (Mouse Sensitivity): <span id="mouse-sensitivity-val">100%</span></label>
-                <small>Kameran kääntymisnopeus hiirtä liikutettaessa</small>
+                <label for="mouse-sensitivity-slider" data-i18n="setting_mouse_sens">Hiiren herkkyys: <span id="mouse-sensitivity-val">100%</span></label>
+                <small data-i18n="setting_mouse_sens_sub">Kameran kääntymisnopeus hiirtä liikutettaessa</small>
               </div>
               <input type="range" id="mouse-sensitivity-slider" min="20" max="250" value="100">
             </div>
 
             <div class="setting-row">
               <div class="setting-label-group">
-                <label for="camera-pref-select">Oletuskuvakulma</label>
-                <small>Vaihda pelissä myös [V]-näppäimellä</small>
+                <label for="camera-pref-select" data-i18n="setting_camera">Oletuskuvakulma</label>
+                <small data-i18n="setting_camera_sub">Vaihda pelissä myös [F5] tai [P]-näppäimellä</small>
               </div>
               <select id="camera-pref-select">
                 <option value="3rd" selected>Kolmas persoona (Valheim-tyyli)</option>
@@ -595,32 +661,32 @@
 
             <div class="setting-row">
               <div class="setting-label-group">
-                <label for="master-volume-slider">Pää-äänenvoimakkuus (Master): <span id="master-volume-val">80%</span></label>
-                <small>Kaikkien pelin äänten yleistaso</small>
+                <label for="master-volume-slider" data-i18n="setting_master_vol">Pää-äänenvoimakkuus: <span id="master-volume-val">80%</span></label>
+                <small data-i18n="setting_master_vol_sub">Kaikkien pelin äänten yleistaso</small>
               </div>
               <input type="range" id="master-volume-slider" min="0" max="100" value="80">
             </div>
 
             <div class="setting-row">
               <div class="setting-label-group">
-                <label for="music-volume-slider">Taustamusiikki (Music): <span id="music-volume-val">65%</span></label>
-                <small>Nordic-soittimet, harppu, huilu ja melodiat</small>
+                <label for="music-volume-slider" data-i18n="setting_music_vol">Taustamusiikki: <span id="music-volume-val">65%</span></label>
+                <small data-i18n="setting_music_vol_sub">Nordic-soittimet, harppu, huilu ja melodiat</small>
               </div>
               <input type="range" id="music-volume-slider" min="0" max="100" value="65">
             </div>
 
             <div class="setting-row">
               <div class="setting-label-group">
-                <label for="sfx-volume-slider">Ääniefektit (SFX): <span id="sfx-volume-val">85%</span></label>
-                <small>Hakkuu, louhinta, taistelu, askeleet ja loitsut</small>
+                <label for="sfx-volume-slider" data-i18n="setting_sfx_vol">Ääniefektit: <span id="sfx-volume-val">85%</span></label>
+                <small data-i18n="setting_sfx_vol_sub">Hakkuu, louhinta, taistelu, askeleet ja loitsut</small>
               </div>
               <input type="range" id="sfx-volume-slider" min="0" max="100" value="85">
             </div>
 
             <div class="setting-row">
               <div class="setting-label-group">
-                <label for="ambient-volume-slider">Ympäristön äänet (Ambient): <span id="ambient-volume-val">70%</span></label>
-                <small>Metsän tuuli, purot, nuotion rätinä ja yöäänet</small>
+                <label for="ambient-volume-slider" data-i18n="setting_ambient_vol">Ympäristön äänet: <span id="ambient-volume-val">70%</span></label>
+                <small data-i18n="setting_ambient_vol_sub">Metsän tuuli, purot, nuotion rätinä ja yöäänet</small>
               </div>
               <input type="range" id="ambient-volume-slider" min="0" max="100" value="70">
             </div>

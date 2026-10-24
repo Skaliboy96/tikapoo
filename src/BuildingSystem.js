@@ -232,7 +232,9 @@ export default class BuildingSystem {
   setHammerActive(active) {
     this.isHammerActive = active;
     if (this.hudBarEl) {
-      this.hudBarEl.style.display = active ? 'flex' : 'none';
+      const isHammerEquipped = this.inventory && this.inventory.equippedTool === 'hammer';
+      const isDevActive = window.__game?.devMode?.isActive || document.getElementById('dev-mode-panel')?.style.display !== 'none';
+      this.hudBarEl.style.display = (active && isHammerEquipped && !isDevActive) ? 'flex' : 'none';
     }
 
     if (active) {
@@ -261,6 +263,15 @@ export default class BuildingSystem {
     if (this.modalEl) {
       this.modalEl.style.display = 'none';
     }
+    setTimeout(() => {
+      const anyOtherModal = document.querySelector('.modal.active') ||
+                            document.querySelector('.menu-modal.active') ||
+                            document.querySelector('#crafting-menu.active') ||
+                            document.querySelector('#backpack-screen.active');
+      if (!anyOtherModal && this.controls && !this.controls.isLocked) {
+        try { this.controls.lock(); } catch (e) {}
+      }
+    }, 60);
   }
 
   toggleBuildMenu() {
@@ -313,6 +324,7 @@ export default class BuildingSystem {
     // Attach click handlers to select structure
     gridEl.querySelectorAll('.build-card').forEach(card => {
       card.addEventListener('click', (e) => {
+        e.preventDefault();
         e.stopPropagation();
         const id = card.getAttribute('data-structure-id');
         const idx = this.structureKeys.indexOf(id);
@@ -323,7 +335,7 @@ export default class BuildingSystem {
           this.closeBuildMenu();
           if (this.hud) {
             const def = this.structureDefs[idx];
-            this.hud.showNotification(`🔨 Valittu: ${def.icon} ${def.name}`);
+            this.hud.showNotification(`🔨 Valittu: ${def.icon} ${this.getDefName(def)}`);
           }
         }
       });
@@ -337,7 +349,7 @@ export default class BuildingSystem {
         e.stopPropagation();
         if (this.inventory && this.inventory.tools && this.inventory.tools.hammer) {
           if (this.inventory.hotbar) {
-            this.inventory.hotbar.selectSlot(4, true);
+            this.inventory.hotbar.selectSlot(5, true);
           } else {
             this.setHammerActive(true);
           }
@@ -349,6 +361,11 @@ export default class BuildingSystem {
     window.addEventListener('keydown', (e) => {
       // Ignore if typing in input/textarea
       if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+
+      // Never intercept keys when Dev Mode is active
+      if (window.__game?.devMode?.isActive || document.getElementById('dev-mode-panel')?.style.display !== 'none') {
+        return;
+      }
 
       // Close menu with ESC
       if (e.code === 'Escape') {
@@ -370,7 +387,7 @@ export default class BuildingSystem {
           // If hammer is in inventory, equip it and open building
           if (this.inventory && this.inventory.tools && this.inventory.tools.hammer) {
             if (this.inventory.hotbar) {
-              this.inventory.hotbar.selectSlot(4, true);
+              this.inventory.hotbar.selectSlot(5, true);
             } else {
               this.setHammerActive(true);
             }
@@ -403,6 +420,11 @@ export default class BuildingSystem {
 
     window.addEventListener('mousedown', (e) => {
       if (e.button === 2) { // Right click
+        // Never intercept RMB when Dev Mode is active (RMB is used for DevMode camera rotation!)
+        if (window.__game?.devMode?.isActive || document.getElementById('dev-mode-panel')?.style.display !== 'none') {
+          return;
+        }
+
         if (this.isBuildMenuOpen) {
           this.closeBuildMenu();
           return;
@@ -416,6 +438,10 @@ export default class BuildingSystem {
     });
 
     window.addEventListener('contextmenu', (e) => {
+      // Never block context menu in DevMode
+      if (window.__game?.devMode?.isActive || document.getElementById('dev-mode-panel')?.style.display !== 'none') {
+        return;
+      }
       if (this.isPlacing() || this.isHammerActive || this.isBuildMenuOpen) {
         e.preventDefault();
       }
@@ -857,6 +883,20 @@ export default class BuildingSystem {
   }
 
   update(delta, camera, controlsLocked, world) {
+    // Ensure selector HUD bar visibility strictly reflects whether hammer is currently equipped
+    if (this.hudBarEl) {
+      const isHammerEquipped = this.inventory && this.inventory.equippedTool === 'hammer';
+      const isDevActive = window.__game?.devMode?.isActive || document.getElementById('dev-mode-panel')?.style.display !== 'none';
+      const shouldShow = this.isHammerActive && isHammerEquipped && !isDevActive;
+      const curDisplay = this.hudBarEl.style.display;
+      if (shouldShow && curDisplay !== 'flex') {
+        this.hudBarEl.style.display = 'flex';
+      } else if (!shouldShow && curDisplay !== 'none') {
+        this.hudBarEl.style.display = 'none';
+        if (this.previewMesh) this.previewMesh.visible = false;
+      }
+    }
+
     // Animate flickering for placed campfires and torches (Zero shader stalls)
     const time = performance.now() * 0.005;
     for (const camp of this.campfires) {
@@ -936,12 +976,28 @@ export default class BuildingSystem {
     // Add solid structure collider so player cannot walk through walls/crafting stations
     const p = solidMesh.position;
     const type = this.selectedStructure;
+    let rad = 0;
     if (type === 'woodenWall' || type === 'stoneWall' || type === 'palisade') {
-      this.placedColliders.push({ minX: p.x - 1.2, maxX: p.x + 1.2, minZ: p.z - 1.2, maxZ: p.z + 1.2 });
+      rad = 1.1;
+    } else if (type === 'woodenDoor') {
+      rad = 0.9;
     } else if (type === 'smelter' || type === 'forge' || type === 'workbench') {
-      this.placedColliders.push({ minX: p.x - 0.9, maxX: p.x + 0.9, minZ: p.z - 0.9, maxZ: p.z + 0.9 });
+      rad = 0.95;
     } else if (type === 'table' || type === 'chest' || type === 'barrel' || type === 'bed') {
-      this.placedColliders.push({ minX: p.x - 0.7, maxX: p.x + 0.7, minZ: p.z - 0.7, maxZ: p.z + 0.7 });
+      rad = 0.75;
+    } else if (type === 'campfire' || type === 'chair' || type === 'standingTorch') {
+      rad = 0.55;
+    }
+
+    if (rad > 0) {
+      this.placedColliders.push({
+        minX: p.x - rad,
+        maxX: p.x + rad,
+        minZ: p.z - rad,
+        maxZ: p.z + rad,
+        radius: rad,
+        mesh: solidMesh
+      });
     }
 
     if (this.audioManager) {
@@ -982,12 +1038,28 @@ export default class BuildingSystem {
     this.placedStructures.push(structure);
 
     const p = solidMesh.position;
+    let rad = 0;
     if (type === 'woodenWall' || type === 'stoneWall' || type === 'palisade') {
-      this.placedColliders.push({ minX: p.x - 1.2, maxX: p.x + 1.2, minZ: p.z - 1.2, maxZ: p.z + 1.2, mesh: solidMesh });
+      rad = 1.1;
+    } else if (type === 'woodenDoor') {
+      rad = 0.9;
     } else if (type === 'smelter' || type === 'forge' || type === 'workbench') {
-      this.placedColliders.push({ minX: p.x - 0.9, maxX: p.x + 0.9, minZ: p.z - 0.9, maxZ: p.z + 0.9, mesh: solidMesh });
+      rad = 0.95;
     } else if (type === 'table' || type === 'chest' || type === 'barrel' || type === 'bed') {
-      this.placedColliders.push({ minX: p.x - 0.7, maxX: p.x + 0.7, minZ: p.z - 0.7, maxZ: p.z + 0.7, mesh: solidMesh });
+      rad = 0.75;
+    } else if (type === 'campfire' || type === 'chair' || type === 'standingTorch') {
+      rad = 0.55;
+    }
+
+    if (rad > 0) {
+      this.placedColliders.push({
+        minX: p.x - rad,
+        maxX: p.x + rad,
+        minZ: p.z - rad,
+        maxZ: p.z + rad,
+        radius: rad,
+        mesh: solidMesh
+      });
     }
     return structure;
   }

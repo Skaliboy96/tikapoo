@@ -36,18 +36,19 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 async function init() {
-  // --- Loading Screen Preload ---
-  const loadingScreen = document.getElementById('loading-screen');
-  const loadingBar = document.getElementById('loading-bar');
-  const loadingText = document.getElementById('loading-text');
+  try {
+    // --- Loading Screen Preload ---
+    const loadingScreen = document.getElementById('loading-screen');
+    const loadingBar = document.getElementById('loading-bar');
+    const loadingText = document.getElementById('loading-text');
 
-  const assetLoader = new AssetLoader();
-  await assetLoader.loadAll();
+    const assetLoader = new AssetLoader();
+    await assetLoader.loadAll();
 
-  // Hide loading screen once ready
-  if (loadingScreen) {
-    loadingScreen.style.display = 'none';
-  }
+    // Hide loading screen once ready
+    if (loadingScreen) {
+      loadingScreen.style.display = 'none';
+    }
 
   // --- Scene, Camera, Renderer Bootstrap ---
   const container = document.getElementById('game-container');
@@ -127,6 +128,8 @@ async function init() {
 
   // Fishing system (cast rod at river, bite detection, timed catch mini-game)
   const fishingSystem = new FishingSystem(scene, world, player, inventory, hud, audioManager, questManager);
+  player.buildingSystem = buildingSystem;
+  inventory.buildingSystem = buildingSystem;
 
   // 5 Biome Bosses System (Unique Mechanics, Arenas, Progressive Unlocks & Legendary Drops)
   const bossManager = new BossManager(scene, world, inventory, hud, audioManager, questManager, assetLoader, player);
@@ -137,8 +140,8 @@ async function init() {
   const combat = new Combat(scene, camera, player, enemyManager, inventory, hud, audioManager, assetLoader, animalManager, bossManager);
   const dayNightCycle = new DayNightCycle(scene, world, hud, audioManager, questManager);
 
-  // Skill Tree & Special Abilities (Keys 1-4, Tree UI on [O])
-  const skillTree = new SkillTree(player, combat, hud, audioManager);
+  // Skill Tree & Special Abilities (Keys 1-4, Tree UI on [O], Quests Tab)
+  const skillTree = new SkillTree(player, combat, hud, audioManager, questManager);
   player.skillTree = skillTree;
 
   // Valheim 8-slot Action Bar (Hotbar) with Top Abilities Bar
@@ -152,8 +155,8 @@ async function init() {
   // Map screen (M key) with 5 Biome Boss markers & Arenas
   const mapScreen = new MapScreen(world, player, npcManager, enemyManager, buildingSystem, controls, camera, questManager, bossManager);
 
-  // Backpack screen (B key)
-  const backpackScreen = new BackpackScreen(inventory, player, controls, hud, hotbar);
+  // Backpack & Inventory screen (I / B keys with Paperdoll 3D Preview & Drop system)
+  const backpackScreen = new BackpackScreen(inventory, player, controls, hud, hotbar, lootManager);
 
   // Nordic Character Creator (live 3D preview, gender, hair, skin, clothing)
   const characterCreator = new CharacterCreator(assetLoader, (charConfig) => {
@@ -184,7 +187,7 @@ async function init() {
     btnBuild.addEventListener('click', (e) => {
       e.stopPropagation();
       if (inventory.tools && inventory.tools.hammer) {
-        if (inventory.hotbar) inventory.hotbar.selectSlot(4, true);
+        if (inventory.hotbar) inventory.hotbar.selectSlot(5, true);
         else buildingSystem.setHammerActive(true);
       }
       buildingSystem.toggleBuildMenu();
@@ -880,6 +883,43 @@ async function init() {
 
       const pPos = player.getPosition();
 
+      // 1.5 Player Gravestone loot recovery
+      let nearbyTombstone = null;
+      if (world && world.tombstones) {
+        for (const t of world.tombstones) {
+          if (pPos.distanceTo(t.position) < 3.2) {
+            nearbyTombstone = t;
+            break;
+          }
+        }
+      }
+
+      if (nearbyTombstone) {
+        let countRecovered = 0;
+        if (nearbyTombstone.items && inventory) {
+          for (const [itemKey, amt] of Object.entries(nearbyTombstone.items)) {
+            if (amt > 0) {
+              inventory.add(itemKey, amt);
+              countRecovered += amt;
+            }
+          }
+        }
+        if (audioManager && audioManager.playPickup) {
+          audioManager.playPickup();
+        }
+        if (hud) {
+          const isFi = (typeof Localization !== 'undefined' && Localization.lang === 'en') ? false : true;
+          hud.showNotification(
+            isFi ? `🪦 Sait tavarasi takaisin hautakiveltä! (+${countRecovered} esinettä)` : `🪦 Recovered your items from Gravestone! (+${countRecovered} items)`,
+            4000
+          );
+          if (hud.showPickupText) hud.showPickupText('🪦 +Tavarat palautettu');
+          if (hud.hideTooltip) hud.hideTooltip();
+        }
+        world.removeTombstone(nearbyTombstone);
+        return;
+      }
+
       // 2. Hidden Treasure Chests in the wild
       let nearbyChest = null;
       if (world && world.wildChests) {
@@ -1077,11 +1117,12 @@ async function init() {
     npcManager.update(delta, camera, locked);
     if (mobileControls) mobileControls.update(delta);
 
-    // Contextual interaction tooltips for chests, campfire and water
+    // Contextual interaction tooltips for gravestones, chests, campfire and water
     const pPos = player.getPosition();
     if (locked && !resourceNode.isAimingAtHarvestable() && !npcManager.targetedNPC) {
+      const nearTomb = (world && world.tombstones) ? world.tombstones.find(t => pPos.distanceTo(t.position) < 3.2) : null;
       let nearbyChest = null;
-      if (world && world.wildChests) {
+      if (!nearTomb && world && world.wildChests) {
         for (const c of world.wildChests) {
           if (!c.isOpened && pPos.distanceTo(c.position) < 3.2) {
             nearbyChest = c;
@@ -1090,7 +1131,10 @@ async function init() {
         }
       }
 
-      if (nearbyChest) {
+      if (nearTomb) {
+        const isFi = (typeof Localization !== 'undefined' && Localization.lang === 'en') ? false : true;
+        hud.showTooltip(isFi ? '[E] Kerää tavarat hautakiveltä 🪦' : '[E] Recover items from Gravestone 🪦');
+      } else if (nearbyChest) {
         hud.showTooltip(`[E] ${Localization.t('chest_prompt', 'Avaa Aarrearkku')}`);
       } else {
         const nearFire = getNearbyCampfire(pPos);
@@ -1141,16 +1185,22 @@ async function init() {
       camera.rotation.y,
       enemyManager.enemies,
       buildingSystem.campfires,
-      currentBiome
+      currentBiome,
+      world.tombstones
     );
 
     // Render 3D Scene
     renderer.render(scene, camera);
   }
 
-  // Start Game Loop
-  animate();
+    // Start Game Loop
+    animate();
+  } catch (fatalInitErr) {
+    console.error('Fatal initialization error:', fatalInitErr);
+    const loadingText = document.getElementById('loading-text');
+    if (loadingText) loadingText.textContent = 'Virhe käynnistyksessä: ' + (fatalInitErr.message || fatalInitErr);
+  }
 }
 
 // Start Game
-init();
+init().catch(err => console.error('Unhandled init error:', err));

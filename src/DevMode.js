@@ -649,6 +649,13 @@ export default class DevMode {
       document.exitPointerLock();
     }
 
+    // Suppress any active building tools/menus while in DevMode
+    if (this.buildingSystem) {
+      this.buildingSystem.setHammerActive(false);
+      this.buildingSystem.cancelPlacing();
+      this.buildingSystem.closeBuildMenu();
+    }
+
     this.updateEditsBadge();
 
     // Camera orientation

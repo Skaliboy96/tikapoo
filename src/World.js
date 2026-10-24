@@ -1,6 +1,15 @@
 import * as THREE from 'three';
 import { getBiomeKey } from './EnemyManager.js';
 
+const isMobileDevice = (
+  typeof window !== 'undefined' && (
+    'ontouchstart' in window ||
+    navigator.maxTouchPoints > 0 ||
+    /Android|iPhone|iPad|iPod|Windows Phone|webOS|BlackBerry/i.test(navigator.userAgent) ||
+    window.innerWidth <= 900
+  )
+);
+
 export default class World {
   constructor(scene, assetLoader = null) {
     this.scene = scene;
@@ -16,6 +25,7 @@ export default class World {
     this.mossyWoodNodes = [];
     this.mushrooms = [];
     this.wildChests = []; // Hidden lootable treasure chests across forests and ruins
+    this.tombstones = []; // Player death gravestones (recover lost items)
     this.colliders = []; // World wall and obstacle colliders (prevents walking through buildings)
     this.workbenches = []; // Registered artisan crafting workbenches across the world
 
@@ -132,6 +142,19 @@ export default class World {
       const carve = Math.cos(rT * Math.PI * 0.5);
       const riverDepth = (landHeight - (-2.6)) * (carve * carve);
       landHeight -= riverDepth;
+    }
+
+    // River bridge deck (spanning x: -18 to 2 at z: 28)
+    if (z >= 26.5 && z <= 29.5 && x >= -18.5 && x <= 2.5) {
+      landHeight = Math.max(landHeight, 1.45);
+    }
+
+    // Satamakylä fishing boardwalk & pier
+    if (Math.abs(x - (-18)) <= 2.0 && z >= 21.0 && z <= 43.0) {
+      landHeight = Math.max(landHeight, 1.35);
+    }
+    if (z >= 30.5 && z <= 33.5 && x >= -18.5 && x <= -10.5) {
+      landHeight = Math.max(landHeight, 1.35);
     }
 
     return landHeight;
@@ -346,7 +369,7 @@ export default class World {
 
   initTerrain() {
     const size = 1400; // Expansive Scandinavian wilderness
-    const segments = 250;
+    const segments = isMobileDevice ? 120 : 250;
     const groundGeo = new THREE.PlaneGeometry(size, size, segments, segments);
     groundGeo.rotateX(-Math.PI / 2);
 
@@ -494,7 +517,7 @@ export default class World {
 
   initWater() {
     const size = 1400;
-    const waterGeo = new THREE.PlaneGeometry(size, size, 32, 32);
+    const waterGeo = new THREE.PlaneGeometry(size, size, isMobileDevice ? 16 : 32, isMobileDevice ? 16 : 32);
     waterGeo.rotateX(-Math.PI / 2);
 
     this.waterNormal = this._generateWaterNormal();
@@ -547,7 +570,7 @@ export default class World {
       grassMat.shadowSide = THREE.DoubleSide;
     }
 
-    const count = 7000;
+    const count = isMobileDevice ? 1500 : 7000;
     this.instancedGrass = new THREE.InstancedMesh(grassGeo, grassMat, count);
     this.instancedGrass.receiveShadow = true;
 
@@ -642,7 +665,7 @@ export default class World {
       fernMat.shadowSide = THREE.DoubleSide;
     }
 
-    const count = 3500;
+    const count = isMobileDevice ? 800 : 3500;
     this.instancedFerns = new THREE.InstancedMesh(fernGeo, fernMat, count);
     this.instancedFerns.receiveShadow = true;
 
@@ -1309,26 +1332,31 @@ export default class World {
     ];
     for (const f of fencePositions) {
       this._placeModel('Prop_WoodenFence_Single', f.x, f.z, 1.1, f.rot);
+      this.addCircleCollider(f.x, f.z, 0.75, 'road_fence');
     }
   }
 
   // --- River Bridge spanning Keskuskylä and Satamakylä across z = 28 ---
   buildRiverBridge() {
     const bz = 28;
-    const by = -0.1;
+    const by = 1.35; // Positioned cleanly above river water (y: 1.0)
 
     for (let bx = -17; bx <= 1; bx += 2.0) {
       const plank = this._placeModel('Floor_WoodDark', bx, bz, 1.15, 0);
       if (plank) plank.position.y = by;
     }
 
-    // Bridge guardrails
+    // Bridge guardrails & colliders (prevents walking through railings or falling off sides)
     for (let rx = -16; rx <= 0; rx += 3.2) {
       const rail1 = this._placeModel('Prop_WoodenFence_Single', rx, bz + 1.4, 1.1, Math.PI / 2);
       const rail2 = this._placeModel('Prop_WoodenFence_Single', rx, bz - 1.4, 1.1, Math.PI / 2);
       if (rail1) rail1.position.y = by;
       if (rail2) rail2.position.y = by;
     }
+
+    // Solid box colliders along bridge north and south guardrails
+    this.addBoxCollider(-18.5, 2.5, bz + 1.15, bz + 2.0, 'bridge_rail_north');
+    this.addBoxCollider(-18.5, 2.5, bz - 2.0, bz - 1.15, 'bridge_rail_south');
 
     this._placeModel('CandleStick_Stand', -18, bz + 1.8, 1.0, 0);
     this._placeModel('CandleStick_Stand', 2, bz - 1.8, 1.0, 0);
@@ -1343,7 +1371,7 @@ export default class World {
     }
 
     // 2. Grand Fishing Jetty & Boardwalk Network
-    const py = -0.2;
+    const py = 1.25; // Elevated above river water level
     for (let zStep = 22; zStep <= 42; zStep += 2.8) {
       const plank = this._placeModel('Floor_WoodDark', -18, zStep, 1.15, Math.PI / 2);
       if (plank) plank.position.y = py;
@@ -1355,7 +1383,7 @@ export default class World {
       if (plank) plank.position.y = py;
     }
 
-    // Pier guardrails
+    // Pier guardrails & colliders
     const pierRails = [
       { x: -19.4, z: 24, rot: 0 },
       { x: -19.4, z: 28, rot: 0 },
@@ -1369,6 +1397,7 @@ export default class World {
     for (const pr of pierRails) {
       const r = this._placeModel('Prop_WoodenFence_Single', pr.x, pr.z, 1.0, pr.rot);
       if (r) r.position.y = py;
+      this.addCircleCollider(pr.x, pr.z, 0.75, 'pier_rail');
     }
 
     // Pier Props
@@ -1462,6 +1491,7 @@ export default class World {
     ];
     for (const pal of palisades) {
       this._placeModel('Prop_WoodenFence_Single', pal.x, pal.z, 1.15, pal.r);
+      this.addCircleCollider(pal.x, pal.z, 0.85, 'highland_palisade');
     }
   }
 
@@ -1709,6 +1739,13 @@ export default class World {
       this._placeModel('Prop_WoodenFence_Single', startX - 0.5, fz, 1.0, Math.PI / 2);
       this._placeModel('Prop_WoodenFence_Single', startX + width + 0.5, fz, 1.0, -Math.PI / 2);
     }
+
+    // Solid box colliders for farm perimeter (leaving entrance opening at startX + 4 to startX + 6)
+    this.addBoxCollider(startX - 0.5, startX + 3.8, startZ - 0.8, startZ - 0.2, 'farm_fence_n1');
+    this.addBoxCollider(startX + 6.2, startX + width + 0.5, startZ - 0.8, startZ - 0.2, 'farm_fence_n2');
+    this.addBoxCollider(startX - 0.5, startX + width + 0.5, startZ + depth + 0.2, startZ + depth + 0.8, 'farm_fence_s');
+    this.addBoxCollider(startX - 0.8, startX - 0.2, startZ - 0.5, startZ + depth + 0.5, 'farm_fence_w');
+    this.addBoxCollider(startX + width + 0.2, startX + width + 0.8, startZ - 0.5, startZ + depth + 0.5, 'farm_fence_e');
 
     for (let wx = startX + 1.2; wx < startX + width; wx += 1.3) {
       for (let wz = startZ + 1.2; wz < startZ + depth; wz += 1.3) {
@@ -2181,6 +2218,16 @@ export default class World {
       this.altarLight.mesh.position.y = this.altarLight.baseY + Math.sin(this.windTime * 2.5) * 0.12;
       this.altarLight.light.intensity = 2.5 + Math.sin(this.windTime * 4.0) * 0.8;
     }
+
+    if (this.tombstones) {
+      for (let i = 0; i < this.tombstones.length; i++) {
+        const t = this.tombstones[i];
+        if (t && t.runeMesh) {
+          t.runeMesh.rotation.y += delta * 2.0;
+          t.runeMesh.position.y = 1.55 + Math.sin(this.windTime * 3.0 + i) * 0.12;
+        }
+      }
+    }
   }
 
   // --- Hidden Treasure Chests in the Wild ---
@@ -2239,5 +2286,69 @@ export default class World {
 
     this.wildChests.push(chestObj);
     return chestObj;
+  }
+
+  // --- Gravestone / Hautakivi System (Dropped Player Loot Recovery) ---
+  spawnTombstone(x, y, z, droppedItems = {}) {
+    const group = new THREE.Group();
+    group.position.set(x, y, z);
+
+    // Weathered stone pedestal
+    const baseGeo = new THREE.BoxGeometry(0.85, 0.18, 0.55);
+    const stoneMat = new THREE.MeshStandardMaterial({
+      color: 0x484b50,
+      roughness: 0.9,
+      metalness: 0.15
+    });
+    const baseMesh = new THREE.Mesh(baseGeo, stoneMat);
+    baseMesh.position.y = 0.09;
+    baseMesh.castShadow = true;
+    baseMesh.receiveShadow = true;
+    group.add(baseMesh);
+
+    // Upright grave cross / rune tombstone slab
+    const stoneGeo = new THREE.BoxGeometry(0.55, 1.05, 0.16);
+    const stoneMesh = new THREE.Mesh(stoneGeo, stoneMat);
+    stoneMesh.position.y = 0.65;
+    stoneMesh.castShadow = true;
+    group.add(stoneMesh);
+
+    // Cross horizontal bar
+    const crossBarGeo = new THREE.BoxGeometry(0.85, 0.16, 0.18);
+    const crossBar = new THREE.Mesh(crossBarGeo, stoneMat);
+    crossBar.position.y = 0.88;
+    crossBar.castShadow = true;
+    group.add(crossBar);
+
+    // Floating glowing rune beacon
+    const runeGeo = new THREE.OctahedronGeometry(0.18, 0);
+    const runeMat = new THREE.MeshBasicMaterial({ color: 0x38ef7d });
+    const rune = new THREE.Mesh(runeGeo, runeMat);
+    rune.position.set(0, 1.55, 0);
+    group.add(rune);
+
+    this.scene.add(group);
+
+    const tombstone = {
+      id: Date.now(),
+      mesh: group,
+      runeMesh: rune,
+      position: new THREE.Vector3(x, y, z),
+      items: droppedItems
+    };
+
+    if (!this.tombstones) this.tombstones = [];
+    this.tombstones.push(tombstone);
+    return tombstone;
+  }
+
+  removeTombstone(tombstone) {
+    if (!tombstone) return;
+    if (tombstone.mesh) {
+      this.scene.remove(tombstone.mesh);
+    }
+    if (this.tombstones) {
+      this.tombstones = this.tombstones.filter(t => t !== tombstone);
+    }
   }
 }

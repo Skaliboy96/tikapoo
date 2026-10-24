@@ -391,6 +391,33 @@ export default class MapScreen {
       });
     }
 
+    // 8. Player Gravestones / Tombstones (🪦 Hautakivi)
+    if (this.world && this.world.tombstones) {
+      const isFi = (typeof Localization !== 'undefined' && Localization.lang === 'en') ? false : true;
+      this.world.tombstones.forEach(tomb => {
+        const p = toMap(tomb.position.x, tomb.position.z);
+        if (p.x < -40 || p.x > W + 40 || p.y < -40 || p.y > H + 40) return;
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(231, 76, 60, 0.35)';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, Math.max(10, 14 * this.zoom), 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(15, 20, 25, 0.9)';
+        ctx.fillRect(p.x - 46, p.y - 24, 92, 18);
+        ctx.strokeStyle = '#ff4757';
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(p.x - 46, p.y - 24, 92, 18);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 9px Cinzel, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(isFi ? '🪦 HAUTAKIVI' : '🪦 GRAVESTONE', p.x, p.y - 12);
+        ctx.restore();
+      });
+    }
+
     // 8. Player marker (always visible)
     if (this.player) {
       const pPos = this.player.getPosition();

@@ -231,7 +231,7 @@ export default class HUD {
     }, 1200);
   }
 
-  updateMinimap(playerPos, playerHeading, enemies = [], campfires = [], biomeKey = 'meadows') {
+  updateMinimap(playerPos, playerHeading, enemies = [], campfires = [], biomeKey = 'meadows', tombstones = []) {
     if (!this.minimapCtx || !playerPos) return;
     const ctx = this.minimapCtx;
     const width = 150;
@@ -347,6 +347,34 @@ export default class HUD {
           ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
           ctx.fill();
         }
+      });
+    }
+
+    // Draw Gravestones / Tombstones on Minimap (ALWAYS visible so player can navigate back to their loot)
+    if (tombstones && tombstones.length > 0) {
+      tombstones.forEach(tomb => {
+        const pt = toRadar(tomb.position.x, tomb.position.z);
+        const dx = pt.x - center;
+        const dy = pt.y - center;
+        const dist = Math.hypot(dx, dy);
+        let drawX = pt.x;
+        let drawY = pt.y;
+        if (dist > (center - 10)) {
+          drawX = center + (dx / dist) * (center - 10);
+          drawY = center + (dy / dist) * (center - 10);
+        }
+
+        ctx.save();
+        ctx.fillStyle = '#ff3838';
+        ctx.beginPath();
+        ctx.arc(drawX, drawY, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🪦', drawX, drawY);
+        ctx.restore();
       });
     }
 

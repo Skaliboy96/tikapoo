@@ -31,6 +31,7 @@ export default class Hotbar {
     ];
 
     this.container = null;
+    this._loadSlots();
     this._initUI();
     this._setupListeners();
     this.sync();
@@ -307,8 +308,8 @@ export default class Hotbar {
       }
 
       // Slot 0 is bare fists / hands
-      if (slot.id === 'fists') {
-        if (this.inventory) this.inventory.equip(null);
+      if (slot.id === 'fists' || slot.toolId === 'hands') {
+        if (this.inventory) this.inventory.equip('hands');
         if (this.combat) this.combat.equipTool('hands');
         if (this.player && this.player.updateHeldWeapon) this.player.updateHeldWeapon();
         if (this.hud && previousSlot !== index) {
@@ -626,5 +627,82 @@ export default class Hotbar {
       if (sIcon) sIcon.textContent = hasSkill ? s.name.split(' ')[0] : '🔒';
       if (sName) sName.textContent = hasSkill ? s.name.split(' ')[1] : 'Tyhjä';
     });
+  }
+
+  swapSlots(indexA, indexB) {
+    if (indexA < 0 || indexA >= this.slots.length || indexB < 0 || indexB >= this.slots.length || indexA === indexB) return;
+    const a = this.slots[indexA];
+    const b = this.slots[indexB];
+
+    // Swap content but preserve original key shortcuts
+    const tempKeyA = a.key;
+    const tempKeyB = b.key;
+    this.slots[indexA] = { ...b, key: tempKeyA };
+    this.slots[indexB] = { ...a, key: tempKeyB };
+
+    this._saveSlots();
+    this.render();
+    this.sync();
+  }
+
+  setSlotItem(index, itemKey, isTool = false, meta = null) {
+    if (index < 0 || index >= this.slots.length) return;
+    const currentKey = this.slots[index].key;
+    if (isTool) {
+      this.slots[index] = {
+        id: itemKey,
+        key: currentKey,
+        type: itemKey === 'hammer' ? 'build' : 'tool',
+        toolId: itemKey,
+        name: meta ? meta.name : itemKey,
+        icon: meta ? meta.icon : '⚔️',
+        count: 1
+      };
+    } else {
+      this.slots[index] = {
+        id: itemKey,
+        key: currentKey,
+        type: 'consume',
+        itemId: itemKey,
+        fallbackItemId: null,
+        name: meta ? meta.name : itemKey,
+        icon: meta ? meta.icon : '📦',
+        count: this.inventory ? (this.inventory.items[itemKey] || 0) : 1
+      };
+    }
+    this._saveSlots();
+    this.render();
+    this.sync();
+  }
+
+  _saveSlots() {
+    try {
+      const data = this.slots.map(s => ({
+        id: s.id,
+        key: s.key,
+        type: s.type,
+        toolId: s.toolId,
+        itemId: s.itemId,
+        name: s.name,
+        icon: s.icon
+      }));
+      localStorage.setItem('tikapoo_hotbar_slots', JSON.stringify(data));
+    } catch (e) {}
+  }
+
+  _loadSlots() {
+    try {
+      const saved = localStorage.getItem('tikapoo_hotbar_slots');
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (Array.isArray(data) && data.length === this.slots.length) {
+          data.forEach((d, i) => {
+            if (d && d.id) {
+              this.slots[i] = { ...this.slots[i], ...d };
+            }
+          });
+        }
+      }
+    } catch (e) {}
   }
 }

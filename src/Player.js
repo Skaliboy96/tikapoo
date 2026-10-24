@@ -132,8 +132,15 @@ export default class Player {
 
     const isFemale = config.gender === 'female';
     const isHood = config.headStyle === 'hood';
-    // New heroic adventurer models: Barbarian (male warrior) and Ranger_Adv (female ranger)
-    const modelName = config.model || (isFemale ? (isHood ? 'Ranger_Adv' : 'Rogue_Hooded') : (isHood ? 'Barbarian' : 'Knight'));
+    const style = config.style || 'rogue';
+
+    let modelName = config.model;
+    if (!modelName) {
+      if (style === 'ranger') modelName = 'Ranger_Adv';
+      else if (style === 'barbarian') modelName = 'Barbarian';
+      else if (style === 'mage') modelName = 'Mage';
+      else modelName = isFemale ? (isHood ? 'Rogue_Hooded' : 'Ranger_Adv') : (isHood ? 'Rogue_Hooded' : 'Rogue');
+    }
 
     // Create animated Valheim Viking character with natural standing idle and customizations
     const charData = this.assetLoader.createAnimatedCharacter(modelName, 'Idle_A', config);
@@ -150,17 +157,15 @@ export default class Player {
       }
     });
 
-    // Locate hand bones for weapons & shield attachment (supports both Rig_Medium and UAL2)
+    // Locate hand bones/slots for weapons & shield attachment (supports KayKit Rig_Medium and standard armatures)
     let rightHandBone = null;
     let leftArmBone = null;
     this.playerModel.traverse((c) => {
-      if (c.isBone) {
-        if (c.name === 'handslot.r') rightHandBone = c;
-        else if (!rightHandBone && (c.name === 'hand.r' || c.name.includes('hand_r'))) rightHandBone = c;
+      if (c.name === 'handslot.r') rightHandBone = c;
+      else if (!rightHandBone && (c.name === 'hand.r' || c.name.toLowerCase().includes('hand_r') || c.name.toLowerCase().includes('righthand'))) rightHandBone = c;
 
-        if (c.name === 'handslot.l') leftArmBone = c;
-        else if (!leftArmBone && (c.name === 'hand.l' || c.name.includes('hand_l') || c.name.includes('lowerarm_l'))) leftArmBone = c;
-      }
+      if (c.name === 'handslot.l') leftArmBone = c;
+      else if (!leftArmBone && (c.name === 'hand.l' || c.name.toLowerCase().includes('hand_l') || c.name.toLowerCase().includes('lefthand') || c.name.toLowerCase().includes('lowerarm_l'))) leftArmBone = c;
     });
 
     // Round Viking shield (only attached if specifically equipped!)
@@ -203,26 +208,33 @@ export default class Player {
     this.weaponPool = {};
     if (!rightHandBone) return;
 
+    const isSlot = rightHandBone.name.includes('handslot');
+
     // 1. Torch
     const tGroup = new THREE.Group();
     const tModel = this.assetLoader ? this.assetLoader.get('Torch_Metal') : null;
     if (tModel) {
-      tModel.scale.set(0.65, 0.65, 0.65);
-      tModel.rotation.set(Math.PI / 2, 0, 0);
-      tModel.position.set(0.02, 0.04, 0.12);
+      tModel.scale.set(0.7, 0.7, 0.7);
+      if (isSlot) {
+        tModel.rotation.set(0, 0, 0);
+        tModel.position.set(0, 0, 0);
+      } else {
+        tModel.rotation.set(Math.PI / 2, 0, 0);
+        tModel.position.set(0.02, 0.04, 0.12);
+      }
       tGroup.add(tModel);
     } else {
       const shaftGeo = new THREE.CylinderGeometry(0.02, 0.025, 0.65, 6);
       const wMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.8 });
       const shaft = new THREE.Mesh(shaftGeo, wMat);
-      shaft.rotation.x = Math.PI / 2;
+      shaft.position.y = 0.25;
       tGroup.add(shaft);
       const flameGeo = new THREE.DodecahedronGeometry(0.12, 0);
       const flameMat = new THREE.MeshBasicMaterial({ color: 0xff6600 });
       const flame = new THREE.Mesh(flameGeo, flameMat);
-      flame.position.set(0, 0, 0.38);
+      flame.position.set(0, 0.6, 0);
       tGroup.add(flame);
-      tGroup.position.set(0.02, 0.04, 0.12);
+      if (!isSlot) tGroup.rotation.x = Math.PI / 2;
     }
     tGroup.visible = false;
     rightHandBone.add(tGroup);
@@ -233,32 +245,42 @@ export default class Player {
     const axeModel = this.assetLoader ? this.assetLoader.get('Axe_Bronze') : null;
     if (axeModel) {
       axeModel.scale.set(0.75, 0.75, 0.75);
-      axeModel.rotation.set(Math.PI / 2, 0, 0);
-      axeModel.position.set(0.02, 0.04, 0.15);
+      if (isSlot) {
+        axeModel.rotation.set(0, 0, -Math.PI / 2);
+        axeModel.position.set(0, 0.05, 0);
+      } else {
+        axeModel.rotation.set(Math.PI / 2, 0, -Math.PI / 2);
+        axeModel.position.set(0.02, 0.04, 0.15);
+      }
       aGroup.add(axeModel);
     } else {
       const aShaftGeo = new THREE.CylinderGeometry(0.02, 0.024, 0.65, 8);
       const aWMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.8 });
       const aShaft = new THREE.Mesh(aShaftGeo, aWMat);
+      aShaft.position.y = 0.25;
       const aHeadGeo = new THREE.BoxGeometry(0.14, 0.18, 0.04);
       const aHeadMat = new THREE.MeshStandardMaterial({ color: 0xcd7f32, metalness: 0.85, roughness: 0.25 });
       const aHead = new THREE.Mesh(aHeadGeo, aHeadMat);
-      aHead.position.set(0.06, 0.22, 0);
+      aHead.position.set(0.06, 0.45, 0);
       aGroup.add(aShaft, aHead);
-      aGroup.rotation.set(Math.PI / 2, 0, 0);
-      aGroup.position.set(0.02, 0.04, 0.15);
+      if (!isSlot) aGroup.rotation.x = Math.PI / 2;
     }
     aGroup.visible = false;
     rightHandBone.add(aGroup);
     this.weaponPool['axe'] = aGroup;
 
-    // 3. Sword / Spear
+    // 3. Sword / Spear (uses KayKit adventurer sword for authentic look)
     const sGroup = new THREE.Group();
-    const swordModel = this.assetLoader ? this.assetLoader.get('Sword_Bronze') : null;
+    const swordModel = this.assetLoader ? (this.assetLoader.get('sword_1handed') || this.assetLoader.get('Sword_Bronze')) : null;
     if (swordModel) {
-      swordModel.scale.set(0.75, 0.75, 0.75);
-      swordModel.rotation.set(Math.PI / 2, 0, 0);
-      swordModel.position.set(0.02, 0.04, 0.12);
+      swordModel.scale.set(0.8, 0.8, 0.8);
+      if (isSlot) {
+        swordModel.rotation.set(0, 0, 0);
+        swordModel.position.set(0, 0, 0);
+      } else {
+        swordModel.rotation.set(Math.PI / 2, 0, 0);
+        swordModel.position.set(0.02, 0.04, 0.12);
+      }
       sGroup.add(swordModel);
     } else {
       const sShaftGeo = new THREE.CylinderGeometry(0.016, 0.02, 0.22, 8);
@@ -273,8 +295,7 @@ export default class Player {
       const sBlade = new THREE.Mesh(sBladeGeo, sSteelMat);
       sBlade.position.y = 0.47;
       sGroup.add(sGrip, sGuard, sBlade);
-      sGroup.rotation.set(Math.PI / 2, 0, 0);
-      sGroup.position.set(0.02, 0.04, 0.12);
+      if (!isSlot) sGroup.rotation.x = Math.PI / 2;
     }
     sGroup.visible = false;
     rightHandBone.add(sGroup);
@@ -285,20 +306,25 @@ export default class Player {
     const pickModel = this.assetLoader ? this.assetLoader.get('Pickaxe_Bronze') : null;
     if (pickModel) {
       pickModel.scale.set(0.75, 0.75, 0.75);
-      pickModel.rotation.set(Math.PI / 2, 0, 0);
-      pickModel.position.set(0.02, 0.04, 0.15);
+      if (isSlot) {
+        pickModel.rotation.set(0, 0, -Math.PI / 2);
+        pickModel.position.set(0, 0.05, 0);
+      } else {
+        pickModel.rotation.set(Math.PI / 2, 0, -Math.PI / 2);
+        pickModel.position.set(0.02, 0.04, 0.15);
+      }
       pGroup.add(pickModel);
     } else {
       const pShaftGeo = new THREE.CylinderGeometry(0.02, 0.025, 0.7, 8);
       const pWMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.8 });
       const pShaft = new THREE.Mesh(pShaftGeo, pWMat);
+      pShaft.position.y = 0.28;
       const pHeadGeo = new THREE.BoxGeometry(0.28, 0.06, 0.05);
       const pMetalMat = new THREE.MeshStandardMaterial({ color: 0x555b63, metalness: 0.85, roughness: 0.3 });
       const pHead = new THREE.Mesh(pHeadGeo, pMetalMat);
-      pHead.position.y = 0.32;
+      pHead.position.y = 0.6;
       pGroup.add(pShaft, pHead);
-      pGroup.rotation.set(Math.PI / 2, 0, 0);
-      pGroup.position.set(0.02, 0.04, 0.15);
+      if (!isSlot) pGroup.rotation.x = Math.PI / 2;
     }
     pGroup.visible = false;
     rightHandBone.add(pGroup);
@@ -311,11 +337,14 @@ export default class Player {
     const hWMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.8 });
     const hIMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.8, roughness: 0.3 });
     const hShaft = new THREE.Mesh(hShaftGeo, hWMat);
+    hShaft.position.y = 0.18;
     const head = new THREE.Mesh(headGeo, hIMat);
-    head.position.y = 0.22;
+    head.position.y = 0.42;
     hGroup.add(hShaft, head);
-    hGroup.rotation.set(Math.PI / 2, 0, 0);
-    hGroup.position.set(0.02, 0.04, 0.15);
+    if (!isSlot) {
+      hGroup.rotation.set(Math.PI / 2, 0, 0);
+      hGroup.position.set(0.02, 0.04, 0.15);
+    }
     hGroup.visible = false;
     rightHandBone.add(hGroup);
     this.weaponPool['hammer'] = hGroup;
@@ -334,51 +363,83 @@ export default class Player {
     const bobber = new THREE.Mesh(bobberGeo, bobberMat);
     bobber.position.set(0, 1.4, 0.8);
     rodGroup.add(bobber);
-    rodGroup.position.set(0.02, 0.04, 0.12);
+    if (!isSlot) {
+      rodGroup.position.set(0.02, 0.04, 0.12);
+    }
     rodGroup.visible = false;
     rightHandBone.add(rodGroup);
     this.weaponPool['fishingRod'] = rodGroup;
 
     // 7. Hunting Bow
     const bowGroup = new THREE.Group();
-    const curve = new THREE.QuadraticBezierCurve3(
-      new THREE.Vector3(0, -0.65, 0.15),
-      new THREE.Vector3(0, 0, -0.2),
-      new THREE.Vector3(0, 0.65, 0.15)
-    );
-    const bowGeo = new THREE.TubeGeometry(curve, 16, 0.018, 6, false);
-    const bowWoodMat = new THREE.MeshStandardMaterial({ color: 0x4a2e18, roughness: 0.7 });
-    const bowMesh = new THREE.Mesh(bowGeo, bowWoodMat);
-    bowGroup.add(bowMesh);
-    const stringGeo = new THREE.CylinderGeometry(0.003, 0.003, 1.3, 4);
-    const stringMat = new THREE.MeshBasicMaterial({ color: 0xe0e0e0 });
-    const stringMesh = new THREE.Mesh(stringGeo, stringMat);
-    stringMesh.position.set(0, 0, 0.15);
-    bowGroup.add(stringMesh);
-    bowGroup.rotation.set(Math.PI / 2, 0, 0);
-    bowGroup.position.set(0.02, 0.04, 0.10);
+    const bowAsset = this.assetLoader ? this.assetLoader.get('bow_withString') : null;
+    if (bowAsset) {
+      bowAsset.scale.set(0.8, 0.8, 0.8);
+      if (isSlot) {
+        bowAsset.rotation.set(0, 0, 0);
+        bowAsset.position.set(0, 0, 0);
+      } else {
+        bowAsset.rotation.set(Math.PI / 2, 0, 0);
+        bowAsset.position.set(0.02, 0.04, 0.1);
+      }
+      bowGroup.add(bowAsset);
+    } else {
+      const curve = new THREE.QuadraticBezierCurve3(
+        new THREE.Vector3(0, -0.65, 0.15),
+        new THREE.Vector3(0, 0, -0.2),
+        new THREE.Vector3(0, 0.65, 0.15)
+      );
+      const bowGeo = new THREE.TubeGeometry(curve, 16, 0.018, 6, false);
+      const bowWoodMat = new THREE.MeshStandardMaterial({ color: 0x4a2e18, roughness: 0.7 });
+      const bowMesh = new THREE.Mesh(bowGeo, bowWoodMat);
+      bowGroup.add(bowMesh);
+      const stringGeo = new THREE.CylinderGeometry(0.003, 0.003, 1.3, 4);
+      const stringMat = new THREE.MeshBasicMaterial({ color: 0xe0e0e0 });
+      const stringMesh = new THREE.Mesh(stringGeo, stringMat);
+      stringMesh.position.set(0, 0, 0.15);
+      bowGroup.add(stringMesh);
+      if (!isSlot) {
+        bowGroup.rotation.set(Math.PI / 2, 0, 0);
+        bowGroup.position.set(0.02, 0.04, 0.10);
+      }
+    }
     bowGroup.visible = false;
     rightHandBone.add(bowGroup);
     this.weaponPool['huntingBow'] = bowGroup;
 
     // 8. Runic Staff
     const staffGroup = new THREE.Group();
-    const staffGeo = new THREE.CylinderGeometry(0.02, 0.028, 1.5, 8);
-    const staffMat = new THREE.MeshStandardMaterial({ color: 0x3d2714, roughness: 0.8 });
-    const staff = new THREE.Mesh(staffGeo, staffMat);
-    staffGroup.add(staff);
-    const orbGeo = new THREE.DodecahedronGeometry(0.09, 1);
-    const orbMat = new THREE.MeshStandardMaterial({
-      color: 0x33e0ff,
-      emissive: 0x11bbff,
-      emissiveIntensity: 1.8,
-      roughness: 0.2
-    });
-    const orb = new THREE.Mesh(orbGeo, orbMat);
-    orb.position.set(0, 0.8, 0);
-    staffGroup.add(orb);
-    staffGroup.rotation.set(Math.PI / 2, 0, 0);
-    staffGroup.position.set(0.02, 0.04, 0.18);
+    const staffAsset = this.assetLoader ? this.assetLoader.get('staff') : null;
+    if (staffAsset) {
+      staffAsset.scale.set(0.8, 0.8, 0.8);
+      if (isSlot) {
+        staffAsset.rotation.set(0, 0, 0);
+        staffAsset.position.set(0, 0, 0);
+      } else {
+        staffAsset.rotation.set(Math.PI / 2, 0, 0);
+        staffAsset.position.set(0.02, 0.04, 0.15);
+      }
+      staffGroup.add(staffAsset);
+    } else {
+      const staffGeo = new THREE.CylinderGeometry(0.02, 0.028, 1.5, 8);
+      const staffMat = new THREE.MeshStandardMaterial({ color: 0x3d2714, roughness: 0.8 });
+      const staff = new THREE.Mesh(staffGeo, staffMat);
+      staffGroup.add(staff);
+      const orbGeo = new THREE.DodecahedronGeometry(0.09, 1);
+      const orbMat = new THREE.MeshStandardMaterial({
+        color: 0x33e0ff,
+        emissive: 0x11bbff,
+        emissiveIntensity: 1.8,
+        roughness: 0.2
+      });
+      const orb = new THREE.Mesh(orbGeo, orbMat);
+      orb.position.set(0, 0.8, 0);
+      staffGroup.add(orb);
+      if (!isSlot) {
+        staffGroup.rotation.set(Math.PI / 2, 0, 0);
+        staffGroup.position.set(0.02, 0.04, 0.18);
+      }
+    }
     staffGroup.visible = false;
     rightHandBone.add(staffGroup);
     this.weaponPool['runicStaff'] = staffGroup;
@@ -562,12 +623,14 @@ export default class Player {
         e.preventDefault();
       }
 
-      // Toggle 3rd person / 1st person with [V]
-      if (e.code === 'KeyV') {
+      // Toggle 3rd person / 1st person with [F5] or [P] (leaves [V] exclusively for Stone Pickaxe)
+      if (e.code === 'F5' || e.code === 'KeyP') {
+        e.preventDefault();
         this.isThirdPerson = !this.isThirdPerson;
         if (this.hud) {
+          const isFi = (typeof Localization !== 'undefined' && Localization.lang === 'en') ? false : true;
           this.hud.showNotification(
-            this.isThirdPerson ? '🎥 Kolmannen persoonan kuvakulma (Valheim)' : '🎥 Ensimmäisen persoonan kuvakulma',
+            this.isThirdPerson ? (isFi ? '🎥 Kolmannen persoonan kuvakulma [F5]' : '🎥 Third Person Camera [F5]') : (isFi ? '🎥 Ensimmäisen persoonan kuvakulma [F5]' : '🎥 First Person Camera [F5]'),
             2000
           );
         }
@@ -718,7 +781,7 @@ export default class Player {
       this.direction.normalize();
       const moveX = this.direction.x * currentSpeed * delta;
       const moveZ = this.direction.z * currentSpeed * delta;
-      const bs = (this.inventory && this.inventory.buildingSystem) ? this.inventory.buildingSystem : null;
+      const bs = this.buildingSystem || (this.inventory && this.inventory.buildingSystem) || null;
 
       // Sliding test X
       const testX = this.playerPos.x + moveX;
@@ -918,7 +981,7 @@ export default class Player {
         }
       }
     }
-    const bs = (this.inventory && this.inventory.buildingSystem) ? this.inventory.buildingSystem : null;
+    const bs = this.buildingSystem || (this.inventory && this.inventory.buildingSystem) || null;
     if (!nearCampfire && bs && bs.placedStructures) {
       for (const ps of bs.placedStructures) {
         if ((ps.type === 'campfire' || ps.type === 'bed') && ps.position.distanceTo(pPos) < 4.0) {
@@ -1018,7 +1081,7 @@ export default class Player {
         }
       }
     }
-    const bs = (this.inventory && this.inventory.buildingSystem) ? this.inventory.buildingSystem : null;
+    const bs = this.buildingSystem || (this.inventory && this.inventory.buildingSystem) || null;
     if (!nearRest && bs && bs.placedStructures) {
       for (const ps of bs.placedStructures) {
         if ((ps.type === 'campfire' || ps.type === 'bed') && ps.position.distanceTo(pPos) < 3.8) {
@@ -1100,16 +1163,56 @@ export default class Player {
   }
 
   die() {
-    if (this.hud) {
-      this.hud.showNotification('Kaaduit maahan! Synnyit uudelleen leirissä.', 4500);
+    const deathPos = this.playerPos.clone();
+
+    // 1. Drop player's inventory items into a recoverable Gravestone
+    const droppedItems = {};
+    let hasItems = false;
+    if (this.inventory && this.inventory.items) {
+      for (const [key, count] of Object.entries(this.inventory.items)) {
+        if (count > 0) {
+          droppedItems[key] = count;
+          this.inventory.items[key] = 0;
+          hasItems = true;
+        }
+      }
+      this.inventory.updateDisplay();
     }
-    this.playerPos.set(0, 0, 0);
+
+    // 2. Spawn 3D Gravestone in the world at death location
+    if (this.world && this.world.spawnTombstone) {
+      this.world.spawnTombstone(deathPos.x, deathPos.y, deathPos.z, droppedItems);
+    }
+
+    // 3. Audio & Notifications
+    if (this.audioManager && this.audioManager.playHurt) {
+      this.audioManager.playHurt();
+    }
+    if (this.hud) {
+      this.hud.flashRed();
+      this.hud.showNotification(
+        hasItems
+          ? '☠️ Kaaduit maahan! Tavarat putosivat kuolinpaikkasi hautakivelle 🪦. Noutamalla hautakiven saat tavarasi takaisin!'
+          : '☠️ Kaaduit maahan! Synnyit uudelleen leirissä.',
+        6000
+      );
+    }
+
+    // 4. Respawn at central village camp
+    const spawnY = (this.world && this.world.getGroundHeight) ? this.world.getGroundHeight(0, 0) : 3.0;
+    this.playerPos.set(0, spawnY, 0);
     this.velocity.set(0, 0, 0);
-    this.health = 100;
-    this.stamina = 180;
+    this.health = this.maxHealth;
+    this.stamina = this.maxStamina;
     this.hunger = 80;
     this.thirst = 80;
     this.energy = 80;
+
+    if (this.hud) {
+      this.hud.updateHealth(this.health, this.maxHealth);
+      this.hud.updateStamina(this.stamina, this.maxStamina);
+      this.hud.updateHunger(this.hunger, this.maxHunger);
+    }
   }
 
   getPosition() {

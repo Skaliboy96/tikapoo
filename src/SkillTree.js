@@ -9,15 +9,17 @@ import * as THREE from 'three';
  * - 🏹 Jousiammunta (Ranger / Archery)
  */
 export default class SkillTree {
-  constructor(player, combat, hud, audioManager) {
+  constructor(player, combat, hud, audioManager, questManager = null) {
     this.player = player;
     this.combat = combat;
     this.hud = hud;
     this.audioManager = audioManager;
+    this.questManager = questManager;
     this.hotbar = null;
 
     this.isOpen = false;
     this.modalEl = null;
+    this.currentTab = 'skills'; // 'skills' or 'quests'
 
     // Specialization definitions
     this.skills = {
@@ -276,28 +278,110 @@ export default class SkillTree {
     const xpNext = p ? p.xpNext : 100;
     const skillPoints = p ? p.skillPoints : 0;
 
-    const trees = [
-      { key: 'warrior', title: '⚔️ SOTURI & MIEKKAILU', desc: 'Lähitaistelu, voimaiskut ja kestävyys' },
-      { key: 'mage', title: '🔮 TAIKUUS & RIIMULOITSUT', desc: 'Elementaalivoimat, räjähdykset ja parantaminen' },
-      { key: 'ranger', title: '🏹 JOUSIAMMUNTA & VALPPAUS', desc: 'Tarkat laukaukset, nuolisateet ja liikenopeus' }
-    ];
+    const isFi = (typeof Localization !== 'undefined' && Localization.lang === 'en') ? false : true;
 
-    let html = `
-      <div class="skill-tree-box">
-        <div class="skill-tree-header">
-          <div class="skill-tree-title-group">
-            <h2>⭐ TAIDOT &amp; ERIKOISLIIKKEET</h2>
-            <div class="skill-tree-meta">
-              <span class="st-badge">🏆 Taso: ${level}</span>
-              <span class="st-badge st-xp">Kokemus: ${xp} / ${xpNext} XP</span>
-              <span class="st-badge st-sp">✨ Taitopisteet: <strong>${skillPoints}</strong></span>
+    let contentHtml = '';
+    if (this.currentTab === 'quests') {
+      const qm = this.questManager;
+      const allQuests = qm ? Object.values(qm.quests) : [];
+      const activeQuests = allQuests.filter(q => q.active && !q.completed);
+      const completedQuests = allQuests.filter(q => q.completed);
+      const availableQuests = allQuests.filter(q => !q.active && !q.completed);
+
+      contentHtml = `
+        <div class="st-quests-container" style="display: flex; flex-direction: column; gap: 20px; max-height: 60vh; overflow-y: auto; padding-right: 8px;">
+          <!-- Active Quests -->
+          <div class="st-quest-section">
+            <h3 style="color: #4cd137; margin: 0 0 10px 0; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+              🔥 ${isFi ? 'AKTIIVISET TEHTÄVÄT' : 'ACTIVE QUESTS'} (${activeQuests.length})
+            </h3>
+            ${activeQuests.length === 0 ? `
+              <div style="background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.15); border-radius: 8px; padding: 16px; color: #aaa; font-style: italic;">
+                ${isFi ? 'Ei aktiivisia tehtäviä juuri nyt. Puhu kyläläisille (Einar, Matti, Aino, Toivo) Keskuskylässä ja Satamakylässä ottaaksesi vastaan uusia tehtäviä!' : 'No active quests right now. Talk to villagers (Einar, Matti, Aino, Toivo) in Central Village and Port Village to receive quests!'}
+              </div>
+            ` : `
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px;">
+                ${activeQuests.map(q => {
+                  const pct = Math.min(100, Math.round((q.progress / (q.required || 1)) * 100));
+                  return `
+                    <div style="background: rgba(20, 28, 38, 0.95); border: 1px solid #4cd137; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+                      <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: bold; color: #fff; font-size: 1.05rem;">📜 ${q.title}</span>
+                        <span style="background: rgba(76, 209, 55, 0.2); color: #4cd137; border: 1px solid #4cd137; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; font-weight: bold;">
+                          ${isFi ? 'KÄYNNISSÄ' : 'ACTIVE'}
+                        </span>
+                      </div>
+                      <div style="color: #ccc; font-size: 0.9rem; line-height: 1.35;">${q.description}</div>
+                      <!-- Progress bar -->
+                      <div style="margin-top: 4px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #aaa; margin-bottom: 3px;">
+                          <span>${isFi ? 'Edistyminen' : 'Progress'}</span>
+                          <span style="color: #4cd137; font-weight: bold;">${q.progress} / ${q.required}</span>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.5); border-radius: 4px; height: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+                          <div style="background: linear-gradient(90deg, #4cd137, #44bd32); height: 100%; width: ${pct}%; transition: width 0.3s;"></div>
+                        </div>
+                      </div>
+                      <div style="margin-top: 4px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.8rem; color: #f1c40f;">
+                        🏆 ${isFi ? 'Palkkio' : 'Reward'}: <strong>${q.rewardText}</strong>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            `}
+          </div>
+
+          <!-- Completed Quests -->
+          ${completedQuests.length > 0 ? `
+            <div class="st-quest-section">
+              <h3 style="color: #00d2d3; margin: 0 0 10px 0; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                ✅ ${isFi ? 'SUORITETUT TEHTÄVÄT' : 'COMPLETED QUESTS'} (${completedQuests.length})
+              </h3>
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px;">
+                ${completedQuests.map(q => `
+                  <div style="background: rgba(15, 20, 28, 0.75); border: 1px solid rgba(0, 210, 211, 0.4); border-radius: 6px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #eee; font-size: 0.9rem;">✅ ${q.title}</span>
+                    <span style="color: #00d2d3; font-size: 0.75rem; font-weight: bold;">${isFi ? 'VALMIS' : 'DONE'}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Available Quests (Hints on where to find them) -->
+          <div class="st-quest-section">
+            <h3 style="color: #fbc531; margin: 0 0 10px 0; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+              🗺️ ${isFi ? 'ERÄMAAN TEHTÄVÄT & KYLÄLÄISET' : 'WORLD QUESTS & VILLAGERS'}
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px;">
+              <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 10px 12px; font-size: 0.85rem; color: #bbb;">
+                <strong style="color: #fff;">🧔 Einar (Keskuskylä):</strong> ${isFi ? 'Metsuri. Antaa puunhakkuutehtäviä ja palkitsee kalliilla kivityökaluilla.' : 'Woodsman. Offers woodcutting quests and rewards tools.'}
+              </div>
+              <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 10px 12px; font-size: 0.85rem; color: #bbb;">
+                <strong style="color: #fff;">👴 Matti (Keskuskylä):</strong> ${isFi ? 'Kaivosmies. Opettaa louhimaan kiveä, malmeja ja selviytymään pedoista.' : 'Miner. Teaches mining and wilderness survival.'}
+              </div>
+              <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 10px 12px; font-size: 0.85rem; color: #bbb;">
+                <strong style="color: #fff;">👧 Nuori Aino (Yrttitupa):</strong> ${isFi ? 'Parantaja. Pyytää marjoja, sieniä ja opettaa ruoanlaiton sekä elinvoiman palauttamisen.' : 'Healer. Requests berries/herbs and teaches cooking/healing.'}
+              </div>
+              <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 10px 12px; font-size: 0.85rem; color: #bbb;">
+                <strong style="color: #fff;">🎣 Kalastaja Toivo (Satamakylä):</strong> ${isFi ? 'Jokilaiturilla. Opettaa kalastuksen ja palkitsee arvokkaalla kalastusvälineistöllä.' : 'Dock master. Teaches fishing and rewards angling gear.'}
+              </div>
             </div>
           </div>
-          <button id="close-skilltree-btn" class="modal-close">✕</button>
         </div>
+      `;
+    } else {
+      // Skills Tab
+      const trees = [
+        { key: 'warrior', title: isFi ? '⚔️ SOTURI & MIEKKAILU' : '⚔️ WARRIOR & COMBAT', desc: isFi ? 'Lähitaistelu, voimaiskut ja kestävyys' : 'Melee combat, power strikes and endurance' },
+        { key: 'mage', title: isFi ? '🔮 TAIKUUS & RIIMULOITSUT' : '🔮 MAGE & ARCANE RUNES', desc: isFi ? 'Elementaalivoimat, räjähdykset ja parantaminen' : 'Elemental magic, bursts and recovery' },
+        { key: 'ranger', title: isFi ? '🏹 JOUSIAMMUNTA & VALPPAUS' : '🏹 RANGER & AGILITY', desc: isFi ? 'Tarkat laukaukset, nuolisateet ja liikenopeus' : 'Precision shots, arrow volleys and speed' }
+      ];
 
+      contentHtml = `
         <div class="st-quickbar-assignment">
-          <span class="st-qa-title">Aktiiviset erikoisliikkeet pikanäppäimissä [1] - [4]:</span>
+          <span class="st-qa-title">${isFi ? 'Aktiiviset erikoisliikkeet pikanäppäimissä [1] - [4]:' : 'Active abilities assigned to keys [1] - [4]:'}</span>
           <div class="st-slots-row">
             ${[0, 1, 2, 3].map(slotIdx => {
               const skillId = this.activeSlots[slotIdx];
@@ -306,7 +390,7 @@ export default class SkillTree {
                 <div class="st-active-slot" data-slot="${slotIdx}">
                   <span class="st-key-num">[${slotIdx + 1}]</span>
                   <span class="st-slot-icon">${s ? s.name.split(' ')[0] : '➕'}</span>
-                  <span class="st-slot-name">${s ? s.name.split(' ')[1] : 'Tyhjä'}</span>
+                  <span class="st-slot-name">${s ? s.name.split(' ')[1] : (isFi ? 'Tyhjä' : 'Empty')}</span>
                 </div>
               `;
             }).join('')}
@@ -333,21 +417,21 @@ export default class SkillTree {
                       <div class="st-node-card ${isUnlocked ? 'unlocked' : 'locked'}">
                         <div class="st-node-top">
                           <span class="st-node-name">${s.name}</span>
-                          <span class="st-node-req">${isUnlocked ? '✅ Opittu' : `Vaatii: Taso ${s.reqLevel}`}</span>
+                          <span class="st-node-req">${isUnlocked ? (isFi ? '✅ Opittu' : '✅ Learned') : `${isFi ? 'Vaatii' : 'Req'}: ${isFi ? 'Taso' : 'Level'} ${s.reqLevel}`}</span>
                         </div>
                         <div class="st-node-desc">${s.desc}</div>
                         <div class="st-node-info">
-                          <span>Kulu: ${s.cost} ${s.costType === 'mana' ? '💧 Manaa' : '⚡ Kestävyyttä'}</span>
-                          <span>Jäähtymisaika: ${s.cooldown}s</span>
+                          <span>${isFi ? 'Kulu' : 'Cost'}: ${s.cost} ${s.costType === 'mana' ? (isFi ? '💧 Manaa' : '💧 Mana') : (isFi ? '⚡ Kestävyyttä' : '⚡ Stamina')}</span>
+                          <span>${isFi ? 'Jäähtymisaika' : 'Cooldown'}: ${s.cooldown}s</span>
                         </div>
                         <div class="st-node-actions">
                           ${!isUnlocked ? `
                             <button class="st-btn-unlock" data-skill-id="${s.id}" ${canUnlock ? '' : 'disabled'}>
-                              ${canUnlock ? '✨ Opi taito (1 piste)' : (skillPoints === 0 ? 'Ei taitopisteitä' : `Vaatii tason ${s.reqLevel}`)}
+                              ${canUnlock ? (isFi ? '✨ Opi taito (1 piste)' : '✨ Learn Skill (1 pt)') : (skillPoints === 0 ? (isFi ? 'Ei taitopisteitä' : 'No skill points') : `${isFi ? 'Vaatii tason' : 'Requires Level'} ${s.reqLevel}`)}
                             </button>
                           ` : `
                             <button class="st-btn-equip" data-skill-id="${s.id}">
-                              ${isAssigned ? `Varustettu paikassa [${slotNum + 1}]` : `Aseta pikanäppäimeen [${s.slot}]`}
+                              ${isAssigned ? `${isFi ? 'Varustettu paikassa' : 'Equipped in slot'} [${slotNum + 1}]` : `${isFi ? 'Aseta pikanäppäimeen' : 'Assign to slot'} [${s.slot}]`}
                             </button>
                           `}
                         </div>
@@ -359,6 +443,34 @@ export default class SkillTree {
             `;
           }).join('')}
         </div>
+      `;
+    }
+
+    let html = `
+      <div class="skill-tree-box">
+        <div class="skill-tree-header">
+          <div class="skill-tree-title-group">
+            <h2>⭐ ${isFi ? 'KOKEMUS & TEHTÄVÄT [O]' : 'CHARACTER & QUESTS [O]'}</h2>
+            <div class="skill-tree-meta">
+              <span class="st-badge">🏆 ${isFi ? 'Taso' : 'Level'}: ${level}</span>
+              <span class="st-badge st-xp">${isFi ? 'Kokemus' : 'XP'}: ${xp} / ${xpNext} XP</span>
+              <span class="st-badge st-sp">✨ ${isFi ? 'Taitopisteet' : 'Skill Points'}: <strong>${skillPoints}</strong></span>
+            </div>
+          </div>
+          <button id="close-skilltree-btn" class="modal-close">✕</button>
+        </div>
+
+        <!-- Navigation Tabs: Skills vs Quests -->
+        <div class="st-tabs-row" style="display: flex; gap: 12px; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.12); padding-bottom: 10px;">
+          <button class="st-tab-btn ${this.currentTab === 'skills' ? 'active' : ''}" data-tab="skills" style="padding: 8px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; background: ${this.currentTab === 'skills' ? '#2e7d32' : 'rgba(255,255,255,0.08)'}; color: #fff; border: 1px solid ${this.currentTab === 'skills' ? '#4caf50' : 'rgba(255,255,255,0.15)'}; font-family: inherit;">
+            ${isFi ? '⭐ TAIDOT & ERIKOISLIIKKEET' : '⭐ SKILLS & ABILITIES'}
+          </button>
+          <button class="st-tab-btn ${this.currentTab === 'quests' ? 'active' : ''}" data-tab="quests" style="padding: 8px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; background: ${this.currentTab === 'quests' ? '#2e7d32' : 'rgba(255,255,255,0.08)'}; color: #fff; border: 1px solid ${this.currentTab === 'quests' ? '#4caf50' : 'rgba(255,255,255,0.15)'}; font-family: inherit;">
+            ${isFi ? '📜 TEHTÄVÄT (QUESTS)' : '📜 QUESTS & OBJECTIVES'}
+          </button>
+        </div>
+
+        ${contentHtml}
       </div>
     `;
 
@@ -366,6 +478,15 @@ export default class SkillTree {
 
     // Attach listeners
     const closeBtn = this.modalEl.querySelector('#close-skilltree-btn');
+    if (closeBtn) closeBtn.addEventListener('click', () => this.close());
+
+    // Tab buttons click
+    this.modalEl.querySelectorAll('.st-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.currentTab = btn.getAttribute('data-tab');
+        this.render();
+      });
+    });
     if (closeBtn) closeBtn.addEventListener('click', () => this.close());
 
     this.modalEl.querySelectorAll('.st-btn-unlock').forEach(btn => {

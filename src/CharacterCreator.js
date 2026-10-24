@@ -23,7 +23,8 @@ export default class CharacterCreator {
     this.config = {
       name: 'Eerik',
       gender: 'male',
-      headStyle: 'hood',
+      style: 'rogue',
+      headStyle: 'hair',
       hairStyle: 'short',
       hairColor: 0x3d2817,
       skinColor: 0xf5d0b5,
@@ -114,6 +115,11 @@ export default class CharacterCreator {
       btn.classList.toggle('active', btn.dataset.charGender === this.config.gender);
     });
 
+    // Archetype / Style buttons
+    document.querySelectorAll('[data-char-style]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.charStyle === (this.config.style || 'rogue'));
+    });
+
     // Head style buttons
     document.querySelectorAll('[data-char-head]').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.charHead === this.config.headStyle);
@@ -164,6 +170,16 @@ export default class CharacterCreator {
           nameInput.value = this.config.gender === 'female' ? 'Aino' : 'Eerik';
           this.config.name = nameInput.value;
         }
+        this._syncUIFromConfig();
+        this.buildPreviewModel();
+      });
+    });
+
+    // Archetype / Style selection
+    document.querySelectorAll('[data-char-style]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.config.style = btn.dataset.charStyle;
+        this.config.model = null; // reset specific model override so style takes precedence
         this._syncUIFromConfig();
         this.buildPreviewModel();
       });
@@ -264,7 +280,23 @@ export default class CharacterCreator {
 
     const isFemale = this.config.gender === 'female';
     const isHood = this.config.headStyle === 'hood';
-    const modelName = this.config.model || (isFemale ? (isHood ? 'Ranger_Adv' : 'Rogue_Hooded') : (isHood ? 'Barbarian' : 'Knight'));
+    const style = this.config.style || 'rogue';
+
+    let modelName = 'Rogue';
+    if (style === 'ranger') {
+      modelName = 'Ranger_Adv';
+    } else if (style === 'barbarian') {
+      modelName = 'Barbarian';
+    } else if (style === 'mage') {
+      modelName = 'Mage';
+    } else { // 'rogue' (Adventurer)
+      if (isFemale) {
+        modelName = isHood ? 'Rogue_Hooded' : 'Ranger_Adv';
+      } else {
+        modelName = isHood ? 'Rogue_Hooded' : 'Rogue';
+      }
+    }
+    this.config.model = modelName;
 
     const charData = this.assetLoader.createAnimatedCharacter(modelName, 'Idle_A', this.config);
     if (!charData || !charData.model) return;

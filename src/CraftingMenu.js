@@ -702,7 +702,7 @@ export default class CraftingMenu {
     if (!this.player) return true;
     const pPos = (this.player.getPosition) ? this.player.getPosition() : (this.player.playerPos || { x: 0, z: 0 });
 
-    // 1. Check world pre-placed workbenches
+    // 1. Check world pre-placed town workbenches
     const worldWbs = (this.player.world && this.player.world.workbenches) ? this.player.world.workbenches : [
       { x: 5.5, z: 1.5 },
       { x: -24, z: -30 },
@@ -711,16 +711,17 @@ export default class CraftingMenu {
 
     for (const wb of worldWbs) {
       const d = Math.hypot(pPos.x - wb.x, pPos.z - wb.z);
-      if (d <= 6.8) return true;
+      if (d <= 8.5) return true;
     }
 
-    // 2. Check player-placed workbenches from buildingSystem
-    if (this.buildingSystem && this.buildingSystem.placedPieces) {
-      for (const p of this.buildingSystem.placedPieces) {
-        if (p.type === 'workbench' && p.mesh) {
-          const d = Math.hypot(pPos.x - p.mesh.position.x, pPos.z - p.mesh.position.z);
-          if (d <= 6.8) return true;
-        }
+    // 2. Check player-placed workbenches from buildingSystem (checks both placedStructures and placedPieces)
+    const structures = (this.buildingSystem?.placedStructures || this.buildingSystem?.placedPieces || []);
+    for (const p of structures) {
+      if (p.type === 'workbench' || (typeof p.type === 'string' && p.type.includes('workbench'))) {
+        const posX = p.position ? p.position.x : (p.mesh ? p.mesh.position.x : 0);
+        const posZ = p.position ? p.position.z : (p.mesh ? p.mesh.position.z : 0);
+        const d = Math.hypot(pPos.x - posX, pPos.z - posZ);
+        if (d <= 8.5) return true;
       }
     }
 

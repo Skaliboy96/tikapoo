@@ -275,6 +275,9 @@ export default class Combat {
       this.player.playAttackAnimation(equipped);
     }
 
+    // Dynamic visual melee slash arc trail effect
+    this._spawnSlashVfx(equipped);
+
     // Calculate damage
     let damage = (this.inventory && this.inventory.getWeaponDamage) ? this.inventory.getWeaponDamage() : 15;
     if (this.player && this.player.skillTree && this.player.skillTree.berserkTimer > 0) {
@@ -408,6 +411,47 @@ export default class Combat {
   _handleLifesteal(damage) {
     if (this.player && this.player.skillTree && this.player.skillTree.berserkTimer > 0) {
       this.player.heal(Math.round(damage * 0.35));
+    }
+  }
+
+  _spawnSlashVfx(equipped) {
+    try {
+      const pPos = (this.player && this.player.getPosition) ? this.player.getPosition() : this.camera.position.clone();
+      const camDir = new THREE.Vector3();
+      this.camera.getWorldDirection(camDir);
+      camDir.y = 0;
+      if (camDir.lengthSq() > 0.001) camDir.normalize();
+      else camDir.set(0, 0, -1);
+
+      const vfxPos = pPos.clone().add(camDir.clone().multiplyScalar(1.2));
+      vfxPos.y += 1.0;
+
+      const arcGeo = new THREE.TorusGeometry(0.75, 0.045, 6, 20, Math.PI * 0.65);
+      const isFire = (equipped === 'torch');
+      const isRune = equipped && (equipped.includes('runeblade') || equipped.includes('dragonSlayer'));
+      const color = isFire ? 0xff6600 : (isRune ? 0x00d2d3 : 0xffffff);
+
+      const arcMat = new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.9,
+        side: THREE.DoubleSide
+      });
+      const arcMesh = new THREE.Mesh(arcGeo, arcMat);
+      arcMesh.position.copy(vfxPos);
+      arcMesh.quaternion.copy(this.camera.quaternion);
+      arcMesh.rotateZ(-Math.PI * 0.35 + (Math.random() - 0.5) * 0.25);
+      arcMesh.rotateY(Math.PI / 4);
+
+      this.scene.add(arcMesh);
+      this.vfxList.push({
+        mesh: arcMesh,
+        duration: 0.18,
+        maxDuration: 0.18,
+        scaleUp: 1.2
+      });
+    } catch (e) {
+      console.warn('Slash VFX error handled:', e);
     }
   }
 
