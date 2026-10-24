@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=MedievalSharp&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/index-C66p5lMV.js"></script>
+  <script type="module" crossorigin src="/assets/index-DIx5pDHI.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/index-BRgHo0vq.css">
 </head>
 <body>
@@ -224,17 +224,17 @@
             <!-- Left equipment slots -->
             <div class="bp-slots-col bp-slots-left">
               <div class="bp-slot-box" data-slot="head" title="Kypärä / Päähine (Helmet)">
-                <span class="bp-slot-type-label">PÄÄ</span>
+                <span class="bp-slot-type-label" data-i18n="bp_slot_helmet">KYPÄRÄ</span>
                 <span class="bp-slot-icon" id="bp-icon-head">🧕</span>
                 <span class="bp-slot-item-label" id="bp-label-head">Huppu</span>
               </div>
-              <div class="bp-slot-box" data-slot="chest" title="Rintapanssari (Armor)">
-                <span class="bp-slot-type-label">KEHO</span>
+              <div class="bp-slot-box" data-slot="chest" title="Rintapanssari / Haarniska (Armor)">
+                <span class="bp-slot-type-label" data-i18n="bp_slot_armor">HAARNISKA</span>
                 <span class="bp-slot-icon" id="bp-icon-chest">🥋</span>
                 <span class="bp-slot-item-label" id="bp-label-chest">Tunika</span>
               </div>
               <div class="bp-slot-box" data-slot="legs" title="Housut / Säärisuojat (Legs)">
-                <span class="bp-slot-type-label">JALAT</span>
+                <span class="bp-slot-type-label" data-i18n="bp_slot_legs">HOUSUT</span>
                 <span class="bp-slot-icon" id="bp-icon-legs">👖</span>
                 <span class="bp-slot-item-label" id="bp-label-legs">Housut</span>
               </div>
@@ -248,17 +248,17 @@
             <!-- Right equipment slots -->
             <div class="bp-slots-col bp-slots-right">
               <div class="bp-slot-box" data-slot="weapon" title="Pääase (Main Weapon)">
-                <span class="bp-slot-type-label">ASE</span>
+                <span class="bp-slot-type-label" data-i18n="bp_slot_weapon">PÄÄASE</span>
                 <span class="bp-slot-icon" id="bp-icon-weapon">⚔️</span>
                 <span class="bp-slot-item-label" id="bp-label-weapon">Miekka</span>
               </div>
               <div class="bp-slot-box" data-slot="shield" title="Kilpi / Sivukäsi (Offhand)">
-                <span class="bp-slot-type-label">KILPI</span>
+                <span class="bp-slot-type-label" data-i18n="bp_slot_shield">KILPI</span>
                 <span class="bp-slot-icon" id="bp-icon-shield">🛡️</span>
                 <span class="bp-slot-item-label" id="bp-label-shield">Kilpi</span>
               </div>
-              <div class="bp-slot-box" data-slot="tool" title="Työkalu / Vasara (Utility)">
-                <span class="bp-slot-type-label">VYÖ</span>
+              <div class="bp-slot-box" data-slot="tool" title="Työkalu / Vyö (Utility)">
+                <span class="bp-slot-type-label" data-i18n="bp_slot_belt">VYÖ</span>
                 <span class="bp-slot-icon" id="bp-icon-tool">🔨</span>
                 <span class="bp-slot-item-label" id="bp-label-tool">Vasara</span>
               </div>
@@ -340,8 +340,14 @@
       </div>
 
       <div class="menu-nav">
+        <button id="menu-continue-btn" class="menu-btn menu-btn-primary" style="display: none;">
+          <span class="btn-text" data-i18n="menu_continue">JATKA SEIKKAILUA</span>
+        </button>
         <button id="menu-play-btn" class="menu-btn menu-btn-primary">
           <span class="btn-text" data-i18n="menu_play">ALOITA SEIKKAILU</span>
+        </button>
+        <button id="menu-load-btn" class="menu-btn">
+          <span class="btn-text" data-i18n="menu_load">📂 LATAA TALLENNUS (.JSON)</span>
         </button>
         <button id="menu-char-btn" class="menu-btn">
           <span class="btn-text" data-i18n="menu_char">LUO / MUOKKAA HAHMOA</span>
@@ -700,12 +706,15 @@
     <div class="pause-box">
       <h2 data-i18n="pause_title">PELI PYSÄYTETTY</h2>
       <button id="pause-resume-btn" class="menu-btn menu-btn-primary"><span class="btn-text" data-i18n="pause_resume">JATKA PELIÄ</span></button>
+      <button id="pause-save-btn" class="menu-btn" style="background: rgba(46, 204, 113, 0.2); border-color: #2ecc71;"><span class="btn-text" data-i18n="pause_save">💾 TALLENNA PELI (EXPORT)</span></button>
+      <button id="pause-load-btn" class="menu-btn"><span class="btn-text" data-i18n="pause_load">📂 LATAA TALLENNUS (IMPORT)</span></button>
       <button id="pause-settings-btn" class="menu-btn"><span class="btn-text" data-i18n="pause_settings">ASETUKSET</span></button>
       <button id="pause-instructions-btn" class="menu-btn"><span class="btn-text" data-i18n="pause_instructions">OHJEET</span></button>
       <button id="pause-dev-btn" class="menu-btn menu-btn-dev"><span class="btn-text" data-i18n="pause_dev">🛠️ Dev Mode</span></button>
       <button id="pause-quit-btn" class="menu-btn"><span class="btn-text" data-i18n="pause_quit">PÄÄVALIKKOON</span></button>
     </div>
   </div>
+  <input type="file" id="savegame-file-input" accept=".json" style="display: none;">
 
   <!-- ===== DEVELOPER / CREATIVE MODE OVERLAY ===== -->
   <div id="dev-mode-panel" class="dev-panel-container" style="display: none;">

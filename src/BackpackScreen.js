@@ -376,8 +376,9 @@ export default class BackpackScreen {
     // Find right hand bone
     let handNode = null;
     this.pdModel.traverse(c => {
-      if (c.name && c.name.toLowerCase().includes('handslot.r')) handNode = c;
-      if (!handNode && c.name && c.name.toLowerCase().includes('hand.r')) handNode = c;
+      const n = (c.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (n === 'handslotr') handNode = c;
+      else if (!handNode && (n === 'handr' || n.includes('righthand') || n.includes('handright'))) handNode = c;
     });
     if (!handNode) return;
 
@@ -726,12 +727,14 @@ export default class BackpackScreen {
       // HTML5 Drag
       slotEl.ondragstart = (e) => {
         slotEl.classList.add('drag-source');
-        e.dataTransfer.setData('application/json', JSON.stringify({
+        const payload = JSON.stringify({
           type: 'inventory',
           key: item.key,
           isTool: !!item.isTool,
           meta: item.meta
-        }));
+        });
+        e.dataTransfer.setData('text/plain', payload);
+        e.dataTransfer.setData('application/json', payload);
       };
       slotEl.ondragend = () => {
         slotEl.classList.remove('drag-source');
@@ -741,6 +744,7 @@ export default class BackpackScreen {
       slotEl.addEventListener('click', () => {
         this.selectedItemKey = item.key;
         this.selectedIsTool = !!item.isTool;
+        this.selectedItemMeta = item.meta;
 
         if (this.actionsBarEl) {
           this.actionsBarEl.style.display = 'flex';
@@ -793,8 +797,24 @@ export default class BackpackScreen {
 
     const hbSlots = this.hotbarGridEl.querySelectorAll('.bp-hb-slot');
     hbSlots.forEach((el, i) => {
-      // Click-to-swap logic
+      // Click-to-assign from inventory OR click-to-swap hotbar slots
       el.addEventListener('click', () => {
+        if (this.selectedItemKey) {
+          // Assign inventory item/tool into this hotbar slot
+          this.hotbar.setSlotItem(i, this.selectedItemKey, this.selectedIsTool, this.selectedItemMeta);
+          const assignedName = this.selectedItemMeta ? this.selectedItemMeta.name : this.selectedItemKey;
+          this.selectedItemKey = null;
+          this.selectedIsTool = false;
+          this.selectedItemMeta = null;
+          this.selectedHotbarIndex = null;
+          this._renderHotbarReorder();
+          this.refresh();
+          if (this.hud) {
+            this.hud.showNotification(Localization.lang === 'fi' ? `Asetettu paikkaan [${i + 1}]: ${assignedName}` : `Assigned to slot [${i + 1}]: ${assignedName}`);
+          }
+          return;
+        }
+
         if (this.selectedHotbarIndex === null) {
           this.selectedHotbarIndex = i;
           this._renderHotbarReorder();
@@ -814,10 +834,12 @@ export default class BackpackScreen {
 
       // HTML5 Drag between hotbar slots OR from inventory grid onto hotbar slot
       el.ondragstart = (e) => {
-        e.dataTransfer.setData('application/json', JSON.stringify({
+        const payload = JSON.stringify({
           type: 'hotbar',
           index: i
-        }));
+        });
+        e.dataTransfer.setData('text/plain', payload);
+        e.dataTransfer.setData('application/json', payload);
       };
 
       el.ondragover = (e) => {
@@ -833,7 +855,7 @@ export default class BackpackScreen {
         e.preventDefault();
         el.classList.remove('drag-over');
         try {
-          const raw = e.dataTransfer.getData('application/json');
+          const raw = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('application/json');
           if (!raw) return;
           const data = JSON.parse(raw);
 

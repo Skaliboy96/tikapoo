@@ -589,11 +589,6 @@ export default class DevMode {
   }
 
   promptPassword() {
-    if (this.isUnlocked) {
-      this.enter();
-      return;
-    }
-
     if (this.player && this.player.controls && this.player.controls.isLocked) {
       this.player.controls.unlock();
     }
@@ -630,7 +625,7 @@ export default class DevMode {
     const val = this.passwordInput.value.trim().toLowerCase();
     if (val === 'kissa') {
       this.isUnlocked = true;
-      localStorage.setItem('tikapoo_dev_unlocked', 'true');
+      try { localStorage.removeItem('tikapoo_dev_unlocked'); } catch (e) {}
       this.closePasswordPrompt();
       this.enter();
     } else {
@@ -668,6 +663,7 @@ export default class DevMode {
 
   exit() {
     this.isActive = false;
+    this.isUnlocked = false;
     this.isRightMouseDown = false;
     this.toggleDeleteTool(false);
     this.cancelPlacement();

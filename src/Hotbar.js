@@ -16,17 +16,18 @@ export default class Hotbar {
     this.audioManager = audioManager;
     this.skillTree = skillTree;
 
-    this.activeSlot = 4; // Starts with Torch active (slot index 4: Soihtu)
-    this.isFistsMode = false;
+    this.activeSlot = 0; // Starts with Hands / Fists active (slot index 0)
+    this.isFistsMode = true;
     this.highestWeaponId = null;
+    this.isCustomized = !!localStorage.getItem('tikapoo_hotbar_slots');
     this.slots = [
       { id: 'fists', key: 'X', type: 'tool', toolId: 'hands', name: 'Fists', icon: '✊', count: 1 },
-      { id: 'weapon', key: 'F', type: 'tool', toolId: 'stoneSpear', name: 'Weapon', icon: '⚔️', count: 1 },
-      { id: 'axe', key: 'Z', type: 'tool', toolId: 'stoneAxe', name: 'Axe', icon: '🪓', count: 1 },
-      { id: 'pickaxe', key: 'V', type: 'tool', toolId: 'pickaxe', name: 'Pickaxe', icon: '⛏️', count: 1 },
+      { id: 'weapon', key: 'F', type: 'tool', toolId: 'stoneSpear', name: 'Weapon', icon: '⚔️', count: 0 },
+      { id: 'axe', key: 'Z', type: 'tool', toolId: 'stoneAxe', name: 'Axe', icon: '🪓', count: 0 },
+      { id: 'pickaxe', key: 'V', type: 'tool', toolId: 'pickaxe', name: 'Pickaxe', icon: '⛏️', count: 0 },
       { id: 'torch', key: '5', type: 'tool', toolId: 'torch', name: 'Torch', icon: '🔥', count: 1 },
-      { id: 'hammer', key: '6', type: 'build', toolId: 'hammer', name: 'Hammer', icon: '🔨', count: 1 },
-      { id: 'rod', key: '7', type: 'tool', toolId: 'fishingRod', name: 'Fishing Rod', icon: '🎣', count: 1 },
+      { id: 'hammer', key: '6', type: 'build', toolId: 'hammer', name: 'Hammer', icon: '🔨', count: 0 },
+      { id: 'rod', key: '7', type: 'tool', toolId: 'fishingRod', name: 'Fishing Rod', icon: '🎣', count: 0 },
       { id: 'food', key: '8', type: 'consume', itemId: 'berry', fallbackItemId: 'cookedMeat', name: 'Food', icon: '🫐', count: 0 }
     ];
 
@@ -380,6 +381,23 @@ export default class Hotbar {
     if (!this.inventory) return;
     const t = this.inventory.tools || {};
 
+    if (this.isCustomized) {
+      this.slots.forEach(slot => {
+        if (!slot) return;
+        if (slot.type === 'tool') {
+          const toolId = slot.toolId;
+          const hasTool = (toolId === 'hands') ? true : !!(t && t[toolId]);
+          slot.count = hasTool ? 1 : 0;
+        } else if (slot.type === 'build') {
+          const hasHammer = !!(t && t.hammer);
+          slot.count = hasHammer ? 1 : 0;
+        } else if (slot.type === 'consume') {
+          slot.count = (this.inventory && this.inventory.items && this.inventory.items[slot.itemId]) || 0;
+        }
+      });
+      return;
+    }
+
     // 0. Fists (Always available bare fists)
     this.slots[0].toolId = 'hands';
     this.slots[0].name = Localization.t('slot_hands', 'Fists');
@@ -640,9 +658,10 @@ export default class Hotbar {
     this.slots[indexA] = { ...b, key: tempKeyA };
     this.slots[indexB] = { ...a, key: tempKeyB };
 
+    this.isCustomized = true;
     this._saveSlots();
-    this.render();
     this.sync();
+    this.render();
   }
 
   setSlotItem(index, itemKey, isTool = false, meta = null) {
@@ -656,7 +675,7 @@ export default class Hotbar {
         toolId: itemKey,
         name: meta ? meta.name : itemKey,
         icon: meta ? meta.icon : '⚔️',
-        count: 1
+        count: (this.inventory && this.inventory.tools && this.inventory.tools[itemKey]) ? 1 : 0
       };
     } else {
       this.slots[index] = {
@@ -670,9 +689,10 @@ export default class Hotbar {
         count: this.inventory ? (this.inventory.items[itemKey] || 0) : 1
       };
     }
+    this.isCustomized = true;
     this._saveSlots();
-    this.render();
     this.sync();
+    this.render();
   }
 
   _saveSlots() {

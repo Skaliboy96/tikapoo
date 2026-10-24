@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import Localization from './Localization.js';
 
 /**
  * CharacterCreator – Full Nordic RPG Character Creation System:
@@ -313,6 +314,9 @@ export default class CharacterCreator {
     this.isOpen = true;
     if (this.container) {
       this.container.style.display = 'flex';
+    }
+    if (Localization && Localization.applyToDOM) {
+      Localization.applyToDOM();
     }
     this._initThreePreview();
     this._syncUIFromConfig();

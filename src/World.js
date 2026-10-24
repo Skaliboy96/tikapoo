@@ -369,7 +369,7 @@ export default class World {
 
   initTerrain() {
     const size = 1400; // Expansive Scandinavian wilderness
-    const segments = isMobileDevice ? 120 : 250;
+    const segments = isMobileDevice ? 80 : 250;
     const groundGeo = new THREE.PlaneGeometry(size, size, segments, segments);
     groundGeo.rotateX(-Math.PI / 2);
 
@@ -570,7 +570,7 @@ export default class World {
       grassMat.shadowSide = THREE.DoubleSide;
     }
 
-    const count = isMobileDevice ? 1500 : 7000;
+    const count = isMobileDevice ? 600 : 7000;
     this.instancedGrass = new THREE.InstancedMesh(grassGeo, grassMat, count);
     this.instancedGrass.receiveShadow = true;
 
@@ -665,7 +665,7 @@ export default class World {
       fernMat.shadowSide = THREE.DoubleSide;
     }
 
-    const count = isMobileDevice ? 800 : 3500;
+    const count = isMobileDevice ? 250 : 3500;
     this.instancedFerns = new THREE.InstancedMesh(fernGeo, fernMat, count);
     this.instancedFerns.receiveShadow = true;
 
@@ -834,6 +834,35 @@ export default class World {
         child.receiveShadow = true;
       }
     });
+
+    // Automatically register solid colliders for props and town structures
+    if (name === 'Chest_Wood') {
+      this.addCircleCollider(x, z, 0.65, 'chest');
+    } else if (name === 'Barrel' || name === 'Barrel_Apples') {
+      this.addCircleCollider(x, z, 0.55, 'barrel');
+    } else if (name === 'Anvil_Log') {
+      this.addCircleCollider(x, z, 0.60, 'anvil');
+    } else if (name === 'Bench') {
+      this.addCircleCollider(x, z, 0.75, 'bench');
+    } else if (name === 'Cauldron') {
+      this.addCircleCollider(x, z, 0.70, 'cauldron');
+    } else if (name === 'Workbench' || name === 'Workbench_Drawers') {
+      this.addCircleCollider(x, z, 0.85, 'workbench');
+    } else if (name === 'Stall_Empty' || name === 'Stall_Cart_Empty') {
+      this.addCircleCollider(x, z, 1.25, 'stall');
+    } else if (name === 'Prop_Wagon') {
+      this.addCircleCollider(x, z, 1.40, 'wagon');
+    } else if (name === 'FarmCrate_Apple' || name === 'FarmCrate_Carrot' || name === 'Prop_Crate') {
+      this.addCircleCollider(x, z, 0.55, 'crate');
+    } else if (name === 'WeaponStand') {
+      this.addCircleCollider(x, z, 0.65, 'weaponstand');
+    } else if (name === 'Bed_Twin1') {
+      this.addCircleCollider(x, z, 0.95, 'bed');
+    } else if (name === 'Table_Large') {
+      this.addCircleCollider(x, z, 1.10, 'table');
+    } else if (name === 'Wall_Arch') {
+      this.addCircleCollider(x, z, 0.85, 'wall_arch');
+    }
 
     this.scene.add(model);
     return model;
@@ -1007,6 +1036,21 @@ export default class World {
       const r = playerRadius + 0.85;
       if (dx * dx + dz * dz < r * r) {
         return true;
+      }
+    }
+
+    // 5. Check mining ore boulder deposits (Copper, Tin, Iron, Silver)
+    if (this.ores) {
+      for (let i = 0; i < this.ores.length; i++) {
+        const o = this.ores[i];
+        if (o.harvested || !o.position) continue;
+        const dx = x - o.position.x;
+        const dz = z - o.position.z;
+        if (Math.abs(dx) > 2.0 || Math.abs(dz) > 2.0) continue;
+        const r = playerRadius + 0.95;
+        if (dx * dx + dz * dz < r * r) {
+          return true;
+        }
       }
     }
 
@@ -1564,8 +1608,9 @@ export default class World {
       }
     };
 
-    // 1. Dedicated Black Forest Grove (x: -165 to -85, z: -165 to -85): 110 dense, towering ancient pines
-    for (let i = 0; i < 110; i++) {
+    // 1. Dedicated Black Forest Grove: 110 dense ancient pines on desktop, 20 on mobile
+    const bfCount = isMobileDevice ? 20 : 110;
+    for (let i = 0; i < bfCount; i++) {
       const x = -165 + Math.random() * 80;
       const z = -165 + Math.random() * 80;
       const model = pineModels[Math.floor(Math.random() * pineModels.length)];
@@ -1573,8 +1618,9 @@ export default class World {
       spawnTree(model, x, z, scale, 'Aarniometsän Valtava Mänty');
     }
 
-    // 2. Dedicated Swamp Bog (x: -195 to -95, z: 90 to 195): 85 eerie twisted and dead trees
-    for (let i = 0; i < 85; i++) {
+    // 2. Dedicated Swamp Bog: 85 eerie twisted trees on desktop, 16 on mobile
+    const swampCount = isMobileDevice ? 16 : 85;
+    for (let i = 0; i < swampCount; i++) {
       const x = -195 + Math.random() * 100;
       const z = 90 + Math.random() * 105;
       const model = cursedModels[Math.floor(Math.random() * cursedModels.length)];
@@ -1582,8 +1628,9 @@ export default class World {
       spawnTree(model, x, z, scale, 'Suon Känsäinen Runkopuu');
     }
 
-    // 3. Dedicated Mountain Alpine Pines (x: 95 to 195, z: -195 to -85): 75 hardy alpine pines
-    for (let i = 0; i < 75; i++) {
+    // 3. Dedicated Mountain Alpine Pines: 75 alpine pines on desktop, 15 on mobile
+    const mountainCount = isMobileDevice ? 15 : 75;
+    for (let i = 0; i < mountainCount; i++) {
       const x = 95 + Math.random() * 100;
       const z = -195 + Math.random() * 110;
       const y = this.getGroundHeight(x, z);
@@ -1593,8 +1640,9 @@ export default class World {
       spawnTree(model, x, z, scale, 'Tunturin Alppimänty');
     }
 
-    // 4. Dedicated Rune Plains (x: 135 to 235, z: -65 to 45): 50 magnificent solitary broadleaf oaks
-    for (let i = 0; i < 50; i++) {
+    // 4. Dedicated Rune Plains: 50 broadleaf oaks on desktop, 12 on mobile
+    const plainsCount = isMobileDevice ? 12 : 50;
+    for (let i = 0; i < plainsCount; i++) {
       const x = 135 + Math.random() * 100;
       const z = -65 + Math.random() * 110;
       const model = broadleafModels[Math.floor(Math.random() * broadleafModels.length)];
@@ -1602,8 +1650,9 @@ export default class World {
       spawnTree(model, x, z, scale, 'Riimutasangon Muinaistammi');
     }
 
-    // 5. Dedicated Ashlands (x: -60 to 60, z: 190 to 300): 65 charred volcanic dead trees
-    for (let i = 0; i < 65; i++) {
+    // 5. Dedicated Ashlands: 65 charred dead trees on desktop, 12 on mobile
+    const ashCount = isMobileDevice ? 12 : 65;
+    for (let i = 0; i < ashCount; i++) {
       const x = -60 + Math.random() * 120;
       const z = 190 + Math.random() * 110;
       const model = cursedModels[Math.floor(Math.random() * cursedModels.length)];
@@ -1611,8 +1660,8 @@ export default class World {
       spawnTree(model, x, z, scale, 'Sysivuoren Hiiltynyt Runko');
     }
 
-    // 6. Remaining 950 trees distributed across the expansive wilderness
-    const totalTrees = 950;
+    // 6. Remaining trees distributed across the expansive wilderness (120 on mobile, 950 on desktop)
+    const totalTrees = isMobileDevice ? 120 : 950;
     for (let i = 0; i < totalTrees; i++) {
       let x, z, dist;
       do {
@@ -1667,7 +1716,7 @@ export default class World {
   // --- Authentic Finnish Birch Forests (Pohjolan Koivikot) ---
   generateBirchForests() {
     const birchModels = ['BirchTree_1', 'BirchTree_2', 'BirchTree_3'];
-    const totalBirches = 260;
+    const totalBirches = isMobileDevice ? 35 : 260;
 
     for (let i = 0; i < totalBirches; i++) {
       let x, z;
@@ -1778,7 +1827,7 @@ export default class World {
 
   // --- Forest Floor Mossy Fallen Logs & Tree Stumps ---
   generateMossyWood() {
-    const totalLogs = 35;
+    const totalLogs = isMobileDevice ? 12 : 35;
     for (let i = 0; i < totalLogs; i++) {
       const x = (Math.random() - 0.5) * 750;
       const z = (Math.random() - 0.5) * 750;
@@ -1876,7 +1925,7 @@ export default class World {
 
   generateRocks() {
     const rockModels = ['Rock_Medium_1', 'Rock_Medium_2', 'Rock_Medium_3', 'Pebble_Round_1', 'Rock_Moss_1', 'Rock_Moss_2'];
-    const count = 75;
+    const count = isMobileDevice ? 25 : 75;
 
     for (let i = 0; i < count; i++) {
       let x, z, dist;
@@ -1925,7 +1974,8 @@ export default class World {
     }
 
     // Spawn guaranteed starter loose pebbles near the starting meadow (within 6m-48m of spawn)
-    for (let i = 0; i < 60; i++) {
+    const starterPebbles = isMobileDevice ? 20 : 60;
+    for (let i = 0; i < starterPebbles; i++) {
       const angle = (i / 60) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
       const dist = 6 + Math.random() * 40;
       const sx = Math.cos(angle) * dist;
@@ -1976,7 +2026,8 @@ export default class World {
     ];
 
     for (const cluster of oreClusters) {
-      for (let i = 0; i < cluster.count; i++) {
+      const oreCount = isMobileDevice ? Math.max(2, Math.ceil(cluster.count * 0.45)) : cluster.count;
+      for (let i = 0; i < oreCount; i++) {
         const x = cluster.xMin + Math.random() * (cluster.xMax - cluster.xMin);
         const z = cluster.zMin + Math.random() * (cluster.zMax - cluster.zMin);
         const y = this.getGroundHeight(x, z);
@@ -2024,7 +2075,7 @@ export default class World {
 
   generateBerryBushes() {
     const bushModels = ['Bush_Common_Flowers', 'Bush_Common', 'BushBerries_1'];
-    const count = 70;
+    const count = isMobileDevice ? 22 : 70;
 
     for (let i = 0; i < count; i++) {
       let x, z;
@@ -2080,7 +2131,7 @@ export default class World {
 
   generateMushrooms() {
     const mushroomModels = ['Mushroom_Common', 'Mushroom_Laetiporus'];
-    const count = 60;
+    const count = isMobileDevice ? 20 : 60;
 
     for (let i = 0; i < count; i++) {
       let x, z;

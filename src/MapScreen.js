@@ -422,7 +422,9 @@ export default class MapScreen {
     if (this.player) {
       const pPos = this.player.getPosition();
       const p = toMap(pPos.x, pPos.z);
-      const heading = this.camera ? this.camera.rotation.y : 0;
+      const camDir = new THREE.Vector3();
+      if (this.camera) this.camera.getWorldDirection(camDir);
+      const heading = Math.atan2(camDir.x, -camDir.z);
 
       ctx.save();
       ctx.translate(p.x, p.y);

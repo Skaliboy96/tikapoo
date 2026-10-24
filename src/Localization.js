@@ -16,16 +16,27 @@ class LocalizationManager {
         menu_instructions: 'CONTROLS & GUIDE',
         menu_lore: 'WORLD & SETTLEMENTS',
         menu_settings: 'SETTINGS',
-        menu_continue: 'Continue Adventure',
+        menu_continue: 'CONTINUE ADVENTURE',
+        menu_load: '📂 LOAD SAVE (.JSON)',
         menu_back: 'Back to Menu',
 
         // Pause Menu
         pause_title: 'GAME PAUSED',
         pause_resume: 'RESUME GAME',
+        pause_save: '💾 SAVE GAME (EXPORT)',
+        pause_load: '📂 LOAD SAVE (IMPORT)',
         pause_settings: 'SETTINGS',
         pause_instructions: 'CONTROLS & GUIDE',
         pause_dev: '🛠️ Dev Mode',
         pause_quit: 'MAIN MENU',
+
+        // Backpack Equipment Slots
+        bp_slot_helmet: 'HELMET',
+        bp_slot_armor: 'ARMOR',
+        bp_slot_legs: 'LEGS',
+        bp_slot_weapon: 'MAIN WEAPON',
+        bp_slot_shield: 'SHIELD',
+        bp_slot_belt: 'BELT',
 
         // HUD & Status
         hud_level: 'Level 1 🏆',
@@ -268,16 +279,27 @@ class LocalizationManager {
         menu_instructions: 'PELIOHJEET & NÄPPÄIMET',
         menu_lore: 'KYLÄT & MAAILMA',
         menu_settings: 'ASETUKSET',
-        menu_continue: 'Jatka seikkailua',
+        menu_continue: 'JATKA SEIKKAILUA',
+        menu_load: '📂 LATAA TALLENNUS (.JSON)',
         menu_back: 'Takaisin valikkoon',
 
         // Pause Menu
         pause_title: 'PELI PYSÄYTETTY',
         pause_resume: 'JATKA PELIÄ',
+        pause_save: '💾 TALLENNA PELI (EXPORT)',
+        pause_load: '📂 LATAA TALLENNUS (IMPORT)',
         pause_settings: 'ASETUKSET',
         pause_instructions: 'OHJEET',
         pause_dev: '🛠️ Dev Mode',
         pause_quit: 'PÄÄVALIKKOON',
+
+        // Backpack Equipment Slots
+        bp_slot_helmet: 'KYPÄRÄ',
+        bp_slot_armor: 'HAARNISKA',
+        bp_slot_legs: 'HOUSUT',
+        bp_slot_weapon: 'PÄÄASE',
+        bp_slot_shield: 'KILPI',
+        bp_slot_belt: 'VYÖ',
 
         // HUD & Status
         hud_level: 'Taso 1 🏆',

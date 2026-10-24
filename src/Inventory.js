@@ -63,12 +63,12 @@ export default class Inventory {
 
     this.tools = {
       hands: true,
-      torch: true, // Starter tools ready for immediate Valheim survival gameplay
-      stoneAxe: true,
-      pickaxe: true,
-      stoneSpear: true,
-      hammer: true,
-      fishingRod: true,
+      torch: true, // Only bare fists and torch at the beginning - all tools and weapons must be crafted!
+      stoneAxe: false,
+      pickaxe: false,
+      stoneSpear: false,
+      hammer: false,
+      fishingRod: false,
       antlerPickaxe: false,
       bronzeAxe: false,
       bronzePickaxe: false,
@@ -92,7 +92,7 @@ export default class Inventory {
     };
 
     this.equippedArmor = 'none';
-    this.equippedTool = 'torch'; // Starts with torch in hand!
+    this.equippedTool = 'hands'; // Starts with bare hands!
     this.hotbar = null;
     this.displayEl = document.getElementById('inventory-items');
     this.equippedEl = document.getElementById('equipped-tool');
@@ -319,6 +319,9 @@ export default class Inventory {
     if (this.equippedTool === nextTool) return;
     this.equippedTool = nextTool;
     this.updateDisplay();
+    if (this.player && this.player.updateHeldWeapon) {
+      this.player.updateHeldWeapon();
+    }
   }
 
   getWeaponDamage() {

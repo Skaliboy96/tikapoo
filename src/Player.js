@@ -161,12 +161,20 @@ export default class Player {
     let rightHandBone = null;
     let leftArmBone = null;
     this.playerModel.traverse((c) => {
-      if (c.name === 'handslot.r') rightHandBone = c;
-      else if (!rightHandBone && (c.name === 'hand.r' || c.name.toLowerCase().includes('hand_r') || c.name.toLowerCase().includes('righthand'))) rightHandBone = c;
+      const n = (c.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (n === 'handslotr') rightHandBone = c;
+      else if (!rightHandBone && (n === 'handr' || n.includes('righthand') || n.includes('handright'))) rightHandBone = c;
 
-      if (c.name === 'handslot.l') leftArmBone = c;
-      else if (!leftArmBone && (c.name === 'hand.l' || c.name.toLowerCase().includes('hand_l') || c.name.toLowerCase().includes('lefthand') || c.name.toLowerCase().includes('lowerarm_l'))) leftArmBone = c;
+      if (n === 'handslotl') leftArmBone = c;
+      else if (!leftArmBone && (n === 'handl' || n.includes('lefthand') || n.includes('handleft') || n.includes('lowerarml'))) leftArmBone = c;
     });
+
+    if (!rightHandBone) {
+      this.playerModel.traverse((c) => {
+        const n = (c.name || '').toLowerCase();
+        if (!rightHandBone && n.includes('hand') && (n.includes('r') || n.includes('right'))) rightHandBone = c;
+      });
+    }
 
     // Round Viking shield (only attached if specifically equipped!)
     const shieldGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.04, 16);
@@ -454,7 +462,7 @@ export default class Player {
 
     // 1. Shield visibility
     if (this.shieldOnArm) {
-      this.shieldOnArm.visible = (equipped === 'shield');
+      this.shieldOnArm.visible = (equipped === 'shield' || (this.inventory && this.inventory.tools && this.inventory.tools.shield));
     }
 
     // 2. Map equipped tool to weaponPool key
@@ -464,7 +472,7 @@ export default class Player {
     else if (equipped === 'pickaxe' || equipped === 'antlerPickaxe' || equipped === 'bronzePickaxe' || equipped === 'ironPickaxe' || equipped === 'silverPickaxe') poolKey = 'pickaxe';
     else if (equipped === 'stoneSpear' || equipped === 'hornSpear' || equipped === 'bronzeSword' || equipped === 'scaleSword' || equipped === 'ironSword' ||
              equipped === 'steelSword' || equipped === 'silverSword' || equipped === 'blackMetalSword' ||
-             equipped === 'runeblade' || equipped === 'dragonSlayer') poolKey = 'sword';
+             equipped === 'runeblade' || equipped === 'dragonSlayer' || equipped === 'weapon') poolKey = 'sword';
     else if (equipped === 'hammer') poolKey = 'hammer';
     else if (equipped === 'fishingRod') poolKey = 'fishingRod';
     else if (equipped === 'huntingBow') poolKey = 'huntingBow';
@@ -472,7 +480,13 @@ export default class Player {
 
     // Zero-allocation visibility toggle
     for (const [key, mesh] of Object.entries(this.weaponPool)) {
-      if (mesh) mesh.visible = (key === poolKey);
+      if (mesh) {
+        const isTarget = (key === poolKey);
+        mesh.visible = isTarget;
+        mesh.traverse(child => {
+          if (child.isMesh) child.visible = isTarget;
+        });
+      }
     }
 
     // Torch ambient lighting

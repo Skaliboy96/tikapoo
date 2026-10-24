@@ -27,6 +27,7 @@ import CharacterCreator from './CharacterCreator.js';
 import MobileControls from './MobileControls.js';
 import Localization from './Localization.js';
 import DevMode from './DevMode.js';
+import SaveSystem from './SaveSystem.js';
 
 window.addEventListener('error', (event) => {
   console.warn('Recovered from unhandled runtime error:', event.message, event.filename, event.lineno);
@@ -45,10 +46,11 @@ async function init() {
     const assetLoader = new AssetLoader();
     await assetLoader.loadAll();
 
-    // Hide loading screen once ready
-    if (loadingScreen) {
-      loadingScreen.style.display = 'none';
-    }
+    if (loadingText) loadingText.textContent = 'Valmistellaan maailmaa... (100%)';
+    if (loadingBar) loadingBar.style.width = '100%';
+
+    // Yield to browser event loop to render 100% completion before starting scene initialization
+    await new Promise((resolve) => setTimeout(resolve, 80));
 
   // --- Scene, Camera, Renderer Bootstrap ---
   const container = document.getElementById('game-container');
@@ -85,6 +87,12 @@ async function init() {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
   container.appendChild(renderer.domElement);
+
+  // Safe WebGL context restoration to prevent black screen or reload on mobile tab switch
+  renderer.domElement.addEventListener('webglcontextlost', (event) => {
+    event.preventDefault();
+    console.warn('[WebGL] Context lost. Preventing default to allow WebGL restoration.');
+  }, false);
 
   // --- Controls & Pointer Lock Setup ---
   const controls = new PointerLockControls(camera, renderer.domElement);
@@ -130,6 +138,7 @@ async function init() {
   const fishingSystem = new FishingSystem(scene, world, player, inventory, hud, audioManager, questManager);
   player.buildingSystem = buildingSystem;
   inventory.buildingSystem = buildingSystem;
+  inventory.player = player;
 
   // 5 Biome Bosses System (Unique Mechanics, Arenas, Progressive Unlocks & Legendary Drops)
   const bossManager = new BossManager(scene, world, inventory, hud, audioManager, questManager, assetLoader, player);
@@ -166,6 +175,19 @@ async function init() {
 
   // Developer & Creative Mode (protected by password "kissa")
   const devMode = new DevMode(scene, camera, player, world, enemyManager, animalManager, bossManager, buildingSystem, inventory, hud);
+
+  // Full Save & Load Management (File export / import and localStorage)
+  const saveSystem = new SaveSystem({
+    player,
+    inventory,
+    hotbar,
+    buildingSystem,
+    dayNightCycle,
+    questManager,
+    skillTree,
+    world,
+    hud
+  });
 
   // HUD Quick Action Buttons
   const btnSkills = document.getElementById('open-skills-btn');
@@ -256,6 +278,20 @@ async function init() {
   if (crosshair) crosshair.style.display = 'none';
   if (mainMenu) mainMenu.style.display = 'flex';
 
+  // Ensure mobile controls overlay is hidden while main menu is showing
+  if (mobileControls) {
+    mobileControls.disableMobileControls();
+  }
+
+  // Smoothly fade out loading screen once world & menu are ready
+  if (loadingScreen) {
+    loadingScreen.style.transition = 'opacity 0.4s ease-out';
+    loadingScreen.style.opacity = '0';
+    setTimeout(() => {
+      loadingScreen.style.display = 'none';
+    }, 420);
+  }
+
   // --- Start Adventure ---
   const startGame = () => {
     audioManager.ensureContext();
@@ -300,6 +336,44 @@ async function init() {
       } else {
         startGame();
       }
+    });
+  }
+
+  // --- Main Menu Save / Continue / Load Buttons ---
+  const menuContinueBtn = document.getElementById('menu-continue-btn');
+  if (menuContinueBtn) {
+    if (saveSystem.hasSave()) {
+      menuContinueBtn.style.display = 'block';
+    }
+    menuContinueBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      saveSystem.loadFromLocalStorage();
+      startGame();
+    });
+  }
+
+  const saveFileInput = document.getElementById('savegame-file-input');
+  const menuLoadBtn = document.getElementById('menu-load-btn');
+  if (menuLoadBtn && saveFileInput) {
+    menuLoadBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      saveFileInput.click();
+    });
+  }
+
+  if (saveFileInput) {
+    saveFileInput.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const ok = await saveSystem.importFromFile(file);
+      if (ok) {
+        if (!isGameStarted) {
+          startGame();
+        } else {
+          resumeGame();
+        }
+      }
+      saveFileInput.value = '';
     });
   }
 
@@ -556,6 +630,7 @@ async function init() {
   }
 
   const updateUILanguage = (lang) => {
+    Localization.applyToDOM();
     const isFi = (lang === 'fi');
 
     // Main Menu Buttons
@@ -678,6 +753,22 @@ async function init() {
     pauseResumeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       resumeGame();
+    });
+  }
+
+  const pauseSaveBtn = document.getElementById('pause-save-btn');
+  if (pauseSaveBtn) {
+    pauseSaveBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      saveSystem.exportSaveToFile();
+    });
+  }
+
+  const pauseLoadBtn = document.getElementById('pause-load-btn');
+  if (pauseLoadBtn && saveFileInput) {
+    pauseLoadBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      saveFileInput.click();
     });
   }
 
@@ -1180,9 +1271,13 @@ async function init() {
 
     // Update Mini-map radar (color coded by biome with fog of war) and In-game Clock
     hud.updateClock(dayNightCycle.getClockTime());
+    const camDir = new THREE.Vector3();
+    camera.getWorldDirection(camDir);
+    const heading = Math.atan2(camDir.x, -camDir.z);
+
     hud.updateMinimap(
       player.getPosition(),
-      camera.rotation.y,
+      heading,
       enemyManager.enemies,
       buildingSystem.campfires,
       currentBiome,

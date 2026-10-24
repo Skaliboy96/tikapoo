@@ -4,6 +4,15 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
+const isMobileClient = (
+  typeof window !== 'undefined' && (
+    'ontouchstart' in window ||
+    navigator.maxTouchPoints > 0 ||
+    /Android|iPhone|iPad|iPod|Windows Phone|webOS|BlackBerry/i.test(navigator.userAgent) ||
+    window.innerWidth <= 900
+  )
+);
+
 export default class AssetLoader {
   constructor() {
     this.models = {};
@@ -20,7 +29,7 @@ export default class AssetLoader {
   updateProgress(currentName = '') {
     const loadingBar = document.getElementById('loading-bar');
     const loadingText = document.getElementById('loading-text');
-    const pct = this.total > 0 ? Math.round((this.loaded / this.total) * 100) : 100;
+    const pct = this.total > 0 ? Math.min(100, Math.round((this.loaded / this.total) * 100)) : 100;
     if (loadingBar) {
       loadingBar.style.width = `${pct}%`;
     }
@@ -31,323 +40,411 @@ export default class AssetLoader {
 
   async loadModel(name, url) {
     return new Promise((resolve) => {
-      this.loader.load(
-        url,
-        (gltf) => {
-          const model = gltf.scene;
-          model.traverse((child) => {
-            if (child.isMesh) {
-              child.castShadow = true;
-              child.receiveShadow = true;
-              if (child.material) {
-                const matName = child.material.name ? child.material.name.toLowerCase() : '';
-                const nodeName = child.name.toLowerCase();
-                if (matName.includes('leaf') || matName.includes('pine') || matName.includes('foliage') ||
-                    matName.includes('flower') || matName.includes('grass') ||
-                    nodeName.includes('leaf') || nodeName.includes('cone') || nodeName.includes('foliage')) {
-                  child.material.side = THREE.DoubleSide;
-                  child.material.shadowSide = THREE.DoubleSide;
+      let settled = false;
+      const done = (result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        this.loaded++;
+        this.updateProgress(name);
+        resolve(result);
+      };
+
+      // 6 second timeout to ensure mobile connections never hang indefinitely at 99%
+      const timer = setTimeout(() => {
+        console.warn(`[AssetLoader] Timeout loading model ${name} (${url})`);
+        done(null);
+      }, 6000);
+
+      try {
+        this.loader.load(
+          url,
+          (gltf) => {
+            try {
+              const model = gltf.scene;
+              model.traverse((child) => {
+                if (child.isMesh) {
+                  child.castShadow = true;
+                  child.receiveShadow = true;
+                  if (child.material) {
+                    const matName = child.material.name ? child.material.name.toLowerCase() : '';
+                    const nodeName = child.name.toLowerCase();
+                    if (matName.includes('leaf') || matName.includes('pine') || matName.includes('foliage') ||
+                        matName.includes('flower') || matName.includes('grass') ||
+                        nodeName.includes('leaf') || nodeName.includes('cone') || nodeName.includes('foliage')) {
+                      child.material.side = THREE.DoubleSide;
+                      child.material.shadowSide = THREE.DoubleSide;
+                    }
+                  }
                 }
-              }
+              });
+              this.models[name] = model;
+              done(model);
+            } catch (err) {
+              console.warn(`[AssetLoader] Parse error in model ${name}:`, err);
+              done(null);
             }
-          });
-          this.models[name] = model;
-          this.loaded++;
-          this.updateProgress(name);
-          resolve(model);
-        },
-        undefined,
-        (err) => {
-          console.warn(`[AssetLoader] Could not load model ${name} (${url}):`, err);
-          this.loaded++;
-          this.updateProgress(name);
-          resolve(null);
-        }
-      );
+          },
+          undefined,
+          (err) => {
+            console.warn(`[AssetLoader] Could not load model ${name} (${url}):`, err);
+            done(null);
+          }
+        );
+      } catch (err) {
+        console.warn(`[AssetLoader] Immediate error in loadModel ${name}:`, err);
+        done(null);
+      }
     });
   }
 
   async loadOBJ(name, objUrl, mtlUrl) {
     return new Promise((resolve) => {
-      const mtlLoader = new MTLLoader();
-      if (mtlUrl) {
-        const lastSlash = mtlUrl.lastIndexOf('/');
-        if (lastSlash !== -1) {
-          const basePath = mtlUrl.substring(0, lastSlash + 1);
-          mtlLoader.setPath(basePath);
-          mtlLoader.setResourcePath(basePath);
-          mtlUrl = mtlUrl.substring(lastSlash + 1);
+      let settled = false;
+      const done = (result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        this.loaded++;
+        this.updateProgress(name);
+        resolve(result);
+      };
+
+      const timer = setTimeout(() => {
+        console.warn(`[AssetLoader] Timeout loading OBJ ${name}`);
+        done(null);
+      }, 7000);
+
+      try {
+        const mtlLoader = new MTLLoader();
+        if (mtlUrl) {
+          const lastSlash = mtlUrl.lastIndexOf('/');
+          if (lastSlash !== -1) {
+            const basePath = mtlUrl.substring(0, lastSlash + 1);
+            mtlLoader.setPath(basePath);
+            mtlLoader.setResourcePath(basePath);
+            mtlUrl = mtlUrl.substring(lastSlash + 1);
+          }
         }
-      }
-      mtlLoader.load(
-        mtlUrl,
-        (materials) => {
-          materials.preload();
-          const objLoader = new OBJLoader();
-          objLoader.setMaterials(materials);
-          objLoader.load(
-            objUrl,
-            (obj) => {
-              obj.traverse((child) => {
-                if (child.isMesh) {
-                  child.castShadow = true;
-                  child.receiveShadow = true;
+        mtlLoader.load(
+          mtlUrl,
+          (materials) => {
+            try {
+              materials.preload();
+              const objLoader = new OBJLoader();
+              objLoader.setMaterials(materials);
+              objLoader.load(
+                objUrl,
+                (obj) => {
+                  try {
+                    obj.traverse((child) => {
+                      if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                      }
+                    });
+                    this.models[name] = obj;
+                    done(obj);
+                  } catch (err) {
+                    console.warn(`[AssetLoader] Error traversing OBJ ${name}:`, err);
+                    done(null);
+                  }
+                },
+                undefined,
+                (err) => {
+                  console.warn(`[AssetLoader] Could not load OBJ ${name}:`, err);
+                  done(null);
                 }
-              });
-              this.models[name] = obj;
-              this.loaded++;
-              this.updateProgress(name);
-              resolve(obj);
-            },
-            undefined,
-            (err) => {
-              console.warn(`[AssetLoader] Could not load OBJ ${name}:`, err);
-              this.loaded++;
-              this.updateProgress(name);
-              resolve(null);
+              );
+            } catch (err) {
+              console.warn(`[AssetLoader] Error processing MTL for ${name}:`, err);
+              done(null);
             }
-          );
-        },
-        undefined,
-        (err) => {
-          console.warn(`[AssetLoader] Could not load MTL for ${name}:`, err);
-          this.loaded++;
-          this.updateProgress(name);
-          resolve(null);
-        }
-      );
+          },
+          undefined,
+          (err) => {
+            console.warn(`[AssetLoader] Could not load MTL for ${name}:`, err);
+            done(null);
+          }
+        );
+      } catch (err) {
+        console.warn(`[AssetLoader] Immediate error in loadOBJ ${name}:`, err);
+        done(null);
+      }
     });
   }
 
   async loadAnimations(url, rigType = 'auto') {
     const isRigMedium = (rigType === 'rigMedium') || url.includes('Rig_Medium');
     return new Promise((resolve) => {
-      this.loader.load(
-        url,
-        (gltf) => {
-          if (gltf.animations && gltf.animations.length > 0) {
-            const targetDict = isRigMedium ? this.rigMediumAnimations : this.ual2Animations;
+      let settled = false;
+      const done = (result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        this.loaded++;
+        this.updateProgress('animaatiot');
+        resolve(result);
+      };
 
-            // Natural resting quaternions from character bind pose (straight forward gaze, zero yaw/roll tilt)
-            const restNeck = new THREE.Quaternion(0.257259, 0, 0, 0.966342);
-            const restHead = new THREE.Quaternion(-0.132070, 0, 0, 0.991240);
+      const timer = setTimeout(() => {
+        console.warn(`[AssetLoader] Timeout loading animations from ${url}`);
+        done([]);
+      }, 7000);
 
-            for (const clip of gltf.animations) {
-              const nameLower = clip.name.toLowerCase();
+      try {
+        this.loader.load(
+          url,
+          (gltf) => {
+            try {
+              if (gltf.animations && gltf.animations.length > 0) {
+                const targetDict = isRigMedium ? this.rigMediumAnimations : this.ual2Animations;
 
-              // Only stabilize UAL2 head/neck if it is UAL2
-              if (!isRigMedium && nameLower.includes('idle')) {
-                const duration = clip.duration || 2.0;
-                let hasNeckQuat = false;
-                let hasHeadQuat = false;
+                // Natural resting quaternions from character bind pose (straight forward gaze, zero yaw/roll tilt)
+                const restNeck = new THREE.Quaternion(0.257259, 0, 0, 0.966342);
+                const restHead = new THREE.Quaternion(-0.132070, 0, 0, 0.991240);
 
-                for (const track of clip.tracks) {
-                  const trackLower = track.name.toLowerCase();
-                  if (trackLower.includes('neck') && track.name.endsWith('.quaternion')) {
-                    hasNeckQuat = true;
+                for (const clip of gltf.animations) {
+                  const nameLower = clip.name.toLowerCase();
+
+                  // Only stabilize UAL2 head/neck if it is UAL2
+                  if (!isRigMedium && nameLower.includes('idle')) {
+                    const duration = clip.duration || 2.0;
+                    let hasNeckQuat = false;
+                    let hasHeadQuat = false;
+
+                    for (const track of clip.tracks) {
+                      const trackLower = track.name.toLowerCase();
+                      if (trackLower.includes('neck') && track.name.endsWith('.quaternion')) {
+                        hasNeckQuat = true;
+                        for (let k = 0; k < track.times.length; k++) {
+                          const t = track.times[k];
+                          const breath = Math.sin((t / duration) * Math.PI * 2) * 0.008;
+                          const qNeck = restNeck.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), breath));
+                          track.values[k * 4 + 0] = qNeck.x;
+                          track.values[k * 4 + 1] = 0;
+                          track.values[k * 4 + 2] = 0;
+                          track.values[k * 4 + 3] = qNeck.w;
+                        }
+                      } else if (trackLower.includes('head') && track.name.endsWith('.quaternion')) {
+                        hasHeadQuat = true;
+                        for (let k = 0; k < track.times.length; k++) {
+                          const t = track.times[k];
+                          const breath = Math.sin((t / duration) * Math.PI * 2) * 0.008;
+                          const qHead = restHead.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -breath * 0.5));
+                          track.values[k * 4 + 0] = qHead.x;
+                          track.values[k * 4 + 1] = 0;
+                          track.values[k * 4 + 2] = 0;
+                          track.values[k * 4 + 3] = qHead.w;
+                        }
+                      }
+                    }
+
+                    if (!hasNeckQuat) {
+                      const times = [0, duration * 0.5, duration];
+                      const values = [];
+                      for (const t of times) {
+                        const breath = Math.sin((t / duration) * Math.PI * 2) * 0.008;
+                        const qNeck = restNeck.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), breath));
+                        values.push(qNeck.x, 0, 0, qNeck.w);
+                      }
+                      clip.tracks.push(new THREE.QuaternionKeyframeTrack('neck_01.quaternion', times, values));
+                    }
+
+                    if (!hasHeadQuat) {
+                      const times = [0, duration * 0.5, duration];
+                      const values = [];
+                      for (const t of times) {
+                        const breath = Math.sin((t / duration) * Math.PI * 2) * 0.008;
+                        const qHead = restHead.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -breath * 0.5));
+                        values.push(qHead.x, 0, 0, qHead.w);
+                      }
+                      clip.tracks.push(new THREE.QuaternionKeyframeTrack('Head.quaternion', times, values));
+                    }
+                  }
+
+                  targetDict[clip.name] = clip;
+                  this.animations[clip.name] = clip;
+                }
+
+                // Create natural humanoid walk clip with relaxed arm carriage for UAL2
+                if (!isRigMedium && this.ual2Animations['Walk_Carry_Loop'] && this.ual2Animations['Idle_No_Loop']) {
+                  const walkOrig = this.ual2Animations['Walk_Carry_Loop'];
+                  const idleOrig = this.ual2Animations['Idle_No_Loop'];
+                  const walkDuration = walkOrig.duration;
+
+                  // 1. Lower body, pelvis, root, spine, neck, head from Walk_Carry_Loop
+                  const mergedTracks = walkOrig.tracks.filter(t => {
+                    const n = t.name.toLowerCase();
+                    return !n.includes('arm_') && !n.includes('hand_') && !n.includes('clavicle_') &&
+                           !n.includes('finger') && !n.includes('thumb') && !n.includes('index') &&
+                           !n.includes('pinky') && !n.includes('ring') && !n.includes('middle');
+                  });
+
+                  // Clamp neck and head in walk to eliminate lateral twisting or tilting
+                  for (const track of mergedTracks) {
+                    const tn = track.name.toLowerCase();
+                    if ((tn.includes('neck') || tn.includes('head')) && track.name.endsWith('.quaternion')) {
+                      for (let k = 0; k < track.times.length; k++) {
+                        track.values[k * 4 + 1] = 0;
+                        track.values[k * 4 + 2] = 0;
+                        const len = Math.hypot(track.values[k * 4 + 0], track.values[k * 4 + 3]);
+                        if (len > 0.0001) {
+                          track.values[k * 4 + 0] /= len;
+                          track.values[k * 4 + 3] /= len;
+                        }
+                      }
+                    }
+                  }
+
+                  // 2. Arms & hands from Idle_No_Loop (retimed to walkDuration so they stay relaxed, NOT in T-pose!)
+                  const armTracks = idleOrig.tracks.filter(t => {
+                    const n = t.name.toLowerCase();
+                    return n.includes('arm_') || n.includes('hand_') || n.includes('clavicle_') ||
+                           n.includes('finger') || n.includes('thumb') || n.includes('index') ||
+                           n.includes('pinky') || n.includes('ring') || n.includes('middle');
+                  });
+
+                  for (const at of armTracks) {
+                    const cloned = at.clone();
+                    const scale = walkDuration / idleOrig.duration;
+                    for (let k = 0; k < cloned.times.length; k++) {
+                      cloned.times[k] *= scale;
+                    }
+                    mergedTracks.push(cloned);
+                  }
+
+                  const walkClip = new THREE.AnimationClip('Walk_Natural_Loop', walkDuration, mergedTracks);
+                  this.ual2Animations['Walk_Natural_Loop'] = walkClip;
+                  this.animations['Walk_Natural_Loop'] = walkClip;
+
+                  // 3. Create high-energy athletic sprint animation: 'Run_Sprint_Loop'
+                  const sprintDuration = walkDuration * 0.52;
+                  const sprintTracks = [];
+                  const sprintLeanQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 0.20);
+
+                  for (const origTrack of walkOrig.tracks) {
+                    const n = origTrack.name.toLowerCase();
+                    if (n.includes('arm_') || n.includes('hand_') || n.includes('clavicle_') ||
+                        n.includes('finger') || n.includes('thumb') || n.includes('index') ||
+                        n.includes('pinky') || n.includes('ring') || n.includes('middle')) {
+                      continue;
+                    }
+
+                    const track = origTrack.clone();
                     for (let k = 0; k < track.times.length; k++) {
-                      const t = track.times[k];
-                      const breath = Math.sin((t / duration) * Math.PI * 2) * 0.008;
-                      const qNeck = restNeck.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), breath));
-                      track.values[k * 4 + 0] = qNeck.x;
-                      track.values[k * 4 + 1] = 0;
-                      track.values[k * 4 + 2] = 0;
-                      track.values[k * 4 + 3] = qNeck.w;
+                      track.times[k] = (track.times[k] / walkDuration) * sprintDuration;
                     }
-                  } else if (trackLower.includes('head') && track.name.endsWith('.quaternion')) {
-                    hasHeadQuat = true;
-                    for (let k = 0; k < track.times.length; k++) {
-                      const t = track.times[k];
-                      const breath = Math.sin((t / duration) * Math.PI * 2) * 0.008;
-                      const qHead = restHead.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -breath * 0.5));
-                      track.values[k * 4 + 0] = qHead.x;
-                      track.values[k * 4 + 1] = 0;
-                      track.values[k * 4 + 2] = 0;
-                      track.values[k * 4 + 3] = qHead.w;
+
+                    if (n.includes('spine') && track.name.endsWith('.quaternion')) {
+                      for (let q = 0; q < track.values.length; q += 4) {
+                        const quat = new THREE.Quaternion(
+                          track.values[q],
+                          track.values[q + 1],
+                          track.values[q + 2],
+                          track.values[q + 3]
+                        );
+                        quat.multiply(sprintLeanQuat);
+                        track.values[q] = quat.x;
+                        track.values[q + 1] = quat.y;
+                        track.values[q + 2] = quat.z;
+                        track.values[q + 3] = quat.w;
+                      }
                     }
-                  }
-                }
 
-                if (!hasNeckQuat) {
-                  const times = [0, duration * 0.5, duration];
-                  const values = [];
-                  for (const t of times) {
-                    const breath = Math.sin((t / duration) * Math.PI * 2) * 0.008;
-                    const qNeck = restNeck.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), breath));
-                    values.push(qNeck.x, 0, 0, qNeck.w);
-                  }
-                  clip.tracks.push(new THREE.QuaternionKeyframeTrack('neck_01.quaternion', times, values));
-                }
+                    if ((n.includes('neck') || n.includes('head')) && track.name.endsWith('.quaternion')) {
+                      for (let q = 0; q < track.values.length; q += 4) {
+                        track.values[q + 1] = 0;
+                        track.values[q + 2] = 0;
+                        const len = Math.hypot(track.values[q], track.values[q + 3]);
+                        if (len > 0.0001) {
+                          track.values[q] /= len;
+                          track.values[q + 3] /= len;
+                        }
+                      }
+                    }
 
-                if (!hasHeadQuat) {
-                  const times = [0, duration * 0.5, duration];
-                  const values = [];
-                  for (const t of times) {
-                    const breath = Math.sin((t / duration) * Math.PI * 2) * 0.008;
-                    const qHead = restHead.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -breath * 0.5));
-                    values.push(qHead.x, 0, 0, qHead.w);
+                    sprintTracks.push(track);
                   }
-                  clip.tracks.push(new THREE.QuaternionKeyframeTrack('Head.quaternion', times, values));
+
+                  for (const at of armTracks) {
+                    const cloned = at.clone();
+                    const scale = sprintDuration / idleOrig.duration;
+                    for (let k = 0; k < cloned.times.length; k++) {
+                      cloned.times[k] *= scale;
+                    }
+                    sprintTracks.push(cloned);
+                  }
+
+                  const sprintClip = new THREE.AnimationClip('Run_Sprint_Loop', sprintDuration, sprintTracks);
+                  this.ual2Animations['Run_Sprint_Loop'] = sprintClip;
+                  this.animations['Run_Sprint_Loop'] = sprintClip;
                 }
               }
-
-              targetDict[clip.name] = clip;
-              this.animations[clip.name] = clip;
+              done(gltf.animations || []);
+            } catch (err) {
+              console.warn('[AssetLoader] Error processing animations from', url, err);
+              done([]);
             }
-
-            // Create natural humanoid walk clip with relaxed arm carriage for UAL2
-            if (!isRigMedium && this.ual2Animations['Walk_Carry_Loop'] && this.ual2Animations['Idle_No_Loop']) {
-              const walkOrig = this.ual2Animations['Walk_Carry_Loop'];
-              const idleOrig = this.ual2Animations['Idle_No_Loop'];
-              const walkDuration = walkOrig.duration;
-
-              // 1. Lower body, pelvis, root, spine, neck, head from Walk_Carry_Loop
-              const mergedTracks = walkOrig.tracks.filter(t => {
-                const n = t.name.toLowerCase();
-                return !n.includes('arm_') && !n.includes('hand_') && !n.includes('clavicle_') &&
-                       !n.includes('finger') && !n.includes('thumb') && !n.includes('index') &&
-                       !n.includes('pinky') && !n.includes('ring') && !n.includes('middle');
-              });
-
-              // Clamp neck and head in walk to eliminate lateral twisting or tilting
-              for (const track of mergedTracks) {
-                const tn = track.name.toLowerCase();
-                if ((tn.includes('neck') || tn.includes('head')) && track.name.endsWith('.quaternion')) {
-                  for (let k = 0; k < track.times.length; k++) {
-                    track.values[k * 4 + 1] = 0;
-                    track.values[k * 4 + 2] = 0;
-                    const len = Math.hypot(track.values[k * 4 + 0], track.values[k * 4 + 3]);
-                    if (len > 0.0001) {
-                      track.values[k * 4 + 0] /= len;
-                      track.values[k * 4 + 3] /= len;
-                    }
-                  }
-                }
-              }
-
-              // 2. Arms & hands from Idle_No_Loop (retimed to walkDuration so they stay relaxed, NOT in T-pose!)
-              const armTracks = idleOrig.tracks.filter(t => {
-                const n = t.name.toLowerCase();
-                return n.includes('arm_') || n.includes('hand_') || n.includes('clavicle_') ||
-                       n.includes('finger') || n.includes('thumb') || n.includes('index') ||
-                       n.includes('pinky') || n.includes('ring') || n.includes('middle');
-              });
-
-              for (const at of armTracks) {
-                const cloned = at.clone();
-                const scale = walkDuration / idleOrig.duration;
-                for (let k = 0; k < cloned.times.length; k++) {
-                  cloned.times[k] *= scale;
-                }
-                mergedTracks.push(cloned);
-              }
-
-              const walkClip = new THREE.AnimationClip('Walk_Natural_Loop', walkDuration, mergedTracks);
-              this.ual2Animations['Walk_Natural_Loop'] = walkClip;
-              this.animations['Walk_Natural_Loop'] = walkClip;
-
-              // 3. Create high-energy athletic sprint animation: 'Run_Sprint_Loop'
-              const sprintDuration = walkDuration * 0.52;
-              const sprintTracks = [];
-              const sprintLeanQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 0.20);
-
-              for (const origTrack of walkOrig.tracks) {
-                const n = origTrack.name.toLowerCase();
-                if (n.includes('arm_') || n.includes('hand_') || n.includes('clavicle_') ||
-                    n.includes('finger') || n.includes('thumb') || n.includes('index') ||
-                    n.includes('pinky') || n.includes('ring') || n.includes('middle')) {
-                  continue;
-                }
-
-                const track = origTrack.clone();
-                for (let k = 0; k < track.times.length; k++) {
-                  track.times[k] = (track.times[k] / walkDuration) * sprintDuration;
-                }
-
-                if (n.includes('spine') && track.name.endsWith('.quaternion')) {
-                  for (let q = 0; q < track.values.length; q += 4) {
-                    const quat = new THREE.Quaternion(
-                      track.values[q],
-                      track.values[q + 1],
-                      track.values[q + 2],
-                      track.values[q + 3]
-                    );
-                    quat.multiply(sprintLeanQuat);
-                    track.values[q] = quat.x;
-                    track.values[q + 1] = quat.y;
-                    track.values[q + 2] = quat.z;
-                    track.values[q + 3] = quat.w;
-                  }
-                }
-
-                if ((n.includes('neck') || n.includes('head')) && track.name.endsWith('.quaternion')) {
-                  for (let q = 0; q < track.values.length; q += 4) {
-                    track.values[q + 1] = 0;
-                    track.values[q + 2] = 0;
-                    const len = Math.hypot(track.values[q], track.values[q + 3]);
-                    if (len > 0.0001) {
-                      track.values[q] /= len;
-                      track.values[q + 3] /= len;
-                    }
-                  }
-                }
-
-                sprintTracks.push(track);
-              }
-
-              for (const at of armTracks) {
-                const cloned = at.clone();
-                const scale = sprintDuration / idleOrig.duration;
-                for (let k = 0; k < cloned.times.length; k++) {
-                  cloned.times[k] *= scale;
-                }
-                sprintTracks.push(cloned);
-              }
-
-              const sprintClip = new THREE.AnimationClip('Run_Sprint_Loop', sprintDuration, sprintTracks);
-              this.ual2Animations['Run_Sprint_Loop'] = sprintClip;
-              this.animations['Run_Sprint_Loop'] = sprintClip;
-            }
+          },
+          undefined,
+          (err) => {
+            console.warn('[AssetLoader] Failed to load animations from', url, err);
+            done([]);
           }
-          this.loaded++;
-          this.updateProgress('animaatiot');
-          resolve(gltf.animations);
-        },
-        undefined,
-        (err) => {
-          console.warn('[AssetLoader] Failed to load animations from', url, err);
-          this.loaded++;
-          this.updateProgress('animaatiot');
-          resolve([]);
-        }
-      );
+        );
+      } catch (err) {
+        console.warn('[AssetLoader] Immediate error in loadAnimations:', err);
+        done([]);
+      }
     });
   }
 
   async loadTexture(name, url, wrap = true, repeatX = 1, repeatY = 1) {
     return new Promise((resolve) => {
-      this.texLoader.load(
-        url,
-        (tex) => {
-          if (wrap) {
-            tex.wrapS = THREE.RepeatWrapping;
-            tex.wrapT = THREE.RepeatWrapping;
-            tex.repeat.set(repeatX, repeatY);
+      let settled = false;
+      const done = (result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        this.loaded++;
+        this.updateProgress(name);
+        resolve(result);
+      };
+
+      const timer = setTimeout(() => {
+        console.warn(`[AssetLoader] Timeout loading texture ${name}`);
+        done(null);
+      }, 6000);
+
+      try {
+        this.texLoader.load(
+          url,
+          (tex) => {
+            try {
+              if (wrap) {
+                tex.wrapS = THREE.RepeatWrapping;
+                tex.wrapT = THREE.RepeatWrapping;
+                tex.repeat.set(repeatX, repeatY);
+              }
+              tex.colorSpace = THREE.SRGBColorSpace;
+              this.textures[name] = tex;
+              done(tex);
+            } catch (err) {
+              console.warn(`[AssetLoader] Texture process error ${name}:`, err);
+              done(null);
+            }
+          },
+          undefined,
+          (err) => {
+            console.warn(`[AssetLoader] Texture load error ${name}:`, err);
+            done(null);
           }
-          tex.colorSpace = THREE.SRGBColorSpace;
-          this.textures[name] = tex;
-          this.loaded++;
-          this.updateProgress(name);
-          resolve(tex);
-        },
-        undefined,
-        (err) => {
-          console.warn(`[AssetLoader] Texture load error ${name}:`, err);
-          this.loaded++;
-          this.updateProgress(name);
-          resolve(null);
-        }
-      );
+        );
+      } catch (err) {
+        console.warn(`[AssetLoader] Immediate error in loadTexture ${name}:`, err);
+        done(null);
+      }
     });
   }
 
@@ -497,7 +594,44 @@ export default class AssetLoader {
       { name: 'TinyBuilding01',  obj: '/assets/Tiny Building/Package/TinyBuilding01.obj',   mtl: '/assets/Tiny Building/Package/TinyBuilding01.mtl' }
     ];
 
-    this.total = modelManifest.length + textureManifest.length + objManifest.length + 2;
+    let activeModelManifest = modelManifest;
+    let activeObjManifest = objManifest;
+
+    if (isMobileClient) {
+      const mobileModelNames = new Set([
+        // Characters
+        'Barbarian', 'Knight', 'Mage', 'Ranger_Adv', 'Rogue', 'Rogue_Hooded',
+        'Skeleton_Warrior', 'Skeleton_Mage', 'Skeleton_Rogue', 'Skeleton_Minion',
+        // Weapons & Shields
+        'Skeleton_Blade', 'Skeleton_Axe', 'Skeleton_Staff', 'Skeleton_Crossbow',
+        'Skeleton_Shield_Large_A', 'Skeleton_Shield_Small_A',
+        'sword_2handed', 'sword_1handed', 'shield_badge', 'shield_round_barbarian',
+        'staff', 'bow_withString', 'crossbow_1handed', 'dagger', 'wand',
+        // Trees
+        'Pine_1', 'Pine_3', 'CommonTree_1', 'CommonTree_3', 'DeadTree_1', 'TwistedTree_1',
+        // Foliage & Rocks
+        'Bush_Common', 'Bush_Common_Flowers', 'Grass_Common_Tall', 'Flower_3_Group',
+        'Clover_1', 'Fern_1', 'Plant_1', 'Mushroom_Common', 'Mushroom_Laetiporus',
+        'Rock_Medium_1', 'Pebble_Round_1',
+        // Props & Crafting
+        'Chest_Wood', 'Barrel', 'Barrel_Apples', 'Axe_Bronze', 'Sword_Bronze', 'Pickaxe_Bronze',
+        'WeaponStand', 'Anvil_Log', 'Cauldron', 'Bench', 'Torch_Metal', 'FarmCrate_Apple',
+        'Table_Large', 'Workbench', 'Workbench_Drawers', 'Bed_Twin1',
+        // Village structures
+        'Wall_Plaster_Straight', 'Wall_Plaster_Window_Wide_Flat', 'Wall_Plaster_Door_Flat',
+        'Roof_RoundTiles_4x4', 'Roof_RoundTiles_6x8', 'Floor_WoodDark',
+        'Prop_Wagon', 'Prop_WoodenFence_Single', 'Prop_Crate', 'Prop_Chimney', 'Stairs_Exterior_Straight'
+      ]);
+      activeModelManifest = modelManifest.filter(m => mobileModelNames.has(m.name));
+
+      const mobileObjNames = new Set([
+        'BirchTree_1', 'BushBerries_1', 'Rock_Moss_1', 'WoodLog_Moss', 'Wheat',
+        'LargeBuilding01', 'SmallBuilding01', 'SmallBuilding02', 'TallBuilding01', 'TallBuilding02', 'TinyBuilding01'
+      ]);
+      activeObjManifest = objManifest.filter(o => mobileObjNames.has(o.name));
+    }
+
+    this.total = activeModelManifest.length + textureManifest.length + activeObjManifest.length + 2;
     this.loaded = 0;
     this.updateProgress('aloitetaan');
 
@@ -521,28 +655,61 @@ export default class AssetLoader {
     };
 
     const tasks = [
-      ...modelManifest.map(m => () => this.loadModel(m.name, m.url)),
-      ...objManifest.map(o => () => this.loadOBJ(o.name, o.obj, o.mtl)),
+      ...activeModelManifest.map(m => () => this.loadModel(m.name, m.url)),
+      ...activeObjManifest.map(o => () => this.loadOBJ(o.name, o.obj, o.mtl)),
       ...textureManifest.map(t => () => this.loadTexture(t.name, t.url, t.wrap, t.rx, t.ry)),
       () => this.loadAnimations('/assets/KayKit_Adventurers_2.0_FREE/KayKit_Adventurers_2.0_FREE/Animations/gltf/Rig_Medium/Rig_Medium_General.glb', 'rigMedium'),
       () => this.loadAnimations('/assets/KayKit_Adventurers_2.0_FREE/KayKit_Adventurers_2.0_FREE/Animations/gltf/Rig_Medium/Rig_Medium_MovementBasic.glb', 'rigMedium')
     ];
 
-    await runInPool(tasks, 6);
+    const poolConcurrency = isMobileClient ? 4 : 6;
+    await runInPool(tasks, poolConcurrency);
+
+    // Guaranteed 100% completion
+    this.loaded = this.total;
     this.updateProgress('Valmis!');
+    const loadingBar = document.getElementById('loading-bar');
+    if (loadingBar) loadingBar.style.width = '100%';
+
     return this;
   }
 
   get(name) {
-    if (!this.models[name]) return null;
+    let source = this.models[name];
+    if (!source) {
+      if (name.startsWith('Pine_')) source = this.models['Pine_1'] || this.models['Pine_3'];
+      else if (name.startsWith('CommonTree_')) source = this.models['CommonTree_1'] || this.models['CommonTree_3'];
+      else if (name.startsWith('DeadTree_')) source = this.models['DeadTree_1'];
+      else if (name.startsWith('TwistedTree_')) source = this.models['TwistedTree_1'];
+      else if (name.startsWith('BirchTree_')) source = this.models['BirchTree_1'];
+      else if (name.startsWith('Rock_Medium_')) source = this.models['Rock_Medium_1'];
+      else if (name.startsWith('Rock_Moss_')) source = this.models['Rock_Moss_1'];
+      else if (name === 'Flower_4_Group') source = this.models['Flower_3_Group'];
+      else if (name.startsWith('Grass_')) source = this.models['Grass_Common_Tall'];
+      else if (name.startsWith('Plant_')) source = this.models['Plant_1'];
+      else if (name === 'TreeStump_Moss') source = this.models['WoodLog_Moss'];
+      else if (name === 'CandleStick_Stand') source = this.models['Torch_Metal'];
+      else if (name === 'FarmCrate_Carrot') source = this.models['FarmCrate_Apple'];
+      else if (name === 'Chair_1') source = this.models['Bench'];
+      else if (name === 'Stall_Empty' || name === 'Stall_Cart_Empty') source = this.models['Prop_Wagon'];
+      else if (name === 'Bookcase_2') source = this.models['Table_Large'];
+      else if (name.startsWith('Wall_UnevenBrick_')) source = this.models['Wall_Plaster_Straight'];
+      else if (name === 'Wall_Arch' || name.startsWith('Door_')) source = this.models['Wall_Plaster_Door_Flat'];
+      else if (name === 'Roof_Tower_RoundTiles') source = this.models['Roof_RoundTiles_4x4'];
+      else if (name === 'WindowShutters_Wide_Flat_Open') source = this.models['Wall_Plaster_Window_Wide_Flat'];
+      else if (name === 'Floor_Brick') source = this.models['Floor_WoodDark'];
+      else if (name === 'Prop_WoodenFence_Extension1') source = this.models['Prop_WoodenFence_Single'];
+    }
+    if (!source) return null;
+
     let hasSkinnedMesh = false;
-    this.models[name].traverse((c) => {
+    source.traverse((c) => {
       if (c.isSkinnedMesh) hasSkinnedMesh = true;
     });
 
     const clone = hasSkinnedMesh
-      ? SkeletonUtils.clone(this.models[name])
-      : this.models[name].clone(true);
+      ? SkeletonUtils.clone(source)
+      : source.clone(true);
 
     clone.traverse((child) => {
       if (child.isMesh) {
@@ -617,6 +784,10 @@ export default class AssetLoader {
     const headGroup = new THREE.Group();
     headGroup.name = 'Attached_HeadGroup';
 
+    const isRigMed = !!(characterModel.getObjectByName('Rig_Medium') || characterModel.getObjectByName('root'));
+    const headOffsetY = isRigMed ? 0.18 : 0.06;
+    const headRadius = isRigMed ? 0.22 : 0.165;
+
     const defaultSkin = isFemale ? 0xf5d0b5 : 0xdba77a;
     const finalSkin = skinColor || defaultSkin;
     const defaultHair = isFemale ? 0x8a4b26 : 0x3d2817;
@@ -630,10 +801,10 @@ export default class AssetLoader {
 
     if (hasHood) {
       // 1. Character has a hood (Ranger): Build face nestled inside the hood opening
-      const faceGeo = new THREE.SphereGeometry(0.14, 12, 10);
+      const faceGeo = new THREE.SphereGeometry(headRadius * 0.85, 12, 10);
       faceGeo.scale(0.85, 1.05, 0.95);
       const faceMesh = new THREE.Mesh(faceGeo, skinMat);
-      faceMesh.position.set(0, 0.06, 0.02);
+      faceMesh.position.set(0, headOffsetY, 0.02);
       faceMesh.castShadow = true;
       faceMesh.receiveShadow = true;
       headGroup.add(faceMesh);
@@ -642,55 +813,47 @@ export default class AssetLoader {
       const scleraMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
       const eyeMat = new THREE.MeshBasicMaterial({ color: eyeColor });
 
-      const scleraGeo = new THREE.SphereGeometry(0.025, 8, 8);
-      const pupilGeo = new THREE.SphereGeometry(0.015, 6, 6);
+      const scleraGeo = new THREE.SphereGeometry(0.028, 8, 8);
+      const pupilGeo = new THREE.SphereGeometry(0.018, 6, 6);
+
+      const eyeSpread = isRigMed ? 0.058 : 0.045;
+      const eyeZ = isRigMed ? 0.17 : 0.12;
 
       // Left eye
       const leftSclera = new THREE.Mesh(scleraGeo, scleraMat);
-      leftSclera.position.set(-0.045, 0.08, 0.12);
+      leftSclera.position.set(-eyeSpread, headOffsetY + 0.02, eyeZ);
       const leftPupil = new THREE.Mesh(pupilGeo, eyeMat);
-      leftPupil.position.set(-0.045, 0.08, 0.138);
+      leftPupil.position.set(-eyeSpread, headOffsetY + 0.02, eyeZ + 0.018);
       headGroup.add(leftSclera, leftPupil);
 
       // Right eye
       const rightSclera = new THREE.Mesh(scleraGeo, scleraMat);
-      rightSclera.position.set(0.045, 0.08, 0.12);
+      rightSclera.position.set(eyeSpread, headOffsetY + 0.02, eyeZ);
       const rightPupil = new THREE.Mesh(pupilGeo, eyeMat);
-      rightPupil.position.set(0.045, 0.08, 0.138);
+      rightPupil.position.set(eyeSpread, headOffsetY + 0.02, eyeZ + 0.018);
       headGroup.add(rightSclera, rightPupil);
 
-      // Eyebrows
-      const browMat = new THREE.MeshBasicMaterial({ color: isFemale ? 0x4a2e18 : 0x2e1d0f });
-      const browGeo = new THREE.BoxGeometry(0.038, 0.009, 0.012);
-      const leftBrow = new THREE.Mesh(browGeo, browMat);
-      leftBrow.position.set(-0.045, 0.11, 0.125);
-      leftBrow.rotation.z = -0.08;
-      const rightBrow = new THREE.Mesh(browGeo, browMat);
-      rightBrow.position.set(0.045, 0.11, 0.125);
-      rightBrow.rotation.z = 0.08;
-      headGroup.add(leftBrow, rightBrow);
-
       // Nose
-      const noseGeo = new THREE.ConeGeometry(0.02, 0.045, 4);
+      const noseGeo = new THREE.ConeGeometry(0.024, 0.05, 4);
       noseGeo.rotateX(Math.PI / 2);
       const nose = new THREE.Mesh(noseGeo, skinMat);
-      nose.position.set(0, 0.055, 0.145);
+      nose.position.set(0, headOffsetY - 0.005, eyeZ + 0.025);
       headGroup.add(nose);
 
       // Beard for male ranger
       if (!isFemale) {
-        const beardGeo = new THREE.BoxGeometry(0.08, 0.06, 0.05);
+        const beardGeo = new THREE.BoxGeometry(headRadius * 0.55, 0.07, 0.06);
         const beardMat = new THREE.MeshStandardMaterial({ color: finalHair, roughness: 0.8 });
         const beard = new THREE.Mesh(beardGeo, beardMat);
-        beard.position.set(0, 0.0, 0.11);
+        beard.position.set(0, headOffsetY - 0.07, eyeZ - 0.01);
         headGroup.add(beard);
       }
     } else {
-      // 2. Character has no hood (Peasant): Build full head with hair/cap
-      const headGeo = new THREE.SphereGeometry(0.165, 12, 10);
-      headGeo.scale(0.85, 1.05, 0.95);
+      // 2. Character has no hood: Build full head with hair/cap
+      const headGeo = new THREE.SphereGeometry(headRadius, 14, 12);
+      headGeo.scale(0.88, 1.08, 0.95);
       const headMesh = new THREE.Mesh(headGeo, skinMat);
-      headMesh.position.set(0, 0.06, 0.01);
+      headMesh.position.set(0, headOffsetY, 0.01);
       headMesh.castShadow = true;
       headMesh.receiveShadow = true;
       headGroup.add(headMesh);
@@ -698,26 +861,30 @@ export default class AssetLoader {
       // Eyes
       const eyeMat = new THREE.MeshBasicMaterial({ color: eyeColor });
       const scleraMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-      const eyeGeo = new THREE.SphereGeometry(0.022, 6, 6);
-      const scleraGeo = new THREE.SphereGeometry(0.028, 6, 6);
+      const eyeGeo = new THREE.SphereGeometry(0.025, 6, 6);
+      const scleraGeo = new THREE.SphereGeometry(0.032, 6, 6);
+
+      const eyeSpread = isRigMed ? 0.062 : 0.048;
+      const eyeZ = isRigMed ? 0.18 : 0.13;
+      const eyeY = headOffsetY + 0.02;
 
       const leftSclera = new THREE.Mesh(scleraGeo, scleraMat);
-      leftSclera.position.set(-0.048, 0.075, 0.13);
+      leftSclera.position.set(-eyeSpread, eyeY, eyeZ);
       const leftPupil = new THREE.Mesh(eyeGeo, eyeMat);
-      leftPupil.position.set(-0.048, 0.075, 0.148);
+      leftPupil.position.set(-eyeSpread, eyeY, eyeZ + 0.018);
 
       const rightSclera = new THREE.Mesh(scleraGeo, scleraMat);
-      rightSclera.position.set(0.048, 0.075, 0.13);
+      rightSclera.position.set(eyeSpread, eyeY, eyeZ);
       const rightPupil = new THREE.Mesh(eyeGeo, eyeMat);
-      rightPupil.position.set(0.048, 0.075, 0.148);
+      rightPupil.position.set(eyeSpread, eyeY, eyeZ + 0.018);
 
       headGroup.add(leftSclera, leftPupil, rightSclera, rightPupil);
 
       // Nose
-      const noseGeo = new THREE.ConeGeometry(0.022, 0.05, 4);
+      const noseGeo = new THREE.ConeGeometry(0.025, 0.055, 4);
       noseGeo.rotateX(Math.PI / 2);
       const nose = new THREE.Mesh(noseGeo, skinMat);
-      nose.position.set(0, 0.05, 0.155);
+      nose.position.set(0, eyeY - 0.025, eyeZ + 0.025);
       headGroup.add(nose);
 
       // Hair Styles
@@ -728,50 +895,50 @@ export default class AssetLoader {
         });
 
         if (hairStyle === 'long') {
-          const hairGeo = new THREE.SphereGeometry(0.185, 12, 10);
-          hairGeo.scale(0.98, 1.25, 1.15);
+          const hairGeo = new THREE.SphereGeometry(headRadius * 1.10, 14, 12);
+          hairGeo.scale(0.98, 1.25, 1.12);
           const hair = new THREE.Mesh(hairGeo, hairMat);
-          hair.position.set(0, 0.07, -0.03);
+          hair.position.set(0, headOffsetY + 0.015, -0.025);
           hair.castShadow = true;
           headGroup.add(hair);
 
-          const tailGeo = new THREE.CylinderGeometry(0.08, 0.04, 0.28, 8);
+          const tailGeo = new THREE.CylinderGeometry(headRadius * 0.45, headRadius * 0.25, 0.35, 8);
           const tail = new THREE.Mesh(tailGeo, hairMat);
-          tail.position.set(0, -0.06, -0.14);
+          tail.position.set(0, headOffsetY - 0.16, -0.16);
           tail.rotation.x = 0.2;
           headGroup.add(tail);
         } else if (hairStyle === 'ponytail') {
-          const hairGeo = new THREE.SphereGeometry(0.18, 12, 10);
+          const hairGeo = new THREE.SphereGeometry(headRadius * 1.08, 14, 12);
           hairGeo.scale(0.96, 1.1, 1.05);
           const hair = new THREE.Mesh(hairGeo, hairMat);
-          hair.position.set(0, 0.09, -0.01);
+          hair.position.set(0, headOffsetY + 0.035, -0.015);
           headGroup.add(hair);
 
-          const knotGeo = new THREE.SphereGeometry(0.06, 8, 8);
+          const knotGeo = new THREE.SphereGeometry(headRadius * 0.35, 8, 8);
           const knot = new THREE.Mesh(knotGeo, hairMat);
-          knot.position.set(0, 0.10, -0.18);
-          const pTailGeo = new THREE.CylinderGeometry(0.04, 0.02, 0.22, 6);
+          knot.position.set(0, headOffsetY + 0.04, -headRadius * 1.05);
+          const pTailGeo = new THREE.CylinderGeometry(headRadius * 0.22, headRadius * 0.12, 0.28, 8);
           const pTail = new THREE.Mesh(pTailGeo, hairMat);
-          pTail.position.set(0, -0.02, -0.21);
+          pTail.position.set(0, headOffsetY - 0.09, -headRadius * 1.2);
           pTail.rotation.x = -0.25;
           headGroup.add(knot, pTail);
         } else {
           // 'short' Viking trim
-          const hairGeo = new THREE.SphereGeometry(0.18, 12, 10);
+          const hairGeo = new THREE.SphereGeometry(headRadius * 1.08, 14, 12);
           hairGeo.scale(0.96, 1.12, 1.05);
           const hair = new THREE.Mesh(hairGeo, hairMat);
-          hair.position.set(0, 0.09, -0.01);
+          hair.position.set(0, headOffsetY + 0.035, -0.015);
           hair.castShadow = true;
           headGroup.add(hair);
         }
       }
 
-      // Beard for male peasant
+      // Beard for male
       if (!isFemale && hairStyle !== 'bald') {
-        const beardGeo = new THREE.BoxGeometry(0.075, 0.05, 0.045);
+        const beardGeo = new THREE.BoxGeometry(headRadius * 0.55, 0.07, 0.06);
         const beardMat = new THREE.MeshStandardMaterial({ color: finalHair, roughness: 0.85 });
         const beard = new THREE.Mesh(beardGeo, beardMat);
-        beard.position.set(0, -0.01, 0.125);
+        beard.position.set(0, headOffsetY - 0.08, eyeZ - 0.01);
         headGroup.add(beard);
       }
     }
@@ -783,11 +950,46 @@ export default class AssetLoader {
     const model = this.get(modelName);
     if (!model) return null;
 
-    const isFemale = modelName.toLowerCase().includes('female');
+    const isFemale = modelName.toLowerCase().includes('female') || options.gender === 'female';
+    const isHood = options.headStyle === 'hood' || modelName.includes('Hooded');
+    const isSkeleton = modelName.toLowerCase().includes('skeleton');
 
-    // Guarantee that character always has a complete customized head if using headless modular base
+    // Guarantee that character always has a complete customized head if using headless modular base or customizable adventurer
     const isOldHeadless = ['Male_Ranger', 'Female_Ranger', 'Male_Peasant', 'Female_Peasant', 'Mannequin_F'].includes(modelName);
-    if (isOldHeadless) {
+    const isAdventurer = ['Barbarian', 'Knight', 'Mage', 'Ranger_Adv', 'Rogue', 'Rogue_Hooded'].includes(modelName);
+
+    if (isAdventurer && !isSkeleton) {
+      if (!isHood) {
+        // Hide pre-baked static head/hat/helmet meshes so custom dynamic head + hair renders cleanly
+        model.traverse((child) => {
+          if (child.isMesh) {
+            const n = (child.name || '').toLowerCase();
+            if (n.includes('head') || n.includes('bearhat') || n.includes('helmet') || n.includes('hat') || n.includes('mask')) {
+              child.visible = false;
+            }
+          }
+        });
+      } else {
+        // Character wears hood: hide face masks so customized face is visible inside hood
+        model.traverse((child) => {
+          if (child.isMesh) {
+            const n = (child.name || '').toLowerCase();
+            if (n.includes('mask')) {
+              child.visible = false;
+            }
+          }
+        });
+      }
+
+      this.ensureHead(
+        model,
+        isFemale,
+        options.eyeColor || 0x222222,
+        options.skinColor || null,
+        options.hairColor || null,
+        options.hairStyle || 'short'
+      );
+    } else if (isOldHeadless) {
       this.ensureHead(
         model,
         isFemale,
@@ -804,7 +1006,7 @@ export default class AssetLoader {
         if (child.isMesh && child.material) {
           child.material = child.material.clone();
           const n = (child.name || '').toLowerCase();
-          if (n.includes('body') || n.includes('legs') || n.includes('torso') || n.includes('arm')) {
+          if (n.includes('body') || n.includes('legs') || n.includes('torso') || n.includes('arm') || n.includes('cape')) {
             if (child.material.color) {
               child.material.color.set(options.clothingColor);
             }
@@ -816,7 +1018,7 @@ export default class AssetLoader {
     const isRigMedium = [
       'Barbarian', 'Knight', 'Mage', 'Ranger_Adv', 'Rogue', 'Rogue_Hooded',
       'Skeleton_Warrior', 'Skeleton_Mage', 'Skeleton_Rogue', 'Skeleton_Minion'
-    ].includes(modelName) || modelName.toLowerCase().includes('skeleton');
+    ].includes(modelName) || isSkeleton;
 
     const mixer = new THREE.AnimationMixer(model);
     const actions = {};

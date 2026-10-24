@@ -913,34 +913,217 @@ export default class BuildingSystem {
       return;
     }
 
-    // Raycast from camera center to ground
+    // Raycast from camera center to ground and placed building structures
+    const targets = [world.groundMesh];
+    for (let i = 0; i < this.placedStructures.length; i++) {
+      if (this.placedStructures[i].mesh) {
+        targets.push(this.placedStructures[i].mesh);
+      }
+    }
+
     this.raycaster.setFromCamera(this.screenCenter, camera);
-    const intersects = this.raycaster.intersectObject(world.groundMesh);
+    const intersects = this.raycaster.intersectObjects(targets, true);
 
-    if (intersects.length > 0 && intersects[0].distance < 14) {
+    if (intersects.length > 0 && intersects[0].distance < 16) {
       const hit = intersects[0];
-      // Snap to 1 meter grid
-      const snapX = Math.round(hit.point.x);
-      const snapZ = Math.round(hit.point.z);
-      const snapY = world.getGroundHeight(snapX, snapZ);
+      const hitPoint = hit.point;
 
-      this.previewMesh.position.set(snapX, snapY, snapZ);
-      this.previewMesh.visible = true;
+      // Valheim-style Snap System: Check for snap sockets from nearby placed building pieces
+      const snapSocket = this._findBestSnapSocket(hitPoint, this.selectedStructure, world);
 
-      // Keep walls aligned with player facing + manual rotation offset
-      if (this.selectedStructure === 'woodenWall' || this.selectedStructure === 'stoneWall' || this.selectedStructure === 'palisade' || this.selectedStructure === 'woodenDoor') {
-        const camDir = new THREE.Vector3();
-        camera.getWorldDirection(camDir);
-        const angle = Math.atan2(camDir.x, camDir.z);
-        // Snap rotation to 90 degree increments
-        const snappedAngle = Math.round(angle / (Math.PI / 2)) * (Math.PI / 2);
-        this.previewMesh.rotation.y = (snappedAngle + this.currentRotation) % (Math.PI * 2);
+      if (snapSocket) {
+        // Snap locked directly to previous building piece!
+        this.previewMesh.position.set(snapSocket.x, snapSocket.y, snapSocket.z);
+        this.previewMesh.rotation.y = (snapSocket.rotY + this.currentRotation) % (Math.PI * 2);
+        this.previewMesh.visible = true;
+
+        // Visual feedback: glowing cyan wireframe indicating active piece-to-piece snap
+        this._setPreviewColor(0x00d2d3, 0.9);
+
+        if (this.hud && Math.random() < 0.05) {
+          this.hud.showTooltip(`🧲 SNAP LUKITTU! [LMB] Rakenna | [R] Käännä 90° | [Q/E] Selaa | [RMB] Peruuta`);
+        }
       } else {
-        this.previewMesh.rotation.y = this.currentRotation;
+        // Free ground placement snapped to terrain grid
+        const snapX = Math.round(hitPoint.x * 2) / 2;
+        const snapZ = Math.round(hitPoint.z * 2) / 2;
+        const snapY = world.getGroundHeight(snapX, snapZ);
+
+        this.previewMesh.position.set(snapX, snapY, snapZ);
+        this.previewMesh.visible = true;
+
+        // Align walls with camera facing + rotation offset
+        if (this.selectedStructure === 'woodenWall' || this.selectedStructure === 'stoneWall' || this.selectedStructure === 'palisade' || this.selectedStructure === 'woodenDoor') {
+          const camDir = new THREE.Vector3();
+          camera.getWorldDirection(camDir);
+          const angle = Math.atan2(camDir.x, camDir.z);
+          const snappedAngle = Math.round(angle / (Math.PI / 2)) * (Math.PI / 2);
+          this.previewMesh.rotation.y = (snappedAngle + this.currentRotation) % (Math.PI * 2);
+        } else {
+          this.previewMesh.rotation.y = this.currentRotation;
+        }
+
+        const canAfford = this.canAfford(this.recipes[this.selectedStructure]);
+        this._setPreviewColor(canAfford ? 0x3498db : 0xe74c3c, 0.65);
       }
     } else {
       this.previewMesh.visible = false;
     }
+  }
+
+  _setPreviewColor(colorHex, opacity = 0.65) {
+    if (!this.previewMesh) return;
+    this.previewMesh.traverse(child => {
+      if (child.isMesh && child.material) {
+        if (child.material.color) child.material.color.setHex(colorHex);
+        child.material.opacity = opacity;
+      }
+    });
+  }
+
+  _findBestSnapSocket(hitPoint, placingType, world) {
+    if (!this.placedStructures || this.placedStructures.length === 0) return null;
+
+    let bestSocket = null;
+    let minDistance = 2.6; // Magnet snap radius in meters
+
+    const isPlacingWall = ['woodenWall', 'stoneWall', 'palisade', 'woodenDoor'].includes(placingType);
+    const isPlacingFloor = ['woodenFloor', 'stoneFloor'].includes(placingType);
+    const isPlacingRoof = placingType === 'woodenRoof';
+    const isPlacingStairs = placingType === 'woodenStairs';
+    const isPlacingItem = ['workbench', 'smelter', 'forge', 'chest', 'barrel', 'bed', 'table', 'chair', 'campfire', 'standingTorch'].includes(placingType);
+
+    for (let i = 0; i < this.placedStructures.length; i++) {
+      const ps = this.placedStructures[i];
+      if (!ps.mesh) continue;
+
+      const pPos = ps.position;
+      const distToPlaced = Math.hypot(pPos.x - hitPoint.x, pPos.z - hitPoint.z);
+      if (distToPlaced > 6.0) continue; // Only evaluate structures within 6m
+
+      const pRot = ps.mesh.rotation.y;
+      const pType = ps.type;
+      const cosR = Math.cos(pRot);
+      const sinR = Math.sin(pRot);
+
+      // Local to world rotated offset helper
+      const rot = (dx, dz) => ({
+        x: pPos.x + dx * cosR + dz * sinR,
+        z: pPos.z - dx * sinR + dz * cosR
+      });
+
+      const sockets = [];
+
+      // ----------------------------------------------------
+      // CASE 1: Placed structure is a FLOOR (woodenFloor / stoneFloor)
+      // ----------------------------------------------------
+      if (pType === 'woodenFloor' || pType === 'stoneFloor') {
+        const floorSize = 2.5;
+        const half = floorSize / 2;
+
+        if (isPlacingFloor) {
+          // Snap adjacent floor pieces in 4 cardinal directions
+          sockets.push(
+            { ...rot(0, floorSize), y: pPos.y, rotY: pRot },
+            { ...rot(0, -floorSize), y: pPos.y, rotY: pRot },
+            { ...rot(floorSize, 0), y: pPos.y, rotY: pRot },
+            { ...rot(-floorSize, 0), y: pPos.y, rotY: pRot }
+          );
+        } else if (isPlacingWall) {
+          // Snap walls along the 4 perimeter edges of the floor
+          sockets.push(
+            { ...rot(0, half), y: pPos.y, rotY: pRot },
+            { ...rot(0, -half), y: pPos.y, rotY: pRot },
+            { ...rot(half, 0), y: pPos.y, rotY: pRot + Math.PI / 2 },
+            { ...rot(-half, 0), y: pPos.y, rotY: pRot + Math.PI / 2 }
+          );
+        } else if (isPlacingItem) {
+          // Snap furniture/crafting station directly onto floor surface
+          sockets.push({ x: pPos.x, y: pPos.y + 0.05, z: pPos.z, rotY: pRot });
+        } else if (isPlacingStairs) {
+          sockets.push(
+            { ...rot(0, half + 0.2), y: pPos.y, rotY: pRot },
+            { ...rot(0, -half - 0.2), y: pPos.y, rotY: pRot + Math.PI }
+          );
+        }
+      }
+
+      // ----------------------------------------------------
+      // CASE 2: Placed structure is a WALL (woodenWall / stoneWall / palisade / woodenDoor)
+      // ----------------------------------------------------
+      else if (['woodenWall', 'stoneWall', 'palisade', 'woodenDoor'].includes(pType)) {
+        const wallWidth = 2.4;
+        const wallHeight = 2.6;
+        const halfW = wallWidth / 2;
+
+        if (isPlacingWall) {
+          // 1. Straight extension left and right
+          sockets.push(
+            { ...rot(wallWidth, 0), y: pPos.y, rotY: pRot },
+            { ...rot(-wallWidth, 0), y: pPos.y, rotY: pRot },
+            // 2. Corner walls (90 degrees right and left)
+            { ...rot(halfW, -halfW), y: pPos.y, rotY: pRot + Math.PI / 2 },
+            { ...rot(halfW, halfW), y: pPos.y, rotY: pRot - Math.PI / 2 },
+            { ...rot(-halfW, -halfW), y: pPos.y, rotY: pRot + Math.PI / 2 },
+            { ...rot(-halfW, halfW), y: pPos.y, rotY: pRot - Math.PI / 2 },
+            // 3. Vertical stacking (2nd story wall!)
+            { x: pPos.x, y: pPos.y + wallHeight, z: pPos.z, rotY: pRot }
+          );
+        } else if (isPlacingRoof) {
+          // Snap roof directly on top of wall
+          sockets.push({ x: pPos.x, y: pPos.y + wallHeight, z: pPos.z, rotY: pRot });
+        } else if (isPlacingFloor) {
+          // Snap floor at base of wall or ceiling/second story
+          sockets.push(
+            { ...rot(0, 1.25), y: pPos.y, rotY: pRot },
+            { ...rot(0, -1.25), y: pPos.y, rotY: pRot },
+            { ...rot(0, 1.25), y: pPos.y + wallHeight, z: pRot },
+            { ...rot(0, -1.25), y: pPos.y + wallHeight, z: pRot }
+          );
+        }
+      }
+
+      // ----------------------------------------------------
+      // CASE 3: Placed structure is a ROOF (woodenRoof)
+      // ----------------------------------------------------
+      else if (pType === 'woodenRoof') {
+        const roofSpan = 2.5;
+        if (isPlacingRoof) {
+          sockets.push(
+            { ...rot(roofSpan, 0), y: pPos.y, rotY: pRot },
+            { ...rot(-roofSpan, 0), y: pPos.y, rotY: pRot },
+            { ...rot(0, roofSpan), y: pPos.y, rotY: pRot + Math.PI },
+            { ...rot(0, -roofSpan), y: pPos.y, rotY: pRot + Math.PI }
+          );
+        }
+      }
+
+      // ----------------------------------------------------
+      // CASE 4: Placed structure is STAIRS (woodenStairs)
+      // ----------------------------------------------------
+      else if (pType === 'woodenStairs') {
+        if (isPlacingFloor) {
+          sockets.push(
+            { ...rot(0, 1.8), y: pPos.y + 2.0, rotY: pRot },
+            { ...rot(0, -1.8), y: pPos.y, rotY: pRot }
+          );
+        } else if (isPlacingStairs) {
+          sockets.push({ ...rot(0, 1.8), y: pPos.y + 2.0, rotY: pRot });
+        }
+      }
+
+      // Test all generated sockets against hitPoint
+      for (let s = 0; s < sockets.length; s++) {
+        const sock = sockets[s];
+        const dist = Math.hypot(sock.x - hitPoint.x, (sock.y - hitPoint.y) * 1.5, sock.z - hitPoint.z);
+        if (dist < minDistance) {
+          minDistance = dist;
+          bestSocket = sock;
+        }
+      }
+    }
+
+    return bestSocket;
   }
 
   tryPlace(world) {
@@ -973,19 +1156,20 @@ export default class BuildingSystem {
       position: solidMesh.position.clone()
     });
 
-    // Add solid structure collider so player cannot walk through walls/crafting stations
+    // Add solid structure collider so player cannot walk through walls/crafting stations/props
     const p = solidMesh.position;
     const type = this.selectedStructure;
     let rad = 0;
-    if (type === 'woodenWall' || type === 'stoneWall' || type === 'palisade') {
+    const tLower = (type || '').toLowerCase();
+    if (tLower.includes('wall') || tLower.includes('palisade') || tLower.includes('beam') || tLower.includes('log') || tLower.includes('gate')) {
       rad = 1.1;
-    } else if (type === 'woodenDoor') {
+    } else if (tLower.includes('door')) {
       rad = 0.9;
-    } else if (type === 'smelter' || type === 'forge' || type === 'workbench') {
+    } else if (tLower.includes('smelter') || tLower.includes('forge') || tLower.includes('workbench') || tLower.includes('cauldron')) {
       rad = 0.95;
-    } else if (type === 'table' || type === 'chest' || type === 'barrel' || type === 'bed') {
+    } else if (tLower.includes('table') || tLower.includes('chest') || tLower.includes('barrel') || tLower.includes('bed')) {
       rad = 0.75;
-    } else if (type === 'campfire' || type === 'chair' || type === 'standingTorch') {
+    } else if (tLower.includes('campfire') || tLower.includes('chair') || tLower.includes('torch')) {
       rad = 0.55;
     }
 
