@@ -24,7 +24,7 @@ class LocalizationManager {
         pause_resume: 'RESUME GAME',
         pause_settings: 'SETTINGS',
         pause_instructions: 'CONTROLS & GUIDE',
-        pause_dev: '🛠️ DEV MODE (kissa)',
+        pause_dev: '🛠️ Dev Mode',
         pause_quit: 'MAIN MENU',
 
         // HUD & Status
@@ -245,7 +245,7 @@ class LocalizationManager {
         pause_resume: 'JATKA PELIÄ',
         pause_settings: 'ASETUKSET',
         pause_instructions: 'OHJEET',
-        pause_dev: '🛠️ DEVAUSTILA (kissa)',
+        pause_dev: '🛠️ Dev Mode',
         pause_quit: 'PÄÄVALIKKOON',
 
         // HUD & Status

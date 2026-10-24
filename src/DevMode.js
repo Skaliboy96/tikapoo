@@ -171,7 +171,7 @@ export default class DevMode {
       const pauseMenu = document.getElementById('pause-menu');
       if (pauseMenu) {
         pauseMenu.classList.remove('active');
-        pauseMenu.style.display = 'none';
+        pauseMenu.style.display = '';
       }
       this.promptPassword();
     });
@@ -250,12 +250,22 @@ export default class DevMode {
       godBtn.textContent = this.player.isGodmode ? '🛡️ Kuolemattomuus: PÄÄLLÄ' : '🛡️ Kuolemattomuus: POIS';
     });
 
-    // Give 999 items
+    // Give 999 items & unlock all tools
     document.getElementById('dev-give-items-btn')?.addEventListener('click', () => {
       if (this.inventory) {
-        const items = ['wood', 'stone', 'resin', 'copperOre', 'tinOre', 'bronze', 'ironOre', 'iron', 'silverOre', 'silver', 'blackMetalScrap', 'meat', 'cookedMeat', 'leather'];
-        items.forEach(it => this.inventory.add(it, 999));
-        if (this.hud) this.hud.showNotification('🎒 Kaikki materiaalit x999 lisätty reppuun!', 2500);
+        Object.keys(this.inventory.items).forEach(it => {
+          this.inventory.items[it] = 999;
+        });
+        if (this.inventory.tools) {
+          Object.keys(this.inventory.tools).forEach(tool => {
+            this.inventory.tools[tool] = true;
+          });
+        }
+        this.inventory.updateDisplay();
+        if (this.buildingSystem?.hotbar) {
+          this.buildingSystem.hotbar.sync();
+        }
+        if (this.hud) this.hud.showNotification('🎒 Kaikki materiaalit x999 ja kaikki työkalut/aseet avattu!', 2500);
       }
     });
 
@@ -517,6 +527,8 @@ export default class DevMode {
       this.passwordModal.classList.remove('active');
       this.passwordModal.style.display = 'none';
     }
+    const pauseMenu = document.getElementById('pause-menu');
+    if (pauseMenu) pauseMenu.style.display = '';
   }
 
   verifyPassword() {
@@ -564,6 +576,10 @@ export default class DevMode {
     if (this.panelEl) this.panelEl.style.display = 'none';
     if (this.inspectorCard) this.inspectorCard.style.display = 'none';
     if (this.exportModal) this.exportModal.style.display = 'none';
+
+    // Ensure pause menu has no lingering inline display style
+    const pauseMenu = document.getElementById('pause-menu');
+    if (pauseMenu) pauseMenu.style.display = '';
 
     // Snap player position to camera position if noclip moved far away
     if (this.player && this.camera) {

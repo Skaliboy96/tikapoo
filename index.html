@@ -635,7 +635,7 @@
       <button id="pause-resume-btn" class="menu-btn menu-btn-primary"><span class="btn-text" data-i18n="pause_resume">JATKA PELIÄ</span></button>
       <button id="pause-settings-btn" class="menu-btn"><span class="btn-text" data-i18n="pause_settings">ASETUKSET</span></button>
       <button id="pause-instructions-btn" class="menu-btn"><span class="btn-text" data-i18n="pause_instructions">OHJEET</span></button>
-      <button id="pause-dev-btn" class="menu-btn menu-btn-dev"><span class="btn-text">🛠️ DEVAUSTILA (kissa)</span></button>
+      <button id="pause-dev-btn" class="menu-btn menu-btn-dev"><span class="btn-text" data-i18n="pause_dev">🛠️ Dev Mode</span></button>
       <button id="pause-quit-btn" class="menu-btn"><span class="btn-text" data-i18n="pause_quit">PÄÄVALIKKOON</span></button>
     </div>
   </div>
@@ -791,14 +791,14 @@
   <div id="dev-password-modal" class="menu-modal" style="display: none;">
     <div class="modal-box" style="max-width: 380px;">
       <div class="modal-header">
-        <h2>🛠️ Kehittäjätila (Dev Mode)</h2>
+        <h2>🛠️ Dev Mode</h2>
         <button id="dev-pw-close-btn" class="modal-close">✕</button>
       </div>
       <div class="modal-body" style="padding: 22px; text-align: center;">
         <p style="margin-bottom: 14px; font-size: 13px; color: #bdc3c7;">Syötä ylläpitäjän salasana avataksesi maailmanmuokkauksen ja lennon:</p>
-        <input type="password" id="dev-password-input" class="char-text-input" placeholder="Salasana (kissa)..." style="text-align: center; font-size: 16px; margin-bottom: 14px; width: 85%;">
+        <input type="password" id="dev-password-input" class="char-text-input" placeholder="Salasana..." style="text-align: center; font-size: 16px; margin-bottom: 14px; width: 85%;">
         <div id="dev-pw-error" style="color: #e74c3c; font-size: 12px; margin-bottom: 10px; display: none;">Väärä salasana!</div>
-        <button id="dev-pw-submit-btn" class="menu-btn menu-btn-primary" style="width: 100%;">AVAA DEVAUSTILA</button>
+        <button id="dev-pw-submit-btn" class="menu-btn menu-btn-primary" style="width: 100%;">AVAA DEV MODE</button>
       </div>
     </div>
   </div>

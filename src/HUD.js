@@ -122,6 +122,8 @@ export default class HUD {
   }
 
   showTooltip(text) {
+    if (this._currentTooltipText === text) return;
+    this._currentTooltipText = text;
     if (this.tooltip) {
       this.tooltip.textContent = text;
       this.tooltip.classList.add('visible');
@@ -129,6 +131,8 @@ export default class HUD {
   }
 
   hideTooltip() {
+    if (this._currentTooltipText === '') return;
+    this._currentTooltipText = '';
     if (this.tooltip) {
       this.tooltip.classList.remove('visible');
     }

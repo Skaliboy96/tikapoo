@@ -57,7 +57,6 @@ export default class World {
 
     this.generateForests();
     this.generateBirchForests();
-    this.generateLilypads();
     this.generateWheatFields();
     this.generateMossyWood();
     this.generateRocks();
@@ -775,15 +774,23 @@ export default class World {
     return false;
   }
 
+  isNearRiver(x, z, margin = 22) {
+    const riverX = -16 + Math.sin(z * 0.015) * 20;
+    return Math.abs(x - riverX) < margin;
+  }
+
   _placeModel(name, x, z, scale = 1.0, rotation = 0, ignoreDeleted = false) {
     if (!ignoreDeleted && this.isDeletedAt(x, z, 2.0)) {
+      return null;
+    }
+    // Prevent natural and town assets from spawning submerged in riverbed
+    const y = this.getGroundHeight(x, z);
+    if (!ignoreDeleted && !name.includes('Floor') && !name.includes('Fence') && this.isNearRiver(x, z, 18) && y < 0.8) {
       return null;
     }
     if (!this.assetLoader) return null;
     const model = this.assetLoader.get(name);
     if (!model) return null;
-
-    const y = this.getGroundHeight(x, z);
     model.position.set(x, y, z);
 
     if (typeof scale === 'number') {
@@ -883,6 +890,7 @@ export default class World {
     const chestIndex = this.wildChests.findIndex(c => c.mesh === mesh || c === target);
     if (chestIndex !== -1) {
       const chest = this.wildChests[chestIndex];
+      if (chest.glowMarker) this.scene.remove(chest.glowMarker);
       if (chest.glowLight) this.scene.remove(chest.glowLight);
       this.wildChests.splice(chestIndex, 1);
     }
@@ -1367,7 +1375,7 @@ export default class World {
     const pierProps = [
       { name: 'Barrel', x: -19.2, z: 26, s: 1.0, r: 0.4 },
       { name: 'Barrel_Apples', x: -16.8, z: 27, s: 1.0, r: 0 },
-      { name: 'Barrel', x: -10.5, z: 32, s: 1.0, r: 0.8 },
+      { name: 'Barrel', x: -18.2, z: 34, s: 1.0, r: 0.8 },
       { name: 'Prop_Crate', x: -19.2, z: 36, s: 0.9, r: 0.2 },
       { name: 'Bench', x: -19.2, z: 30, s: 0.95, r: Math.PI / 2 },
       { name: 'Workbench', x: -22, z: 27, s: 1.0, r: 0 }
@@ -1683,25 +1691,8 @@ export default class World {
     }
   }
 
-  // --- Floating Lilypads (Lumpeenlehdet) in River ---
-  generateLilypads() {
-    const totalPads = 45;
-    for (let i = 0; i < totalPads; i++) {
-      const z = (Math.random() - 0.5) * 450;
-      const riverX = -16 + Math.sin(z * 0.015) * 20;
-      const x = riverX + (Math.random() - 0.5) * 8;
-      const y = -0.98;
-
-      const scale = 0.9 + Math.random() * 0.5;
-      const rot = Math.random() * Math.PI * 2;
-
-      const pad = this._placeModel('Lilypad', x, z, scale, rot);
-      if (pad) {
-        pad.position.y = y;
-        this.decorations.push(pad);
-      }
-    }
-  }
+  // --- Floating Lilypads (Lumpeenlehdet) in River - Disabled to keep riverbed crystal clear ---
+  generateLilypads() {}
 
   // --- Village Farm Plot with Harvestable Wheat (Pellon Viljat) ---
   generateWheatFields() {
@@ -1824,8 +1815,9 @@ export default class World {
       const dist = 6 + Math.random() * 40;
       const lx = Math.cos(angle) * dist;
       const lz = Math.sin(angle) * dist;
+      if (this.isNearRiver(lx, lz, 22)) continue;
       const ly = this.getGroundHeight(lx, lz);
-      if (ly < 1.0) continue;
+      if (ly < 1.4) continue;
 
       const logMesh = this._placeModel('WoodLog_Moss', lx, lz, 0.7 + Math.random() * 0.35, Math.random() * Math.PI * 2);
       if (logMesh) {
@@ -1859,10 +1851,10 @@ export default class World {
 
       const riverX = -16 + Math.sin(z * 0.015) * 20;
       const distToRiver = Math.abs(x - riverX);
-      if (distToRiver < 20) continue;
+      if (distToRiver < 22) continue;
 
       const y = this.getGroundHeight(x, z);
-      if (y < 0.8) continue;
+      if (y < 1.4) continue;
 
       if (x > -48 && x < 24 && z > -42 && z < 20) continue;
       if (Math.hypot(x - (-24), z - 32) < 22) continue;
@@ -1901,9 +1893,10 @@ export default class World {
       const dist = 6 + Math.random() * 40;
       const sx = Math.cos(angle) * dist;
       const sz = Math.sin(angle) * dist;
+      if (this.isNearRiver(sx, sz, 22)) continue;
       const sy = this.getGroundHeight(sx, sz);
 
-      if (sy < 1.0) continue;
+      if (sy < 1.4) continue;
 
       const pMesh = this._placeModel('Pebble_Round_1', sx, sz, 1.4 + Math.random() * 0.4, Math.random() * Math.PI * 2);
       if (pMesh) {
@@ -2013,10 +2006,10 @@ export default class World {
 
       const riverX = -16 + Math.sin(z * 0.015) * 20;
       const distToRiver = Math.abs(x - riverX);
-      if (distToRiver < 20) continue;
+      if (distToRiver < 22) continue;
 
       const y = this.getGroundHeight(x, z);
-      if (y < 0.8) continue;
+      if (y < 1.4) continue;
 
       if (x > -45 && x < 22 && z > -40 && z < 18) continue;
       if (Math.hypot(x - (-24), z - 32) < 20) continue;
@@ -2068,10 +2061,10 @@ export default class World {
 
       const riverX = -16 + Math.sin(z * 0.015) * 20;
       const distToRiver = Math.abs(x - riverX);
-      if (distToRiver < 18) continue;
+      if (distToRiver < 22) continue;
 
       const y = this.getGroundHeight(x, z);
-      if (y < 0.9) continue;
+      if (y < 1.4) continue;
 
       // Keep buildings clear
       if (x > -45 && x < 20 && z > -38 && z < 16) continue;
@@ -2110,7 +2103,7 @@ export default class World {
       'Mushroom_Common', 'Mushroom_Laetiporus'
     ];
 
-    const count = 500;
+    const count = 120;
 
     for (let i = 0; i < count; i++) {
       const x = (Math.random() - 0.5) * 850;
@@ -2118,10 +2111,10 @@ export default class World {
 
       const riverX = -16 + Math.sin(z * 0.015) * 20;
       const distToRiver = Math.abs(x - riverX);
-      if (distToRiver < 20) continue;
+      if (distToRiver < 22) continue;
 
       const y = this.getGroundHeight(x, z);
-      if (y < 0.8) continue;
+      if (y < 1.4) continue;
 
       const chosenName = decoModels[Math.floor(Math.random() * decoModels.length)];
       let scale = 0.8 + Math.random() * 0.5;
@@ -2194,7 +2187,7 @@ export default class World {
   generateWildChests() {
     const chestCoords = [
       // Meadows & Valley Groves
-      { x: -35, z: 28 }, { x: 38, z: -18 }, { x: -18, z: -48 }, { x: 55, z: 24 },
+      { x: -35, z: 28 }, { x: 38, z: -18 }, { x: -48, z: -48 }, { x: 55, z: 24 },
       { x: -52, z: -22 }, { x: 26, z: 46 }, { x: -68, z: 12 }, { x: 42, z: -55 },
       // Black Forest (North-West)
       { x: -85, z: -85 }, { x: -110, z: -95 }, { x: -125, z: -70 }, { x: -95, z: -120 },
@@ -2215,23 +2208,26 @@ export default class World {
   }
 
   spawnWildChest(x, z) {
+    if (this.isNearRiver(x, z, 22)) return null;
     const y = this.getGroundHeight(x, z);
-    if (y < 0.2) return null; // Avoid submerged in river
+    if (y < 1.4) return null; // Avoid submerged in river or on steep bank slopes
 
     const biome = getBiomeKey(x, z);
     const rot = Math.random() * Math.PI * 2;
     const mesh = this._placeModel('Chest_Wood', x, z, 1.15, rot);
     if (!mesh) return null;
 
-    // Small golden glow marker above unopened chest
-    const glowLight = new THREE.PointLight(0xf39c12, 1.2, 5.0);
-    glowLight.position.set(x, y + 0.8, z);
-    this.scene.add(glowLight);
+    // Golden floating beacon marker (MeshBasicMaterial = ZERO WebGL dynamic light shader recompilation hitch)
+    const glowGeo = new THREE.OctahedronGeometry(0.18, 0);
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
+    const glowMarker = new THREE.Mesh(glowGeo, glowMat);
+    glowMarker.position.set(x, y + 0.85, z);
+    this.scene.add(glowMarker);
 
     const chestObj = {
       mesh,
       position: new THREE.Vector3(x, y, z),
-      glowLight,
+      glowMarker,
       biome,
       isOpened: false
     };

@@ -98,6 +98,17 @@ export default class Combat {
       pickModel.rotation.set(-0.2, -Math.PI / 2, 0.35);
       pickGroup.add(pickModel);
       pickGroup.position.set(0.32, -0.28, -0.55);
+    } else {
+      const handleMat = new THREE.MeshLambertMaterial({ color: 0x5c4033 });
+      const handleGeo = new THREE.CylinderGeometry(0.02, 0.025, 0.65, 6);
+      const handle = new THREE.Mesh(handleGeo, handleMat);
+      handle.rotation.x = Math.PI / 4;
+      const pickHeadGeo = new THREE.BoxGeometry(0.24, 0.05, 0.05);
+      const pickHeadMat = new THREE.MeshLambertMaterial({ color: 0x636e72 });
+      const pickHead = new THREE.Mesh(pickHeadGeo, pickHeadMat);
+      pickHead.position.set(0, 0.28, -0.25);
+      pickGroup.add(handle, pickHead);
+      pickGroup.position.set(0.32, -0.28, -0.55);
     }
     pickGroup.visible = false;
     this.weaponRig.add(pickGroup);
@@ -556,8 +567,10 @@ export default class Combat {
     const boltMat = new THREE.MeshBasicMaterial({ color: 0x33e0ff });
     const boltMesh = new THREE.Mesh(boltGeo, boltMat);
 
-    const pLight = new THREE.PointLight(0x00c4ff, 2.5, 8);
-    boltMesh.add(pLight);
+    // High performance glowing corona mesh (avoids WebGL PointLight shader recompilation hitch)
+    const haloGeo = new THREE.SphereGeometry(0.32, 8, 8);
+    const haloMat = new THREE.MeshBasicMaterial({ color: 0x00c4ff, transparent: true, opacity: 0.45 });
+    boltMesh.add(new THREE.Mesh(haloGeo, haloMat));
 
     const { spawnPos, dir } = this._getProjectileOriginAndDir();
     boltMesh.position.copy(spawnPos);
@@ -580,8 +593,10 @@ export default class Combat {
     const fMat = new THREE.MeshBasicMaterial({ color: 0xff5500 });
     const fireball = new THREE.Mesh(fGeo, fMat);
 
-    const fLight = new THREE.PointLight(0xff3300, 4.0, 14);
-    fireball.add(fLight);
+    // High performance glowing fireball halo (avoids PointLight shader stalls)
+    const fHaloGeo = new THREE.SphereGeometry(0.58, 10, 10);
+    const fHaloMat = new THREE.MeshBasicMaterial({ color: 0xff8800, transparent: true, opacity: 0.45 });
+    fireball.add(new THREE.Mesh(fHaloGeo, fHaloMat));
 
     const { spawnPos, dir } = this._getProjectileOriginAndDir();
     fireball.position.copy(spawnPos);

@@ -63,14 +63,23 @@ async function init() {
   );
   scene.add(camera);
 
+  // Detect mobile & touch devices early for optimal GPU memory & canvas scaling
+  const isTouchDevice = (
+    'ontouchstart' in window ||
+    navigator.maxTouchPoints > 0 ||
+    /Android|iPhone|iPad|iPod|Windows Phone|webOS|BlackBerry/i.test(navigator.userAgent) ||
+    window.innerWidth <= 900
+  );
+
   const renderer = new THREE.WebGLRenderer({
-    antialias: true,
-    powerPreference: 'high-performance'
+    antialias: !isTouchDevice, // Save precious mobile GPU bandwidth & memory
+    powerPreference: 'high-performance',
+    precision: isTouchDevice ? 'mediump' : 'highp'
   });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(isTouchDevice ? Math.min(window.devicePixelRatio, 1.25) : Math.min(window.devicePixelRatio, 2.0));
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = isTouchDevice ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
   container.appendChild(renderer.domElement);
@@ -256,11 +265,12 @@ async function init() {
 
     const pPos = player.getPosition();
     camera.position.set(pPos.x, pPos.y + player.heightAboveGround, pPos.z);
-    controls.lock();
 
     if (mobileControls && mobileControls.isTouchDevice) {
       mobileControls.enableMobileControls();
       controls.isLocked = true;
+    } else {
+      controls.lock();
     }
   };
 
@@ -625,6 +635,7 @@ async function init() {
   });
 
   controls.addEventListener('unlock', () => {
+    if (mobileControls && mobileControls.isTouchDevice) return;
     if (crosshair) crosshair.style.display = 'none';
     if (!isGameStarted) return;
 
@@ -640,12 +651,16 @@ async function init() {
                         document.querySelector('.menu-modal.active') ||
                         document.querySelector('#dev-password-modal.active');
     if (!anyMenuOpen && pauseMenu) {
+      pauseMenu.style.display = '';
       pauseMenu.classList.add('active');
     }
   });
 
   const resumeGame = () => {
-    if (pauseMenu) pauseMenu.classList.remove('active');
+    if (pauseMenu) {
+      pauseMenu.style.display = '';
+      pauseMenu.classList.remove('active');
+    }
     lastResumeTime = performance.now();
     setTimeout(() => {
       safeLockControls();
@@ -792,6 +807,19 @@ async function init() {
         resumeGame();
         return;
       }
+
+      // If game is started and no menus are open, pressing ESC opens the Pause Menu!
+      if (isGameStarted && pauseMenu && !pauseMenu.classList.contains('active')) {
+        e.preventDefault();
+        e.stopPropagation();
+        lastMenuCloseTime = performance.now();
+        pauseMenu.style.display = '';
+        pauseMenu.classList.add('active');
+        if (controls && controls.isLocked) {
+          controls.unlock();
+        }
+        return;
+      }
     }
   }, { passive: false });
 
@@ -862,13 +890,21 @@ async function init() {
       if (nearbyChest) {
         try {
           nearbyChest.isOpened = true;
+          // Clean up glow marker without removing any PointLight (avoids WebGL shader recompilation hitch)
+          if (nearbyChest.glowMarker) {
+            scene.remove(nearbyChest.glowMarker);
+            nearbyChest.glowMarker = null;
+          }
           if (nearbyChest.glowLight) {
-            scene.remove(nearbyChest.glowLight);
-            nearbyChest.glowLight = null;
+            nearbyChest.glowLight.intensity = 0;
+            nearbyChest.glowLight.visible = false;
           }
-          if (audioManager && audioManager.playLevelUp) {
-            audioManager.playLevelUp();
+          if (audioManager && audioManager.playChestOpen) {
+            audioManager.playChestOpen();
+          } else if (audioManager && audioManager.playPickup) {
+            audioManager.playPickup();
           }
+
           // Visual chest lid opening animation!
           if (nearbyChest.mesh) {
             nearbyChest.mesh.traverse(child => {
@@ -877,7 +913,8 @@ async function init() {
               }
             });
           }
-          // Generous treasure rewards added in a single batch update
+
+          // Generous treasure rewards added in a single clean batch update
           const chestRewards = [
             { item: 'bronze', count: 2 },
             { item: 'iron', count: 2 },
@@ -894,14 +931,11 @@ async function init() {
             }
           }
           if (hud) {
-            chestRewards.forEach((r, idx) => {
-              setTimeout(() => {
-                const name = inventory ? inventory.getItemName(r.item) : r.item;
-                if (hud.showPickupText) hud.showPickupText(`+${r.count} ${name}`);
-              }, idx * 110);
-            });
             if (hud.showNotification) {
-              hud.showNotification(Localization.t('chest_opened', '🎁 You opened a treasure chest and found valuable resources!'), 3500);
+              hud.showNotification('🎁 Aarrearkku avattu! (+2 Rauta, +2 Pronssi, +3 Liha, +3 Nahka, +14 Puu, +10 Kivi)', 3500);
+            }
+            if (hud.showPickupText) {
+              hud.showPickupText('🎁 +Aarteet kerätty!');
             }
             if (hud.hideTooltip) {
               hud.hideTooltip();
@@ -966,7 +1000,8 @@ async function init() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const maxRatio = (mobileControls && mobileControls.isTouchDevice) ? Math.min(window.devicePixelRatio, 1.25) : Math.min(window.devicePixelRatio, 2.0);
+    renderer.setPixelRatio(maxRatio);
   });
 
   // --- Main Game Loop & Performance Monitor ---

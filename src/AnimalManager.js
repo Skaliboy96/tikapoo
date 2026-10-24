@@ -49,13 +49,6 @@ export default class AnimalManager {
       { x: 42,  z: 12 }
     ];
     rabbitSpawns.forEach((sp, i) => this._createRabbit(sp.x, sp.z, i));
-
-    // Spawn 15 Swimming River Fish near bridge & pier
-    for (let i = 0; i < 15; i++) {
-      const z = -20 + i * 4.5;
-      const x = Math.sin(z * 0.025) * 35 + (Math.random() * 8 - 4);
-      this._createRiverFish(x, z, i);
-    }
   }
 
   // ==========================================
@@ -443,21 +436,6 @@ export default class AnimalManager {
         const gy = this.world.getGroundHeight(rabbit.mesh.position.x, rabbit.mesh.position.z);
         rabbit.mesh.position.y = gy + hopY;
       }
-    }
-
-    // 3. Update River Fish (swimming animation)
-    for (const fish of this.fishSchools) {
-      fish.wiggleTime += delta * 7;
-      fish.swimAngle += delta * fish.swimSpeed * 0.4;
-
-      // Gently swim back and forth along river channel
-      const riverCenterX = Math.sin(fish.baseZ * 0.025) * 35;
-      fish.mesh.position.x = riverCenterX + Math.sin(fish.swimAngle) * 5.0;
-      fish.mesh.position.z = fish.baseZ + Math.cos(fish.swimAngle) * 3.5;
-      fish.mesh.rotation.y = fish.swimAngle + Math.PI / 2;
-
-      // Tail undulating wiggle
-      fish.tail.rotation.y = Math.sin(fish.wiggleTime) * 0.35;
     }
   }
 

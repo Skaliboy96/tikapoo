@@ -221,11 +221,13 @@ export default class LootManager {
     ring.position.y = -0.22;
     group.add(ring);
 
-    // Soft pointlight for rare drops
+    // Ethereal glowing core for rare drops (Zero WebGL shader recompiles)
     if (itemType === 'shadow_essence' || itemType === 'bronze') {
-      const pLight = new THREE.PointLight(meta.color, 1.2, 4.0);
-      pLight.position.y = 0.2;
-      group.add(pLight);
+      const glowGeo = new THREE.SphereGeometry(0.12, 8, 8);
+      const glowMat = new THREE.MeshBasicMaterial({ color: meta.color, transparent: true, opacity: 0.85 });
+      const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+      glowMesh.position.y = 0.2;
+      group.add(glowMesh);
     }
 
     const groundY = this.world ? this.world.getGroundHeight(pos.x, pos.z) : pos.y;

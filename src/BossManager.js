@@ -164,10 +164,12 @@ export default class BossManager {
       circle.receiveShadow = true;
       arenaGroup.add(circle);
 
-      // Central altar light
-      const aLight = new THREE.PointLight(def.glowColor, 2.2, 28, 1.4);
-      aLight.position.set(0, 1.8, 0);
-      arenaGroup.add(aLight);
+      // Central altar glowing crystal beacon (Zero shader stalls)
+      const beaconGeo = new THREE.OctahedronGeometry(0.45, 0);
+      const beaconMat = new THREE.MeshBasicMaterial({ color: def.glowColor });
+      const beaconMesh = new THREE.Mesh(beaconGeo, beaconMat);
+      beaconMesh.position.set(0, 1.8, 0);
+      arenaGroup.add(beaconMesh);
 
       this.scene.add(arenaGroup);
     });
@@ -388,10 +390,14 @@ export default class BossManager {
       group.add(innerRing);
       group.userData.innerRuneRing = innerRing;
 
-      // Dark Arcane Aura Light
-      const auraLight = new THREE.PointLight(def.glowColor, 2.5, 20, 1.2);
-      auraLight.position.set(0, 3.2, 0);
-      group.add(auraLight);
+      // Dark Arcane Aura Mesh
+      const arcaneGlow = new THREE.Mesh(
+        new THREE.RingGeometry(1.6, 2.2, 16),
+        new THREE.MeshBasicMaterial({ color: def.glowColor, side: THREE.DoubleSide, transparent: true, opacity: 0.55 })
+      );
+      arcaneGlow.position.y = 3.2;
+      arcaneGlow.rotateX(Math.PI / 2);
+      group.add(arcaneGlow);
     } else if (def.type === 'dragon') {
       // 5. Cursed Shadow Dragon
       const bodyGeo = new THREE.CylinderGeometry(1.4, 1.8, 5.0, 10);
@@ -437,10 +443,14 @@ export default class BossManager {
       }
     }
 
-    // Glowing Eyes / Core for all
-    const auraLight = new THREE.PointLight(def.glowColor, 2.8, 16, 1.5);
-    auraLight.position.set(0, 2.2, 1.0);
-    group.add(auraLight);
+    // Glowing Eyes / Core for all bosses (Zero WebGL shader recompiles)
+    const auraMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(0.35, 10, 10),
+      new THREE.MeshBasicMaterial({ color: def.glowColor, transparent: true, opacity: 0.65 })
+    );
+    auraMesh.position.set(0, 2.2, 1.0);
+    group.add(auraMesh);
+    group.userData.auraMesh = auraMesh;
 
     // Apply majestic boss scale
     group.scale.set(def.scale, def.scale, def.scale);

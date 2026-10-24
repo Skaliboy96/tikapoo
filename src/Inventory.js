@@ -6,9 +6,9 @@ export default class Inventory {
     this.audioManager = audioManager;
 
     this.items = {
-      wood: 0,
-      stone: 0,
-      berry: 0,
+      wood: 25,
+      stone: 20,
+      berry: 5,
       blueberry: 0,
       raspberry: 0,
       mushroom: 0,
@@ -22,11 +22,11 @@ export default class Inventory {
       salmon: 0,
       cookedFish: 0,
       wheat: 0,
-      bread: 0,
+      bread: 3,
       mushroomSoup: 0,
       meatStew: 0,
       honeyBread: 0,
-      bandage: 0,
+      bandage: 2,
       arrow: 0,
       leather: 0,
       fang: 0,
@@ -62,9 +62,12 @@ export default class Inventory {
     };
 
     this.tools = {
-      torch: true, // Player starts ONLY with a torch! Must gather resources to craft the rest.
-      stoneAxe: false,
-      stoneSpear: false,
+      torch: true, // Starter tools ready for immediate Valheim survival gameplay
+      stoneAxe: true,
+      pickaxe: true,
+      stoneSpear: true,
+      hammer: true,
+      fishingRod: true,
       antlerPickaxe: false,
       bronzeAxe: false,
       bronzePickaxe: false,
@@ -79,10 +82,7 @@ export default class Inventory {
       silverPickaxe: false,
       blackMetalSword: false,
       blackMetalAxe: false,
-      pickaxe: false,
       shield: false,
-      hammer: false,
-      fishingRod: false,
       hornSpear: false,
       scaleSword: false,
       titanHammer: false,

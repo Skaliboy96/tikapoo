@@ -1191,6 +1191,29 @@ export default class AudioManager {
     });
   }
 
+  playChestOpen() {
+    this.ensureContext();
+    if (!this.ctx || !this.sfxGain) return;
+    try {
+      const t = this.ctx.currentTime;
+      // Gentle, sparkling melodic chime (C5 -> E5 -> G5)
+      const notes = [523.25, 659.25, 783.99];
+      notes.forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const st = t + idx * 0.07;
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, st);
+        gain.gain.setValueAtTime(0.2, st);
+        gain.gain.exponentialRampToValueAtTime(0.001, st + 0.32);
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+        osc.start(st);
+        osc.stop(st + 0.33);
+      });
+    } catch (e) {}
+  }
+
   playPickup() {
     this.ensureContext();
     if (!this.ctx || !this.sfxGain) return;

@@ -68,13 +68,15 @@ export default class CharacterCreator {
     this.camera.position.set(0, 1.25, 2.9);
     this.camera.lookAt(0, 0.95, 0);
 
+    const isMobile = window.innerWidth <= 900 || ('ontouchstart' in window);
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.previewCanvas,
-      antialias: true,
-      alpha: false
+      antialias: !isMobile,
+      alpha: false,
+      powerPreference: 'low-power'
     });
     this.renderer.setSize(width, height);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(isMobile ? Math.min(window.devicePixelRatio, 1.25) : Math.min(window.devicePixelRatio, 1.5));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.1;
 

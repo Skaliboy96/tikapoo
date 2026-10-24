@@ -229,43 +229,80 @@ export default class Player {
     this.weaponPool['torch'] = tGroup;
 
     // 2. Axe
-    if (this.assetLoader) {
-      const axeModel = this.assetLoader.get('Axe_Bronze');
-      if (axeModel) {
-        axeModel.scale.set(0.75, 0.75, 0.75);
-        axeModel.rotation.set(Math.PI / 2, 0, 0);
-        axeModel.position.set(0.02, 0.04, 0.15);
-        axeModel.visible = false;
-        rightHandBone.add(axeModel);
-        this.weaponPool['axe'] = axeModel;
-      }
+    const aGroup = new THREE.Group();
+    const axeModel = this.assetLoader ? this.assetLoader.get('Axe_Bronze') : null;
+    if (axeModel) {
+      axeModel.scale.set(0.75, 0.75, 0.75);
+      axeModel.rotation.set(Math.PI / 2, 0, 0);
+      axeModel.position.set(0.02, 0.04, 0.15);
+      aGroup.add(axeModel);
+    } else {
+      const aShaftGeo = new THREE.CylinderGeometry(0.02, 0.024, 0.65, 8);
+      const aWMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.8 });
+      const aShaft = new THREE.Mesh(aShaftGeo, aWMat);
+      const aHeadGeo = new THREE.BoxGeometry(0.14, 0.18, 0.04);
+      const aHeadMat = new THREE.MeshStandardMaterial({ color: 0xcd7f32, metalness: 0.85, roughness: 0.25 });
+      const aHead = new THREE.Mesh(aHeadGeo, aHeadMat);
+      aHead.position.set(0.06, 0.22, 0);
+      aGroup.add(aShaft, aHead);
+      aGroup.rotation.set(Math.PI / 2, 0, 0);
+      aGroup.position.set(0.02, 0.04, 0.15);
     }
+    aGroup.visible = false;
+    rightHandBone.add(aGroup);
+    this.weaponPool['axe'] = aGroup;
 
     // 3. Sword / Spear
-    if (this.assetLoader) {
-      const swordModel = this.assetLoader.get('Sword_Bronze');
-      if (swordModel) {
-        swordModel.scale.set(0.75, 0.75, 0.75);
-        swordModel.rotation.set(Math.PI / 2, 0, 0);
-        swordModel.position.set(0.02, 0.04, 0.12);
-        swordModel.visible = false;
-        rightHandBone.add(swordModel);
-        this.weaponPool['sword'] = swordModel;
-      }
+    const sGroup = new THREE.Group();
+    const swordModel = this.assetLoader ? this.assetLoader.get('Sword_Bronze') : null;
+    if (swordModel) {
+      swordModel.scale.set(0.75, 0.75, 0.75);
+      swordModel.rotation.set(Math.PI / 2, 0, 0);
+      swordModel.position.set(0.02, 0.04, 0.12);
+      sGroup.add(swordModel);
+    } else {
+      const sShaftGeo = new THREE.CylinderGeometry(0.016, 0.02, 0.22, 8);
+      const sGripMat = new THREE.MeshStandardMaterial({ color: 0x3d2714, roughness: 0.8 });
+      const sGrip = new THREE.Mesh(sShaftGeo, sGripMat);
+      const sGuardGeo = new THREE.BoxGeometry(0.22, 0.03, 0.05);
+      const sBrassMat = new THREE.MeshStandardMaterial({ color: 0xcd7f32, metalness: 0.85, roughness: 0.3 });
+      const sGuard = new THREE.Mesh(sGuardGeo, sBrassMat);
+      sGuard.position.y = 0.11;
+      const sBladeGeo = new THREE.BoxGeometry(0.06, 0.7, 0.014);
+      const sSteelMat = new THREE.MeshStandardMaterial({ color: 0xdcdde1, metalness: 0.95, roughness: 0.15 });
+      const sBlade = new THREE.Mesh(sBladeGeo, sSteelMat);
+      sBlade.position.y = 0.47;
+      sGroup.add(sGrip, sGuard, sBlade);
+      sGroup.rotation.set(Math.PI / 2, 0, 0);
+      sGroup.position.set(0.02, 0.04, 0.12);
     }
+    sGroup.visible = false;
+    rightHandBone.add(sGroup);
+    this.weaponPool['sword'] = sGroup;
 
     // 4. Pickaxe
-    if (this.assetLoader) {
-      const pickModel = this.assetLoader.get('Pickaxe_Bronze');
-      if (pickModel) {
-        pickModel.scale.set(0.75, 0.75, 0.75);
-        pickModel.rotation.set(Math.PI / 2, 0, 0);
-        pickModel.position.set(0.02, 0.04, 0.15);
-        pickModel.visible = false;
-        rightHandBone.add(pickModel);
-        this.weaponPool['pickaxe'] = pickModel;
-      }
+    const pGroup = new THREE.Group();
+    const pickModel = this.assetLoader ? this.assetLoader.get('Pickaxe_Bronze') : null;
+    if (pickModel) {
+      pickModel.scale.set(0.75, 0.75, 0.75);
+      pickModel.rotation.set(Math.PI / 2, 0, 0);
+      pickModel.position.set(0.02, 0.04, 0.15);
+      pGroup.add(pickModel);
+    } else {
+      const pShaftGeo = new THREE.CylinderGeometry(0.02, 0.025, 0.7, 8);
+      const pWMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.8 });
+      const pShaft = new THREE.Mesh(pShaftGeo, pWMat);
+      const pHeadGeo = new THREE.BoxGeometry(0.28, 0.06, 0.05);
+      const pMetalMat = new THREE.MeshStandardMaterial({ color: 0x555b63, metalness: 0.85, roughness: 0.3 });
+      const pHead = new THREE.Mesh(pHeadGeo, pMetalMat);
+      pHead.position.y = 0.32;
+      pGroup.add(pShaft, pHead);
+      pGroup.rotation.set(Math.PI / 2, 0, 0);
+      pGroup.position.set(0.02, 0.04, 0.15);
     }
+    pGroup.visible = false;
+    rightHandBone.add(pGroup);
+    this.weaponPool['pickaxe'] = pGroup;
 
     // 5. Building Hammer
     const hGroup = new THREE.Group();

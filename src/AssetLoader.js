@@ -353,13 +353,6 @@ export default class AssetLoader {
 
   async loadAll() {
     const modelManifest = [
-      // Characters (Full models with built-in heads & hoods)
-      { name: 'Male_Ranger',    url: '/assets/characters/Male_Ranger.gltf' },
-      { name: 'Female_Ranger',  url: '/assets/characters/Female_Ranger.gltf' },
-      { name: 'Male_Peasant',   url: '/assets/characters/Male_Peasant.gltf' },
-      { name: 'Female_Peasant', url: '/assets/characters/Female_Peasant.gltf' },
-      { name: 'Mannequin_F',    url: '/assets/characters/Mannequin_F.glb' },
-
       // KayKit Adventurers 2.0 (Unique Heroic Characters)
       { name: 'Barbarian',      url: '/assets/KayKit_Adventurers_2.0_FREE/KayKit_Adventurers_2.0_FREE/Characters/gltf/Barbarian.glb' },
       { name: 'Knight',         url: '/assets/KayKit_Adventurers_2.0_FREE/KayKit_Adventurers_2.0_FREE/Characters/gltf/Knight.glb' },
@@ -390,10 +383,6 @@ export default class AssetLoader {
       { name: 'crossbow_1handed',        url: '/assets/KayKit_Adventurers_2.0_FREE/KayKit_Adventurers_2.0_FREE/Assets/gltf/crossbow_1handed.gltf' },
       { name: 'dagger',                  url: '/assets/KayKit_Adventurers_2.0_FREE/KayKit_Adventurers_2.0_FREE/Assets/gltf/dagger.gltf' },
       { name: 'wand',                    url: '/assets/KayKit_Adventurers_2.0_FREE/KayKit_Adventurers_2.0_FREE/Assets/gltf/wand.gltf' },
-
-      // Modular Heads
-      { name: 'Male_Ranger_Head_Hood',   url: '/assets/characters/Male_Ranger_Head_Hood.gltf' },
-      { name: 'Female_Ranger_Head_Hood', url: '/assets/characters/Female_Ranger_Head_Hood.gltf' },
 
       // Trees
       { name: 'Pine_1', url: '/assets/nature/Pine_1.gltf' },
@@ -508,18 +497,17 @@ export default class AssetLoader {
       { name: 'TinyBuilding01',  obj: '/assets/Tiny Building/Package/TinyBuilding01.obj',   mtl: '/assets/Tiny Building/Package/TinyBuilding01.mtl' }
     ];
 
-    this.total = modelManifest.length + textureManifest.length + objManifest.length + 3;
+    this.total = modelManifest.length + textureManifest.length + objManifest.length + 2;
     this.loaded = 0;
     this.updateProgress('aloitetaan');
 
     const modelPromises = modelManifest.map(m => this.loadModel(m.name, m.url));
     const objPromises = objManifest.map(o => this.loadOBJ(o.name, o.obj, o.mtl));
     const texPromises = textureManifest.map(t => this.loadTexture(t.name, t.url, t.wrap, t.rx, t.ry));
-    const animPromise = this.loadAnimations('/assets/animations/UAL2_Standard.glb', 'ual2');
     const rigGeneralPromise = this.loadAnimations('/assets/KayKit_Adventurers_2.0_FREE/KayKit_Adventurers_2.0_FREE/Animations/gltf/Rig_Medium/Rig_Medium_General.glb', 'rigMedium');
     const rigMovementPromise = this.loadAnimations('/assets/KayKit_Adventurers_2.0_FREE/KayKit_Adventurers_2.0_FREE/Animations/gltf/Rig_Medium/Rig_Medium_MovementBasic.glb', 'rigMedium');
 
-    await Promise.all([...modelPromises, ...objPromises, ...texPromises, animPromise, rigGeneralPromise, rigMovementPromise]);
+    await Promise.all([...modelPromises, ...objPromises, ...texPromises, rigGeneralPromise, rigMovementPromise]);
     this.updateProgress('Valmis!');
     return this;
   }

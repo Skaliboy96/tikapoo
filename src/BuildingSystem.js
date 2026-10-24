@@ -509,16 +509,10 @@ export default class BuildingSystem {
         embers.position.set(0, 0.45, 0);
         group.add(embers);
 
-        // Active campfire warm point light
+        // Active campfire warm embers flicker
         if (!isPreview) {
-          const fireLight = new THREE.PointLight(0xff6600, 2.5, 14, 2);
-          fireLight.position.set(0, 0.8, 0);
-          fireLight.castShadow = true;
-          group.add(fireLight);
-
           this.campfires.push({
-            light: fireLight,
-            baseIntensity: 2.5,
+            flameMesh: embers,
             seed: Math.random() * 100,
             position: group.position
           });
@@ -556,14 +550,8 @@ export default class BuildingSystem {
         group.add(embers);
 
         if (!isPreview) {
-          const fireLight = new THREE.PointLight(0xff6600, 2.5, 14, 2);
-          fireLight.position.set(0, 0.8, 0);
-          fireLight.castShadow = true;
-          group.add(fireLight);
-
           this.campfires.push({
-            light: fireLight,
-            baseIntensity: 2.5,
+            flameMesh: embers,
             seed: Math.random() * 100,
             position: group.position
           });
@@ -710,10 +698,7 @@ export default class BuildingSystem {
       group.add(flame);
 
       if (!isPreview) {
-        const tLight = new THREE.PointLight(0xff7722, 2.2, 16, 2);
-        tLight.position.set(0, 1.8, 0);
-        group.add(tLight);
-        this.campfires.push({ light: tLight, baseIntensity: 2.2, seed: Math.random() * 100, position: group.position });
+        this.campfires.push({ flameMesh: flame, seed: Math.random() * 100, position: group.position });
       }
     } else if (type === 'stoneWall') {
       const wallModel = this.assetLoader ? this.assetLoader.get('Wall_UnevenBrick_Straight') : null;
@@ -790,10 +775,7 @@ export default class BuildingSystem {
         group.add(cauldron);
       }
       if (!isPreview) {
-        const sLight = new THREE.PointLight(0xff4400, 2.8, 16, 2);
-        sLight.position.set(0, 1.2, 0.8);
-        group.add(sLight);
-        this.campfires.push({ light: sLight, baseIntensity: 2.8, seed: Math.random() * 100, position: group.position });
+        this.campfires.push({ flameMesh: cauldron, seed: Math.random() * 100, position: group.position });
       }
     } else if (type === 'bed') {
       const bedModel = this.assetLoader ? this.assetLoader.get('Bed_Twin1') : null;
@@ -875,11 +857,12 @@ export default class BuildingSystem {
   }
 
   update(delta, camera, controlsLocked, world) {
-    // Animate flickering for placed campfires
+    // Animate flickering for placed campfires and torches (Zero shader stalls)
     const time = performance.now() * 0.005;
     for (const camp of this.campfires) {
-      if (camp.light) {
-        camp.light.intensity = camp.baseIntensity + Math.sin(time * 3 + camp.seed) * 0.35 + (Math.random() - 0.5) * 0.2;
+      if (camp.flameMesh) {
+        const s = 1.0 + Math.sin(time * 4 + camp.seed) * 0.12;
+        camp.flameMesh.scale.set(s, s * 1.08, s);
       }
     }
 
