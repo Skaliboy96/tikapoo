@@ -231,7 +231,7 @@ export default class HUD {
     }, 1200);
   }
 
-  updateMinimap(playerPos, playerHeading, enemies = [], campfires = [], biomeKey = 'meadows', tombstones = []) {
+  updateMinimap(playerPos, playerHeading, enemies = [], campfires = [], biomeKey = 'meadows', tombstones = [], bossMarkers = []) {
     if (!this.minimapCtx || !playerPos) return;
     const ctx = this.minimapCtx;
     const width = 150;
@@ -374,6 +374,39 @@ export default class HUD {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('🪦', drawX, drawY);
+        ctx.restore();
+      });
+    }
+
+    // Draw Boss Arenas / Active Bosses on Minimap (ALWAYS visible so player knows where legendary bosses await!)
+    if (bossMarkers && bossMarkers.length > 0) {
+      bossMarkers.forEach(bm => {
+        const pt = toRadar(bm.x, bm.z);
+        const dx = pt.x - center;
+        const dy = pt.y - center;
+        const dist = Math.hypot(dx, dy);
+        let drawX = pt.x;
+        let drawY = pt.y;
+        const isOffscreen = dist > (center - 11);
+        if (isOffscreen) {
+          drawX = center + (dx / dist) * (center - 11);
+          drawY = center + (dy / dist) * (center - 11);
+        }
+
+        ctx.save();
+        ctx.fillStyle = bm.status === 'defeated' ? '#2ecc71' : '#e74c3c';
+        ctx.beginPath();
+        ctx.arc(drawX, drawY, isOffscreen ? 7 : 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = isOffscreen ? 'bold 8px sans-serif' : 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(bm.status === 'defeated' ? '👑' : '🔥', drawX, drawY);
         ctx.restore();
       });
     }

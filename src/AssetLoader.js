@@ -831,10 +831,10 @@ export default class AssetLoader {
       const eyeMat = new THREE.MeshBasicMaterial({ color: eyeColor });
 
       const scleraGeo = new THREE.SphereGeometry(0.028, 8, 8);
-      const pupilGeo = new THREE.SphereGeometry(0.018, 6, 6);
+      const pupilGeo = new THREE.SphereGeometry(0.016, 6, 6);
 
       const eyeSpread = isRigMed ? 0.058 : 0.045;
-      const eyeZ = isRigMed ? 0.17 : 0.12;
+      const eyeZ = isRigMed ? 0.185 : 0.135;
 
       // Left eye
       const leftSclera = new THREE.Mesh(scleraGeo, scleraMat);
@@ -851,111 +851,160 @@ export default class AssetLoader {
       headGroup.add(rightSclera, rightPupil);
 
       // Nose
-      const noseGeo = new THREE.ConeGeometry(0.024, 0.05, 4);
+      const noseGeo = new THREE.ConeGeometry(0.022, 0.045, 4);
       noseGeo.rotateX(Math.PI / 2);
       const nose = new THREE.Mesh(noseGeo, skinMat);
-      nose.position.set(0, headOffsetY - 0.005, eyeZ + 0.025);
+      nose.position.set(0, headOffsetY - 0.005, eyeZ + 0.02);
       headGroup.add(nose);
 
       // Beard for male ranger
       if (!isFemale) {
-        const beardGeo = new THREE.BoxGeometry(headRadius * 0.55, 0.07, 0.06);
+        const beardGeo = new THREE.BoxGeometry(headRadius * 0.52, 0.07, 0.06);
         const beardMat = new THREE.MeshStandardMaterial({ color: finalHair, roughness: 0.8 });
         const beard = new THREE.Mesh(beardGeo, beardMat);
         beard.position.set(0, headOffsetY - 0.07, eyeZ - 0.01);
         headGroup.add(beard);
       }
     } else {
-      // 2. Character has no hood: Build full head with hair/cap
-      const headGeo = new THREE.SphereGeometry(headRadius, 14, 12);
-      headGeo.scale(0.88, 1.08, 0.95);
+      // 2. Character has no hood: Build full stylized head with open face, expressive eyes and non-overlapping hair
+      const headGeo = new THREE.SphereGeometry(headRadius, 16, 14);
+      headGeo.scale(0.88, 1.05, 0.95);
       const headMesh = new THREE.Mesh(headGeo, skinMat);
-      headMesh.position.set(0, headOffsetY, 0.01);
+      headMesh.position.set(0, headOffsetY, 0.0);
       headMesh.castShadow = true;
       headMesh.receiveShadow = true;
       headGroup.add(headMesh);
 
-      // Eyes
+      // Ears on sides of head
+      const earGeo = new THREE.BoxGeometry(0.028, 0.05, 0.038);
+      const earL = new THREE.Mesh(earGeo, skinMat);
+      earL.position.set(-headRadius * 0.88, headOffsetY + 0.01, 0.0);
+      const earR = new THREE.Mesh(earGeo, skinMat);
+      earR.position.set(headRadius * 0.88, headOffsetY + 0.01, 0.0);
+      headGroup.add(earL, earR);
+
+      // Eyes (Clean white sclera and sharp pupil sitting cleanly on face front)
       const eyeMat = new THREE.MeshBasicMaterial({ color: eyeColor });
       const scleraMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-      const eyeGeo = new THREE.SphereGeometry(0.025, 6, 6);
-      const scleraGeo = new THREE.SphereGeometry(0.032, 6, 6);
+      const scleraGeo = new THREE.SphereGeometry(0.028, 8, 8);
+      const eyeGeo = new THREE.SphereGeometry(0.018, 6, 6);
 
-      const eyeSpread = isRigMed ? 0.062 : 0.048;
-      const eyeZ = isRigMed ? 0.18 : 0.13;
+      const eyeSpread = isRigMed ? 0.065 : 0.050;
       const eyeY = headOffsetY + 0.02;
+      const eyeZ = 0.198;
 
       const leftSclera = new THREE.Mesh(scleraGeo, scleraMat);
       leftSclera.position.set(-eyeSpread, eyeY, eyeZ);
       const leftPupil = new THREE.Mesh(eyeGeo, eyeMat);
-      leftPupil.position.set(-eyeSpread, eyeY, eyeZ + 0.018);
+      leftPupil.position.set(-eyeSpread, eyeY, eyeZ + 0.022);
 
       const rightSclera = new THREE.Mesh(scleraGeo, scleraMat);
       rightSclera.position.set(eyeSpread, eyeY, eyeZ);
       const rightPupil = new THREE.Mesh(eyeGeo, eyeMat);
-      rightPupil.position.set(eyeSpread, eyeY, eyeZ + 0.018);
+      rightPupil.position.set(eyeSpread, eyeY, eyeZ + 0.022);
 
       headGroup.add(leftSclera, leftPupil, rightSclera, rightPupil);
 
+      // Eyebrows (tinted in hair color, framing eyes)
+      const browMat = new THREE.MeshStandardMaterial({ color: finalHair, roughness: 0.9 });
+      const browGeo = new THREE.BoxGeometry(0.046, 0.014, 0.026);
+      const browL = new THREE.Mesh(browGeo, browMat);
+      browL.position.set(-eyeSpread, eyeY + 0.046, eyeZ - 0.005);
+      browL.rotation.z = -0.12;
+      const browR = new THREE.Mesh(browGeo, browMat);
+      browR.position.set(eyeSpread, eyeY + 0.046, eyeZ - 0.005);
+      browR.rotation.z = 0.12;
+      headGroup.add(browL, browR);
+
       // Nose
-      const noseGeo = new THREE.ConeGeometry(0.025, 0.055, 4);
+      const noseGeo = new THREE.ConeGeometry(0.022, 0.048, 4);
       noseGeo.rotateX(Math.PI / 2);
       const nose = new THREE.Mesh(noseGeo, skinMat);
-      nose.position.set(0, eyeY - 0.025, eyeZ + 0.025);
+      nose.position.set(0, eyeY - 0.032, eyeZ + 0.015);
       headGroup.add(nose);
 
-      // Hair Styles
+      // Subtle stylized mouth line
+      const mouthMat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(finalSkin).multiplyScalar(0.8),
+        roughness: 0.8
+      });
+      const mouthGeo = new THREE.BoxGeometry(0.044, 0.012, 0.022);
+      const mouth = new THREE.Mesh(mouthGeo, mouthMat);
+      mouth.position.set(0, eyeY - 0.075, eyeZ - 0.01);
+      headGroup.add(mouth);
+
+      // Hair Styles – Carefully modeled caps that NEVER cover the face, eyes, or cheeks
       if (hairStyle !== 'bald') {
         const hairMat = new THREE.MeshStandardMaterial({
           color: finalHair,
-          roughness: 0.8
+          roughness: 0.75
         });
 
+        // Scalp dome covering top and back of head only (thetaLength ensures it stays above the forehead)
+        const capGeo = new THREE.SphereGeometry(headRadius * 1.03, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.44);
+        capGeo.scale(0.92, 1.08, 0.96);
+        const capMesh = new THREE.Mesh(capGeo, hairMat);
+        capMesh.position.set(0, headOffsetY + 0.02, -0.025);
+        capMesh.castShadow = true;
+        headGroup.add(capMesh);
+
+        // Nape/back of head coverage
+        const napeGeo = new THREE.CylinderGeometry(headRadius * 0.88, headRadius * 0.80, 0.12, 10, 1, false, Math.PI * 0.65, Math.PI * 1.7);
+        const napeMesh = new THREE.Mesh(napeGeo, hairMat);
+        napeMesh.position.set(0, headOffsetY - 0.035, -0.055);
+        headGroup.add(napeMesh);
+
         if (hairStyle === 'long') {
-          const hairGeo = new THREE.SphereGeometry(headRadius * 1.10, 14, 12);
-          hairGeo.scale(0.98, 1.25, 1.12);
-          const hair = new THREE.Mesh(hairGeo, hairMat);
-          hair.position.set(0, headOffsetY + 0.015, -0.025);
-          hair.castShadow = true;
-          headGroup.add(hair);
+          // Flowing side locks framing cheeks without covering face
+          const sideLockGeo = new THREE.BoxGeometry(0.038, 0.24, 0.08);
+          const lockL = new THREE.Mesh(sideLockGeo, hairMat);
+          lockL.position.set(-headRadius * 0.92, headOffsetY - 0.06, 0.02);
+          const lockR = new THREE.Mesh(sideLockGeo, hairMat);
+          lockR.position.set(headRadius * 0.92, headOffsetY - 0.06, 0.02);
+          headGroup.add(lockL, lockR);
 
-          const tailGeo = new THREE.CylinderGeometry(headRadius * 0.45, headRadius * 0.25, 0.35, 8);
-          const tail = new THREE.Mesh(tailGeo, hairMat);
-          tail.position.set(0, headOffsetY - 0.16, -0.16);
-          tail.rotation.x = 0.2;
-          headGroup.add(tail);
+          // Flowing back mane down the shoulders
+          const backManeGeo = new THREE.BoxGeometry(headRadius * 1.35, 0.32, 0.08);
+          const backMane = new THREE.Mesh(backManeGeo, hairMat);
+          backMane.position.set(0, headOffsetY - 0.12, -headRadius * 0.92);
+          backMane.rotation.x = -0.15;
+          headGroup.add(backMane);
         } else if (hairStyle === 'ponytail') {
-          const hairGeo = new THREE.SphereGeometry(headRadius * 1.08, 14, 12);
-          hairGeo.scale(0.96, 1.1, 1.05);
-          const hair = new THREE.Mesh(hairGeo, hairMat);
-          hair.position.set(0, headOffsetY + 0.035, -0.015);
-          headGroup.add(hair);
-
-          const knotGeo = new THREE.SphereGeometry(headRadius * 0.35, 8, 8);
+          // High gathered warrior ponytail at back of head
+          const knotGeo = new THREE.SphereGeometry(headRadius * 0.36, 8, 8);
           const knot = new THREE.Mesh(knotGeo, hairMat);
-          knot.position.set(0, headOffsetY + 0.04, -headRadius * 1.05);
-          const pTailGeo = new THREE.CylinderGeometry(headRadius * 0.22, headRadius * 0.12, 0.28, 8);
-          const pTail = new THREE.Mesh(pTailGeo, hairMat);
-          pTail.position.set(0, headOffsetY - 0.09, -headRadius * 1.2);
-          pTail.rotation.x = -0.25;
-          headGroup.add(knot, pTail);
+          knot.position.set(0, headOffsetY + 0.07, -headRadius * 0.96);
+
+          const tailGeo = new THREE.CylinderGeometry(headRadius * 0.20, headRadius * 0.10, 0.30, 8);
+          const tail = new THREE.Mesh(tailGeo, hairMat);
+          tail.position.set(0, headOffsetY - 0.08, -headRadius * 1.15);
+          tail.rotation.x = -0.32;
+          headGroup.add(knot, tail);
         } else {
-          // 'short' Viking trim
-          const hairGeo = new THREE.SphereGeometry(headRadius * 1.08, 14, 12);
-          hairGeo.scale(0.96, 1.12, 1.05);
-          const hair = new THREE.Mesh(hairGeo, hairMat);
-          hair.position.set(0, headOffsetY + 0.035, -0.015);
-          hair.castShadow = true;
-          headGroup.add(hair);
+          // 'short' Viking trim: Stylish trimmed fringe at top of hairline (high above eyes)
+          const fringeGeo = new THREE.BoxGeometry(headRadius * 0.72, 0.032, 0.045);
+          fringeGeo.rotateX(0.22);
+          const fringe = new THREE.Mesh(fringeGeo, hairMat);
+          fringe.position.set(0, headOffsetY + 0.092, 0.145);
+          headGroup.add(fringe);
+
+          // Sideburns above/behind ears
+          const sideburnGeo = new THREE.BoxGeometry(0.025, 0.075, 0.06);
+          const sbL = new THREE.Mesh(sideburnGeo, hairMat);
+          sbL.position.set(-headRadius * 0.88, headOffsetY + 0.015, -0.01);
+          const sbR = new THREE.Mesh(sideburnGeo, hairMat);
+          sbR.position.set(headRadius * 0.88, headOffsetY + 0.015, -0.01);
+          headGroup.add(sbL, sbR);
         }
       }
 
-      // Beard for male
+      // Beard for male characters (Nordic trimmed goatee/beard under mouth along jawline)
       if (!isFemale && hairStyle !== 'bald') {
-        const beardGeo = new THREE.BoxGeometry(headRadius * 0.55, 0.07, 0.06);
         const beardMat = new THREE.MeshStandardMaterial({ color: finalHair, roughness: 0.85 });
+        const beardGeo = new THREE.BoxGeometry(headRadius * 0.52, 0.075, 0.065);
+        beardGeo.rotateX(0.18);
         const beard = new THREE.Mesh(beardGeo, beardMat);
-        beard.position.set(0, headOffsetY - 0.08, eyeZ - 0.01);
+        beard.position.set(0, headOffsetY - 0.095, eyeZ - 0.05);
         headGroup.add(beard);
       }
     }

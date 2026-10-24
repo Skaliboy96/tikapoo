@@ -63,46 +63,50 @@ export default class CharacterCreator {
   _initThreePreview() {
     if (!this.previewCanvas || this.renderer) return;
 
-    const width = this.previewCanvas.clientWidth || 360;
-    const height = this.previewCanvas.clientHeight || 480;
+    try {
+      const width = this.previewCanvas.clientWidth || 360;
+      const height = this.previewCanvas.clientHeight || 480;
 
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x121721);
+      this.scene = new THREE.Scene();
+      this.scene.background = new THREE.Color(0x121721);
 
-    this.camera = new THREE.PerspectiveCamera(36, width / height, 0.1, 50);
-    this.camera.position.set(0, 1.25, 2.9);
-    this.camera.lookAt(0, 0.95, 0);
+      this.camera = new THREE.PerspectiveCamera(36, width / height, 0.1, 50);
+      this.camera.position.set(0, 1.25, 2.9);
+      this.camera.lookAt(0, 0.95, 0);
 
-    const isMobile = window.innerWidth <= 900 || ('ontouchstart' in window);
-    this.renderer = new THREE.WebGLRenderer({
-      canvas: this.previewCanvas,
-      antialias: false,
-      alpha: false,
-      powerPreference: 'low-power'
-    });
-    this.renderer.setSize(width, height);
-    this.renderer.setPixelRatio(isMobile ? 1.0 : Math.min(window.devicePixelRatio, 1.25));
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.1;
+      const isMobile = window.innerWidth <= 900 || ('ontouchstart' in window);
+      this.renderer = new THREE.WebGLRenderer({
+        canvas: this.previewCanvas,
+        antialias: false,
+        alpha: false,
+        powerPreference: 'low-power'
+      });
+      this.renderer.setSize(width, height);
+      this.renderer.setPixelRatio(isMobile ? 1.0 : Math.min(window.devicePixelRatio, 1.25));
+      this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      this.renderer.toneMappingExposure = 1.1;
 
-    // Pedestal disk
-    const pedGeo = new THREE.CylinderGeometry(0.7, 0.75, 0.08, 32);
-    const pedMat = new THREE.MeshStandardMaterial({ color: 0x242e3b, roughness: 0.8, metalness: 0.2 });
-    const ped = new THREE.Mesh(pedGeo, pedMat);
-    ped.position.y = -0.04;
-    this.scene.add(ped);
+      // Pedestal disk
+      const pedGeo = new THREE.CylinderGeometry(0.7, 0.75, 0.08, 32);
+      const pedMat = new THREE.MeshStandardMaterial({ color: 0x242e3b, roughness: 0.8, metalness: 0.2 });
+      const ped = new THREE.Mesh(pedGeo, pedMat);
+      ped.position.y = -0.04;
+      this.scene.add(ped);
 
-    // Warm Nordic Studio Lighting
-    const ambLight = new THREE.AmbientLight(0xffeedd, 0.9);
-    this.scene.add(ambLight);
+      // Warm Nordic Studio Lighting
+      const ambLight = new THREE.AmbientLight(0xffeedd, 0.9);
+      this.scene.add(ambLight);
 
-    const dirLight = new THREE.DirectionalLight(0xfffaed, 2.2);
-    dirLight.position.set(2, 3, 2.5);
-    this.scene.add(dirLight);
+      const dirLight = new THREE.DirectionalLight(0xfffaed, 2.2);
+      dirLight.position.set(2, 3, 2.5);
+      this.scene.add(dirLight);
 
-    const rimLight = new THREE.DirectionalLight(0x66aaff, 1.2);
-    rimLight.position.set(-2, 2, -2);
-    this.scene.add(rimLight);
+      const rimLight = new THREE.DirectionalLight(0x66aaff, 1.2);
+      rimLight.position.set(-2, 2, -2);
+      this.scene.add(rimLight);
+    } catch (err) {
+      console.warn('[CharacterCreator] Preview WebGL init notice:', err);
+    }
   }
 
   _initUI() {
@@ -239,26 +243,30 @@ export default class CharacterCreator {
   buildPreviewModel() {
     if (!this.scene || !this.assetLoader) return;
 
-    // Remove old model
-    if (this.previewModel) {
-      this.scene.remove(this.previewModel);
-      this.previewModel = null;
-      this.previewMixer = null;
+    try {
+      // Remove old model
+      if (this.previewModel) {
+        this.scene.remove(this.previewModel);
+        this.previewModel = null;
+        this.previewMixer = null;
+      }
+
+      // Always use clean humanoid base model (simple starting linen clothes, no armor/hoods)
+      this.config.headStyle = 'hair';
+      this.config.model = 'Rogue';
+
+      const charData = this.assetLoader.createAnimatedCharacter('Rogue', 'Idle_A', this.config);
+      if (!charData || !charData.model) return;
+
+      this.previewModel = charData.model;
+      this.previewMixer = charData.mixer;
+      this.animAction = charData.actions ? (charData.actions['Idle_A'] || charData.actions['Idle_No_Loop']) : null;
+
+      this.previewModel.position.set(0, 0, 0);
+      this.scene.add(this.previewModel);
+    } catch (err) {
+      console.warn('[CharacterCreator] buildPreviewModel notice:', err);
     }
-
-    // Always use clean humanoid base model (simple starting linen clothes, no armor/hoods)
-    this.config.headStyle = 'hair';
-    this.config.model = 'Rogue';
-
-    const charData = this.assetLoader.createAnimatedCharacter('Rogue', 'Idle_A', this.config);
-    if (!charData || !charData.model) return;
-
-    this.previewModel = charData.model;
-    this.previewMixer = charData.mixer;
-    this.animAction = charData.actions ? (charData.actions['Idle_A'] || charData.actions['Idle_No_Loop']) : null;
-
-    this.previewModel.position.set(0, 0, 0);
-    this.scene.add(this.previewModel);
   }
 
   open() {
@@ -281,20 +289,18 @@ export default class CharacterCreator {
     if (this.container) {
       this.container.style.display = 'none';
     }
-    // Clean up WebGL context so only main game WebGLRenderer remains active
-    if (this.renderer) {
-      try {
-        this.renderer.dispose();
-      } catch (e) {}
-      this.renderer = null;
-    }
+    // Note: Do not dispose WebGLRenderer on the canvas! Setting isOpen = false stops rendering loop (0% GPU/CPU overhead)
   }
 
   confirmAndStart() {
     localStorage.setItem('tikapoo_character', JSON.stringify(this.config));
     this.close();
     if (this.onConfirmCallback) {
-      this.onConfirmCallback(this.config);
+      try {
+        this.onConfirmCallback(this.config);
+      } catch (err) {
+        console.error('[CharacterCreator] onConfirmCallback error:', err);
+      }
     }
   }
 

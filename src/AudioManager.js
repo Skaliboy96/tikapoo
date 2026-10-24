@@ -35,15 +35,20 @@ export default class AudioManager {
     this.activeBossDef = null;
 
     // Mobile-friendly Lazy AudioContext initialization on first user interaction (iOS Safari compliant)
+    this._audioUnlocked = false;
     const unlockAudio = () => {
       this.ensureContext();
-      window.removeEventListener('pointerdown', unlockAudio);
-      window.removeEventListener('touchstart', unlockAudio);
-      window.removeEventListener('keydown', unlockAudio);
+      if (this._audioUnlocked) {
+        window.removeEventListener('pointerup', unlockAudio);
+        window.removeEventListener('touchend', unlockAudio);
+        window.removeEventListener('click', unlockAudio);
+      }
     };
-    window.addEventListener('pointerdown', unlockAudio, { once: true, passive: true });
-    window.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
-    window.addEventListener('keydown', unlockAudio, { once: true, passive: true });
+    window.addEventListener('pointerup', unlockAudio, { passive: true });
+    window.addEventListener('touchend', unlockAudio, { passive: true });
+    window.addEventListener('click', unlockAudio, { passive: true });
+    window.addEventListener('touchstart', unlockAudio, { passive: true });
+    window.addEventListener('keydown', unlockAudio, { passive: true });
   }
 
   initAudioContext() {
@@ -87,9 +92,27 @@ export default class AudioManager {
     if (!this.ctx) {
       this.initAudioContext();
     }
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume().catch(() => {});
+    if (this.ctx) {
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume().then(() => {
+          this._playSilentUnlockBuffer();
+        }).catch(() => {});
+      } else if (!this._audioUnlocked) {
+        this._playSilentUnlockBuffer();
+      }
     }
+  }
+
+  _playSilentUnlockBuffer() {
+    if (!this.ctx || this._audioUnlocked) return;
+    try {
+      const buffer = this.ctx.createBuffer(1, 1, 22050);
+      const source = this.ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(this.ctx.destination);
+      source.start(0);
+      this._audioUnlocked = true;
+    } catch (e) {}
   }
 
   setMasterVolume(val) {

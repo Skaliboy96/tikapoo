@@ -323,11 +323,10 @@ export default class MapScreen {
       ctx.fillText(lm.name, p.x, p.y);
     });
 
-    // 5. Boss Markers (once discovered or defeated)
+    // 5. Boss Markers (Legendary Boss Arenas across biomes)
     if (this.bossManager && this.bossManager.getBossMarkers) {
       const bossMarkers = this.bossManager.getBossMarkers();
       bossMarkers.forEach(bm => {
-        if (!explorationTracker.isExplored(bm.x, bm.z) && bm.status !== 'defeated') return;
         const p = toMap(bm.x, bm.z);
         if (p.x < -60 || p.x > W + 60 || p.y < -60 || p.y > H + 60) return;
 
@@ -342,6 +341,12 @@ export default class MapScreen {
         ctx.fill();
         ctx.stroke();
         ctx.setLineDash([]);
+
+        // Center arena symbol
+        ctx.font = `${Math.max(11, 14 * this.zoom)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(bm.status === 'defeated' ? '👑' : '🔥', p.x, p.y);
         ctx.restore();
 
         // Label box

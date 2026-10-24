@@ -11,8 +11,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=MedievalSharp&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/index-oUmA1w0l.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-BRgHo0vq.css">
+  <script type="module" crossorigin src="/assets/index-C4aRhU5m.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-C0uRYktU.css">
 </head>
 <body>
   <!-- Canvas container / WebGL rendering context -->
@@ -150,6 +150,7 @@
   <div id="minimap-container">
     <canvas id="minimap" width="150" height="150"></canvas>
     <div class="minimap-compass">N</div>
+    <button id="hud-fullscreen-btn" class="hud-fs-btn" title="Koko näyttö / Fullscreen">⛶</button>
   </div>
 
   <!-- FPS Counter (Top Right) -->
@@ -360,6 +361,9 @@
         </button>
         <button id="menu-settings-btn" class="menu-btn">
           <span class="btn-text" data-i18n="menu_settings">ASETUKSET</span>
+        </button>
+        <button id="menu-fullscreen-btn" class="menu-btn" style="background: rgba(241, 196, 15, 0.12); border-color: rgba(241, 196, 15, 0.4);">
+          <span class="btn-text" data-i18n="menu_fullscreen">⛶ KOKO NÄYTTÖ (FULLSCREEN)</span>
         </button>
       </div>
     </div>
@@ -699,6 +703,8 @@
     <div class="pause-box">
       <h2 data-i18n="pause_title">PELI PYSÄYTETTY</h2>
       <button id="pause-resume-btn" class="menu-btn menu-btn-primary"><span class="btn-text" data-i18n="pause_resume">JATKA PELIÄ</span></button>
+      <button id="pause-fullscreen-btn" class="menu-btn" style="background: rgba(241, 196, 15, 0.12); border-color: rgba(241, 196, 15, 0.4);"><span class="btn-text" data-i18n="pause_fullscreen">⛶ KOKO NÄYTTÖ (FULLSCREEN)</span></button>
+      <button id="pause-restart-btn" class="menu-btn" style="background: rgba(231, 76, 60, 0.22); border-color: #e74c3c;"><span class="btn-text" data-i18n="pause_restart">🔄 ALOITA ALUSTA (RESTART)</span></button>
       <button id="pause-save-btn" class="menu-btn" style="background: rgba(46, 204, 113, 0.2); border-color: #2ecc71;"><span class="btn-text" data-i18n="pause_save">💾 TALLENNA PELI (EXPORT)</span></button>
       <button id="pause-load-btn" class="menu-btn"><span class="btn-text" data-i18n="pause_load">📂 LATAA TALLENNUS (IMPORT)</span></button>
       <button id="pause-settings-btn" class="menu-btn"><span class="btn-text" data-i18n="pause_settings">ASETUKSET</span></button>

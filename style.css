@@ -3646,5 +3646,134 @@ canvas {
   100% { transform: scale(1); box-shadow: 0 0 8px rgba(231, 76, 60, 0.6); }
 }
 
+/* Fullscreen Toggle Button */
+.hud-fs-btn {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(10, 14, 20, 0.85);
+  color: #f1c40f;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: transform 0.1s, background 0.1s;
+}
+.hud-fs-btn:active {
+  transform: scale(0.9);
+  background: rgba(30, 40, 60, 0.95);
+}
+
+/* ===== Comprehensive Mobile Optimization ===== */
+@media (max-width: 900px) {
+  #hud {
+    top: 8px !important;
+    left: 8px !important;
+    bottom: auto !important;
+    width: 140px !important;
+    min-width: 120px !important;
+    max-width: 150px !important;
+    padding: 5px 8px !important;
+    gap: 3px !important;
+    background: rgba(10, 14, 20, 0.85) !important;
+    border-radius: 6px !important;
+  }
+  #hud .hud-buttons-row,
+  #hud .hud-controls-hint {
+    display: none !important;
+  }
+  #hud .bar-label span:last-child {
+    display: none !important;
+  }
+  #hud .bar-label {
+    font-size: 8px !important;
+  }
+  #hud .bar {
+    height: 4px !important;
+    border-radius: 2px !important;
+  }
+  #hud .hud-top-meta {
+    padding-bottom: 2px !important;
+  }
+  #hud .hud-level-badge {
+    font-size: 8px !important;
+  }
+  #hud .hud-xp-bar-bg {
+    width: 35px !important;
+    height: 3px !important;
+  }
+  #hud .hud-xp-val {
+    display: none !important;
+  }
+  #hud .hud-biome-badge {
+    font-size: 8px !important;
+    padding: 0 3px !important;
+  }
+
+  #minimap-container {
+    top: 42px !important;
+    right: 8px !important;
+    bottom: auto !important;
+    width: 90px !important;
+    height: 90px !important;
+    border-radius: 50% !important;
+    padding: 2px !important;
+  }
+  #minimap {
+    width: 86px !important;
+    height: 86px !important;
+    border-radius: 50% !important;
+  }
+
+  #game-clock-container {
+    top: 138px !important;
+    right: 8px !important;
+    padding: 2px 6px !important;
+    font-size: 9px !important;
+    border-radius: 4px !important;
+  }
+
+  #hotbar {
+    bottom: 8px !important;
+    transform: translateX(-50%) scale(0.72) !important;
+    transform-origin: bottom center !important;
+  }
+
+  #quest-log {
+    display: none !important;
+  }
+
+  .char-creator-container {
+    max-width: 96vw !important;
+    max-height: 94vh !important;
+    padding: 10px !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+  }
+  .char-preview-panel {
+    height: 220px !important;
+  }
+  #char-preview-canvas {
+    width: 100% !important;
+    height: 200px !important;
+  }
+
+  .backpack-modal,
+  .crafting-menu-box,
+  .map-modal,
+  .pause-box,
+  .menu-container {
+    max-width: 95vw !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+}
+
 
 

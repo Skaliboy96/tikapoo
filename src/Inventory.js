@@ -84,6 +84,10 @@ export default class Inventory {
       blackMetalSword: false,
       blackMetalAxe: false,
       shield: false,
+      stoneShield: false,
+      stoneClub: false,
+      stoneDagger: false,
+      antlerBow: false,
       hornSpear: false,
       scaleSword: false,
       titanHammer: false,
@@ -201,6 +205,11 @@ export default class Inventory {
       hammer: '🔨 Rakennusvasara',
       fishingRod: '🎣 Kalastusvapa',
       shield: '🛡️ Puukilpi',
+      stoneShield: '🛡️ Kivinen Tornikilpi',
+      stoneClub: '🪵 Raskas Kivinuija',
+      stoneDagger: '🗡️ Piikivitikari',
+      stoneArmor: '🪨 Kivipanssari (Kalliosuoja)',
+      antlerBow: '🏹 Sarvijousi (Muinainen Sarvi)',
       leatherArmor: '🦺 Nahkahaarniska (Ruskea)',
       bronzeArmor: '🛡️ Pronssipanssari (Pronssi)',
       beastArmor: '🦺 Hirvitaljanen Haarniska (Turkis)',
@@ -285,6 +294,11 @@ export default class Inventory {
       hammer: '🔨 Building Hammer',
       fishingRod: '🎣 Fishing Rod',
       shield: '🛡️ Wood Shield',
+      stoneShield: '🛡️ Stone Tower Shield',
+      stoneClub: '🪵 Heavy Stone Club',
+      stoneDagger: '🗡️ Flint Dagger',
+      stoneArmor: '🪨 Stone Plate Armor',
+      antlerBow: '🏹 Ancient Antler Bow',
       leatherArmor: '🦺 Leather Armor (Brown)',
       bronzeArmor: '🛡️ Bronze Armor (Bronze)',
       beastArmor: '🦺 Beast Hide Armor (Fur)',
@@ -332,14 +346,17 @@ export default class Inventory {
     if (this.equippedTool === 'silverSword') return 110;
     if (this.equippedTool === 'steelSword') return 95;
     if (this.equippedTool === 'scaleSword') return 85;
+    if (this.equippedTool === 'antlerBow') return 75;
     if (this.equippedTool === 'ironSword') return 68;
     if (this.equippedTool === 'huntingBow') return 60;
     if (this.equippedTool === 'runicStaff') return 58;
     if (this.equippedTool === 'ironAxe') return 56;
     if (this.equippedTool === 'hornSpear') return 55;
     if (this.equippedTool === 'bronzeSword') return 48;
+    if (this.equippedTool === 'stoneClub') return 38;
     if (this.equippedTool === 'bronzeAxe') return 36;
     if (this.equippedTool === 'stoneSpear') return 35;
+    if (this.equippedTool === 'stoneDagger') return 28;
     if (this.equippedTool === 'stoneAxe') return 25;
     if (this.equippedTool === 'antlerPickaxe') return 24;
     if (this.equippedTool === 'torch') return 22; // deals burn damage!
@@ -349,7 +366,9 @@ export default class Inventory {
 
   getDamageReduction() {
     let red = 0;
-    if (this.tools.shield && this.equippedTool === 'shield') red += 0.35;
+    if (this.tools.stoneShield && this.equippedTool === 'stoneShield') red += 0.45;
+    else if (this.tools.shield && this.equippedTool === 'shield') red += 0.35;
+
     if (this.equippedArmor === 'dragonArmor') red = Math.max(red, 0.92);
     else if (this.equippedArmor === 'runicArmor') red = Math.max(red, 0.85);
     else if (this.equippedArmor === 'plateArmor') red = Math.max(red, 0.78);
@@ -358,6 +377,7 @@ export default class Inventory {
     else if (this.equippedArmor === 'ironArmor') red = Math.max(red, 0.52);
     else if (this.equippedArmor === 'beastArmor') red = Math.max(red, 0.40);
     else if (this.equippedArmor === 'bronzeArmor') red = Math.max(red, 0.32);
+    else if (this.equippedArmor === 'stoneArmor') red = Math.max(red, 0.25);
     else if (this.equippedArmor === 'leatherArmor') red = Math.max(red, 0.18);
     return Math.min(0.92, red);
   }
@@ -366,6 +386,7 @@ export default class Inventory {
     this.equippedArmor = armorId;
     if (this.hud) {
       const names = {
+        stoneArmor: '🪨 Kivipanssari (-25% DMG)',
         leatherArmor: '🥋 Nahkahaarniska (-18% DMG)',
         bronzeArmor: '🪙 Pronssipanssari (-32% DMG)',
         beastArmor: '🫀 Hirvitaljanen Haarniska (-40% DMG)',

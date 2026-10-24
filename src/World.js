@@ -140,21 +140,30 @@ export default class World {
     if (distToRiver < riverWidth) {
       const rT = distToRiver / riverWidth;
       const carve = Math.cos(rT * Math.PI * 0.5);
-      const riverDepth = (landHeight - (-2.6)) * (carve * carve);
+      const riverDepth = (landHeight - (-1.65)) * (carve * carve);
       landHeight -= riverDepth;
     }
 
-    // River bridge deck (spanning x: -18 to 2 at z: 28)
-    if (z >= 26.5 && z <= 29.5 && x >= -18.5 && x <= 2.5) {
-      landHeight = Math.max(landHeight, 1.45);
+    // River bridge deck (spanning x: -19.5 to 3.5 across z: 28)
+    if (z >= 25.8 && z <= 30.2 && x >= -19.5 && x <= 3.5) {
+      // Smoothly blend bridge elevation with eastern and western riverbanks
+      let bridgeDeckY = 1.52;
+      if (x < -16.0) {
+        const rampT = Math.max(0, Math.min(1, (-16.0 - x) / 3.5));
+        bridgeDeckY = 1.52 * (1 - rampT) + 3.0 * rampT;
+      } else if (x > 0.5) {
+        const rampT = Math.max(0, Math.min(1, (x - 0.5) / 3.0));
+        bridgeDeckY = 1.52 * (1 - rampT) + 3.2 * rampT;
+      }
+      landHeight = Math.max(landHeight, bridgeDeckY);
     }
 
     // Satamakylä fishing boardwalk & pier
-    if (Math.abs(x - (-18)) <= 2.0 && z >= 21.0 && z <= 43.0) {
-      landHeight = Math.max(landHeight, 1.35);
+    if (Math.abs(x - (-18)) <= 2.2 && z >= 20.5 && z <= 43.5) {
+      landHeight = Math.max(landHeight, 1.42);
     }
-    if (z >= 30.5 && z <= 33.5 && x >= -18.5 && x <= -10.5) {
-      landHeight = Math.max(landHeight, 1.35);
+    if (z >= 30.2 && z <= 33.8 && x >= -19.0 && x <= -9.5) {
+      landHeight = Math.max(landHeight, 1.42);
     }
 
     return landHeight;
@@ -374,7 +383,7 @@ export default class World {
 
   initTerrain() {
     const size = 1400; // Expansive Scandinavian wilderness
-    const segments = isMobileDevice ? 50 : 250;
+    const segments = isMobileDevice ? 140 : 250;
     const groundGeo = new THREE.PlaneGeometry(size, size, segments, segments);
     groundGeo.rotateX(-Math.PI / 2);
 
@@ -867,6 +876,16 @@ export default class World {
       this.addCircleCollider(x, z, 1.10, 'table');
     } else if (name === 'Wall_Arch') {
       this.addCircleCollider(x, z, 0.85, 'wall_arch');
+    } else if (name.includes('Fence')) {
+      this.addCircleCollider(x, z, 0.75, 'fence');
+    } else if (name.includes('TreeStump')) {
+      this.addCircleCollider(x, z, 0.75, 'stump');
+    } else if (name.includes('WoodLog')) {
+      this.addCircleCollider(x, z, 0.85, 'log');
+    } else if (name.includes('Rock_Medium') || name.includes('Rock_Moss') || name === 'Rock_1') {
+      this.addCircleCollider(x, z, 1.10, 'rock');
+    } else if (name.includes('CandleStick')) {
+      this.addCircleCollider(x, z, 0.45, 'candlestick');
     }
 
     this.scene.add(model);
@@ -965,7 +984,15 @@ export default class World {
       const px = mesh.position.x;
       const pz = mesh.position.z;
       this.colliders = this.colliders.filter(c => {
-        return !(px >= c.minX - 0.6 && px <= c.maxX + 0.6 && pz >= c.minZ - 0.6 && pz <= c.maxZ + 0.6);
+        if (c.type === 'box') {
+          return !(px >= c.minX - 0.6 && px <= c.maxX + 0.6 && pz >= c.minZ - 0.6 && pz <= c.maxZ + 0.6);
+        } else if (c.type === 'circle') {
+          const dx = px - c.x;
+          const dz = pz - c.z;
+          const rad = (c.radius || 0.6) + 0.6;
+          return (dx * dx + dz * dz) > (rad * rad);
+        }
+        return true;
       });
     }
 
@@ -1390,25 +1417,43 @@ export default class World {
     const bz = 28;
     const by = 1.35; // Positioned cleanly above river water (y: 1.0)
 
-    for (let bx = -17; bx <= 1; bx += 2.0) {
+    for (let bx = -18.5; bx <= 2.5; bx += 1.8) {
       const plank = this._placeModel('Floor_WoodDark', bx, bz, 1.15, 0);
-      if (plank) plank.position.y = by;
+      if (plank) {
+        let plankY = by;
+        if (bx < -16.0) {
+          const t = (-16.0 - bx) / 2.5;
+          plankY = by * (1 - t) + 2.4 * t;
+        } else if (bx > 0.5) {
+          const t = (bx - 0.5) / 2.0;
+          plankY = by * (1 - t) + 2.5 * t;
+        }
+        plank.position.y = plankY;
+      }
     }
 
     // Bridge guardrails & colliders (prevents walking through railings or falling off sides)
-    for (let rx = -16; rx <= 0; rx += 3.2) {
+    for (let rx = -18.0; rx <= 2.0; rx += 2.4) {
       const rail1 = this._placeModel('Prop_WoodenFence_Single', rx, bz + 1.4, 1.1, Math.PI / 2);
       const rail2 = this._placeModel('Prop_WoodenFence_Single', rx, bz - 1.4, 1.1, Math.PI / 2);
-      if (rail1) rail1.position.y = by;
-      if (rail2) rail2.position.y = by;
+      let railY = by;
+      if (rx < -16.0) {
+        const t = (-16.0 - rx) / 2.5;
+        railY = by * (1 - t) + 2.4 * t;
+      } else if (rx > 0.5) {
+        const t = (rx - 0.5) / 2.0;
+        railY = by * (1 - t) + 2.5 * t;
+      }
+      if (rail1) rail1.position.y = railY;
+      if (rail2) rail2.position.y = railY;
     }
 
     // Solid box colliders along bridge north and south guardrails
-    this.addBoxCollider(-18.5, 2.5, bz + 1.15, bz + 2.0, 'bridge_rail_north');
-    this.addBoxCollider(-18.5, 2.5, bz - 2.0, bz - 1.15, 'bridge_rail_south');
+    this.addBoxCollider(-19.5, 3.2, bz + 1.15, bz + 2.2, 'bridge_rail_north');
+    this.addBoxCollider(-19.5, 3.2, bz - 2.2, bz - 1.15, 'bridge_rail_south');
 
-    this._placeModel('CandleStick_Stand', -18, bz + 1.8, 1.0, 0);
-    this._placeModel('CandleStick_Stand', 2, bz - 1.8, 1.0, 0);
+    this._placeModel('CandleStick_Stand', -19, bz + 1.8, 1.0, 0);
+    this._placeModel('CandleStick_Stand', 3, bz - 1.8, 1.0, 0);
   }
 
   // --- Satamakylä (Fishermen's Village) on western riverbank ---

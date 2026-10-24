@@ -49,7 +49,7 @@ export default class MobileControls {
     // Camera look touch state
     this.cameraTouchId = null;
     this.cameraLastPos = { x: 0, y: 0 };
-    this.cameraSensitivity = 0.0035;
+    this.cameraSensitivity = 0.0075;
 
     // Pinch zoom state
     this.isPinching = false;
@@ -178,13 +178,13 @@ export default class MobileControls {
         opacity: 1;
       }
 
-      /* Right Action Buttons Cluster (Bottom-Right) */
+      /* Right Action Buttons Cluster (Bottom-Right) - Sleek Semi-Transparent */
       .mobile-actions-container {
         position: absolute;
-        bottom: 20px;
-        right: 20px;
-        width: 200px;
-        height: 200px;
+        bottom: 15px;
+        right: 15px;
+        width: 160px;
+        height: 160px;
         pointer-events: none;
       }
 
@@ -200,30 +200,32 @@ export default class MobileControls {
         user-select: none;
         -webkit-user-select: none;
         cursor: pointer;
-        transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.08s ease;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7);
+        transition: transform 0.08s ease, filter 0.08s ease;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        opacity: 0.88;
       }
       .touch-action-btn:active, .touch-action-btn.active {
-        transform: scale(0.92);
-        filter: brightness(1.25);
+        transform: scale(0.90);
+        filter: brightness(1.3);
+        opacity: 1;
       }
 
       /* Main Attack Button */
       #btn-mobile-attack {
-        bottom: 10px;
-        right: 10px;
-        width: 72px;
-        height: 72px;
-        background: radial-gradient(circle at 35% 35%, #e74c3c 0%, #c0392b 75%, #7f1d1d 100%);
-        border: 2.5px solid #ff7675;
-        box-shadow: 0 5px 20px rgba(192, 57, 43, 0.6), inset 0 0 10px rgba(255, 255, 255, 0.3);
+        bottom: 4px;
+        right: 4px;
+        width: 60px;
+        height: 60px;
+        background: radial-gradient(circle at 35% 35%, rgba(231, 76, 60, 0.95) 0%, rgba(192, 57, 43, 0.9) 75%, rgba(127, 29, 29, 0.9) 100%);
+        border: 2px solid #ff7675;
       }
       #btn-mobile-attack .btn-icon {
-        font-size: 32px;
-        line-height: 32px;
+        font-size: 26px;
+        line-height: 26px;
       }
       #btn-mobile-attack .btn-sub {
-        font-size: 8px;
+        font-size: 7.5px;
         font-weight: 800;
         color: #fff;
         text-transform: uppercase;
@@ -232,81 +234,78 @@ export default class MobileControls {
 
       /* Jump Button */
       #btn-mobile-jump {
-        bottom: 96px;
-        right: 12px;
-        width: 54px;
-        height: 54px;
-        background: radial-gradient(circle at 35% 35%, #3498db 0%, #2980b9 75%, #1b4f72 100%);
-        border: 2px solid #74b9ff;
-        box-shadow: 0 4px 14px rgba(41, 128, 185, 0.5);
+        bottom: 76px;
+        right: 6px;
+        width: 46px;
+        height: 46px;
+        background: radial-gradient(circle at 35% 35%, rgba(52, 152, 219, 0.9) 0%, rgba(41, 128, 185, 0.85) 75%, rgba(27, 79, 114, 0.85) 100%);
+        border: 1.5px solid #74b9ff;
       }
       #btn-mobile-jump .btn-icon {
-        font-size: 24px;
-        line-height: 24px;
+        font-size: 20px;
+        line-height: 20px;
       }
       #btn-mobile-jump .btn-sub {
-        font-size: 8px;
+        font-size: 7px;
         font-weight: 700;
         color: #fff;
       }
 
       /* Interact Button [E] */
       #btn-mobile-interact {
-        bottom: 12px;
-        right: 96px;
-        width: 54px;
-        height: 54px;
-        background: radial-gradient(circle at 35% 35%, #2ecc71 0%, #27ae60 75%, #145a32 100%);
-        border: 2px solid #55efc4;
-        box-shadow: 0 4px 14px rgba(39, 174, 96, 0.5);
+        bottom: 6px;
+        right: 76px;
+        width: 46px;
+        height: 46px;
+        background: radial-gradient(circle at 35% 35%, rgba(46, 204, 113, 0.9) 0%, rgba(39, 174, 96, 0.85) 75%, rgba(20, 90, 50, 0.85) 100%);
+        border: 1.5px solid #55efc4;
       }
       #btn-mobile-interact .btn-icon {
-        font-size: 22px;
-        line-height: 22px;
+        font-size: 19px;
+        line-height: 19px;
       }
       #btn-mobile-interact .btn-sub {
-        font-size: 8px;
+        font-size: 7px;
         font-weight: 800;
         color: #fff;
       }
 
       /* Perspective Toggle (1st / 3rd Person) */
       #btn-mobile-camera {
-        bottom: 86px;
-        right: 86px;
-        width: 44px;
-        height: 44px;
-        background: radial-gradient(circle at 35% 35%, #9b59b6 0%, #8e44ad 75%, #4a235a 100%);
+        bottom: 68px;
+        right: 68px;
+        width: 38px;
+        height: 38px;
+        background: radial-gradient(circle at 35% 35%, rgba(155, 89, 182, 0.9) 0%, rgba(142, 68, 173, 0.85) 75%, rgba(74, 35, 90, 0.85) 100%);
         border: 1.5px solid #d2b4de;
-        box-shadow: 0 3px 12px rgba(142, 68, 173, 0.4);
       }
       #btn-mobile-camera .btn-icon {
-        font-size: 19px;
-        line-height: 19px;
+        font-size: 16px;
+        line-height: 16px;
       }
 
       /* Top Mobile Quick Navigation Bar */
       .mobile-top-bar {
         position: absolute;
-        top: 12px;
-        right: 12px;
+        top: 8px;
+        right: 8px;
         display: flex;
-        gap: 6px;
+        gap: 4px;
         pointer-events: auto;
       }
 
       .mobile-pill-btn {
         background: rgba(15, 20, 30, 0.85);
         color: #f1c40f;
-        border: 1.5px solid rgba(212, 175, 55, 0.5);
-        border-radius: 20px;
-        padding: 6px 11px;
-        font-size: 11px;
+        border: 1px solid rgba(212, 175, 55, 0.5);
+        border-radius: 14px;
+        padding: 4px 8px;
+        font-size: 10px;
         font-weight: 700;
         display: flex;
         align-items: center;
-        gap: 4px;
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.6);
+        gap: 3px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
         backdrop-filter: blur(6px);
         cursor: pointer;
         touch-action: manipulation;
@@ -319,15 +318,46 @@ export default class MobileControls {
 
       /* Screen Adaptation for Mobile */
       body.mobile-mode #hud {
-        top: 10px;
-        left: 10px;
+        top: 8px;
+        left: 8px;
         bottom: auto;
-        transform: scale(0.8);
-        transform-origin: top left;
-        padding: 10px;
-        min-width: 190px;
-        max-width: 220px;
-        background: rgba(12, 16, 22, 0.75);
+        transform: none;
+        padding: 5px 8px;
+        width: 140px;
+        min-width: 120px;
+        max-width: 150px;
+        background: rgba(10, 14, 20, 0.85);
+        border-radius: 6px;
+        gap: 3px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+      }
+
+      body.mobile-mode #hud .bar-label span:last-child {
+        display: none; /* Hide numerical 100/100 to save screen real estate */
+      }
+      body.mobile-mode #hud .bar-label {
+        font-size: 8px;
+      }
+      body.mobile-mode #hud .bar {
+        height: 4px;
+        border-radius: 2px;
+      }
+      body.mobile-mode #hud .hud-top-meta {
+        padding-bottom: 2px;
+      }
+      body.mobile-mode #hud .hud-level-badge {
+        font-size: 8px;
+      }
+      body.mobile-mode #hud .hud-xp-bar-bg {
+        width: 35px;
+        height: 3px;
+      }
+      body.mobile-mode #hud .hud-xp-val {
+        display: none;
+      }
+      body.mobile-mode #hud .hud-biome-badge {
+        font-size: 8px;
+        padding: 0 3px;
       }
 
       body.mobile-mode .hud-buttons-row,
@@ -336,27 +366,39 @@ export default class MobileControls {
       }
 
       body.mobile-mode #hotbar {
-        bottom: 10px;
-        transform: translateX(-50%) scale(0.85);
+        bottom: 8px;
+        transform: translateX(-50%) scale(0.75);
         transform-origin: bottom center;
       }
 
       body.mobile-mode #minimap-container {
-        top: 55px;
-        right: 12px;
-        transform: scale(0.82);
-        transform-origin: top right;
+        top: 42px;
+        right: 8px;
+        width: 90px;
+        height: 90px;
+        padding: 2px;
+        transform: none;
+        border-radius: 50%;
+        background: rgba(10, 14, 20, 0.85);
+      }
+      body.mobile-mode #minimap {
+        width: 86px !important;
+        height: 86px !important;
+        border-radius: 50%;
       }
 
       body.mobile-mode #game-clock-container {
-        top: 55px;
-        right: 155px;
-        transform: scale(0.82);
-        transform-origin: top right;
+        top: 138px;
+        right: 8px;
+        transform: none;
+        padding: 2px 6px;
+        font-size: 9px;
+        border-radius: 4px;
+        background: rgba(10, 14, 20, 0.85);
       }
 
       body.mobile-mode #quest-log {
-        display: none; /* Hide wide desktop quest log on mobile, accessible via map or clean banner */
+        display: none; /* Accessible via map button [M] */
       }
 
       body.mobile-mode #tooltip {
@@ -387,6 +429,7 @@ export default class MobileControls {
         <button id="mbtn-craft" class="mobile-pill-btn">⚒️ <span>Paja</span></button>
         <button id="mbtn-map" class="mobile-pill-btn">🗺️ <span>Kartta</span></button>
         <button id="mbtn-skills" class="mobile-pill-btn">⭐ <span>Taidot</span></button>
+        <button id="mbtn-fullscreen" class="mobile-pill-btn" title="Koko näyttö / Fullscreen">⛶</button>
         <button id="mbtn-menu" class="mobile-pill-btn">⚙️ <span>Valikko</span></button>
       </div>
 
@@ -502,14 +545,19 @@ export default class MobileControls {
       const dirX = Math.cos(angle) * normDist;
       const dirY = Math.sin(angle) * normDist;
 
-      // Update player movement keys
-      this.player.keys.forward = dirY < -0.25;
-      this.player.keys.back    = dirY > 0.25;
-      this.player.keys.left    = dirX < -0.25;
-      this.player.keys.right   = dirX > 0.25;
+      // Smooth 360-degree analog movement in Player
+      if (this.player && this.player.analogMove) {
+        this.player.analogMove.set(dirX, dirY);
+      }
 
-      // Auto-sprint when thumb is pushed > 75%
-      const isSprint = normDist > 0.75;
+      // Update player movement keys fallback
+      this.player.keys.forward = dirY < -0.22;
+      this.player.keys.back    = dirY > 0.22;
+      this.player.keys.left    = dirX < -0.22;
+      this.player.keys.right   = dirX > 0.22;
+
+      // Auto-sprint when thumb is pushed > 70%
+      const isSprint = normDist > 0.70;
       this.player.keys.sprint = isSprint;
       if (sprintBadge) {
         if (isSprint) sprintBadge.classList.add('active');
@@ -529,6 +577,9 @@ export default class MobileControls {
         this.joystickActive = false;
         this.joystickTouchId = null;
         jStick.style.transform = 'translate3d(0, 0, 0)';
+        if (this.player && this.player.analogMove) {
+          this.player.analogMove.set(0, 0);
+        }
         this.player.keys.forward = false;
         this.player.keys.back = false;
         this.player.keys.left = false;
@@ -656,12 +707,7 @@ export default class MobileControls {
         const touch = e.changedTouches[i];
         const target = document.elementFromPoint(touch.clientX, touch.clientY);
         if (target && (
-          target.closest('#mobile-joystick-zone') ||
-          target.closest('.mobile-actions-container') ||
-          target.closest('.mobile-top-bar') ||
-          target.closest('.modal.active') ||
-          target.closest('.menu-modal.active') ||
-          target.closest('#hotbar')
+          target.closest('button, .touch-action-btn, .mobile-pill-btn, .hotbar-slot, .modal.active, .menu-modal.active, #mobile-joystick-zone, input, select')
         )) {
           continue;
         }
@@ -677,7 +723,7 @@ export default class MobileControls {
         }
 
         // Right screen half = camera look drag
-        if (touch.clientX > window.innerWidth * 0.40 && this.cameraTouchId === null) {
+        if (touch.clientX > window.innerWidth * 0.35 && this.cameraTouchId === null) {
           this.cameraTouchId = touch.identifier;
           this.cameraLastPos = { x: touch.clientX, y: touch.clientY };
         }
@@ -713,10 +759,11 @@ export default class MobileControls {
 
             // Rotate camera (YXZ order)
             if (this.camera) {
+              this.camera.rotation.order = 'YXZ';
               this.camera.rotation.y -= dx * this.cameraSensitivity;
               this.camera.rotation.x -= dy * this.cameraSensitivity;
-              // Clamp pitch
-              const maxPitch = Math.PI / 2 - 0.05;
+              // Clamp pitch between -75 deg and +75 deg
+              const maxPitch = Math.PI * 0.42;
               this.camera.rotation.x = Math.max(-maxPitch, Math.min(maxPitch, this.camera.rotation.x));
             }
             break;
@@ -771,6 +818,21 @@ export default class MobileControls {
 
     bindPill('mbtn-skills', () => {
       if (this.skillTree) this.skillTree.toggle();
+    });
+
+    bindPill('mbtn-fullscreen', () => {
+      if (typeof window.toggleGameFullscreen === 'function') {
+        window.toggleGameFullscreen();
+      } else {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+          const el = document.documentElement;
+          if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+          else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+        } else {
+          if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        }
+      }
     });
 
     bindPill('mbtn-menu', () => {

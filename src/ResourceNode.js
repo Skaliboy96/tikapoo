@@ -136,7 +136,13 @@ export default class ResourceNode {
       if (node.type === 'ore') {
         const canMine = this.canMineOre(node);
         if (!canMine) {
-          return { allowed: false, message: node.requiredMsg || 'Vaatii vahvemman hakun / avaimen!' };
+          const reqTier = this.getNodeTier(node);
+          let tierMsg = 'Vaatii vahvemman hakun!';
+          if (reqTier === 2) tierMsg = 'Perushakku ei pysty malmiin! Vaatii Sarvihakun (Valmista 1. bossin sarvista)';
+          else if (reqTier === 3) tierMsg = 'Vaatii vähintään Pronssihakun tai Suoavaimen!';
+          else if (reqTier === 4) tierMsg = 'Vaatii vähintään Rautahakun!';
+          else if (reqTier >= 5) tierMsg = 'Vaatii vähintään Vuoristohakun (Hopeahakku)!';
+          return { allowed: false, message: node.requiredMsg || tierMsg };
         }
       }
       return { allowed: true };
@@ -146,25 +152,52 @@ export default class ResourceNode {
     return { allowed: true };
   }
 
+  getPickaxeTier() {
+    const inv = this.inventory;
+    if (!inv) return 0;
+    const tools = inv.tools || {};
+    if (tools.silverPickaxe) return 5;
+    if (tools.ironPickaxe) return 4;
+    if (tools.bronzePickaxe) return 3;
+    if (tools.antlerPickaxe) return 2;
+    if (tools.pickaxe) return 1;
+    return 0;
+  }
+
+  getNodeTier(node) {
+    if (!node || node.type !== 'ore') return 1; // Basic stone is Tier 1
+    if (node.minTool === 'antlerPickaxe') return 2; // Copper & Tin Ore (Tier 2)
+    if (node.minTool === 'swampKey' || node.oreItem === 'ironOre') return 3; // Iron Ore (Tier 3)
+    if (node.minTool === 'wishbone' || node.oreItem === 'silverOre') return 4; // Silver Ore (Tier 4)
+    if (node.minTool === 'artisanCore' || node.oreItem === 'blackMetalScrap') return 5; // Black Metal (Tier 5)
+    if (node.minTool === 'dragonTears' || node.oreItem === 'flametalOre') return 5; // Flametal (Tier 5)
+    return 2;
+  }
+
   canMineOre(node) {
     if (!node || node.type !== 'ore') return true;
     const inv = this.inventory;
     if (!inv) return true;
 
-    if (node.minTool === 'antlerPickaxe') {
-      return (inv.tools && (inv.tools.antlerPickaxe || inv.tools.bronzePickaxe || inv.tools.ironPickaxe || inv.tools.silverPickaxe || inv.tools.pickaxe)) || inv.has('hardAntler', 1);
+    const playerTier = this.getPickaxeTier();
+    const reqTier = this.getNodeTier(node);
+
+    // Basic stone pickaxe (Tier 1) can ONLY mine rocks, never ores!
+    if (playerTier < 2) {
+      return false;
     }
-    if (node.minTool === 'swampKey') {
-      return inv.has('swampKey', 1) || inv.has('iron', 1) || (inv.tools && (inv.tools.ironPickaxe || inv.tools.silverPickaxe));
+
+    if (reqTier === 2) {
+      return playerTier >= 2;
     }
-    if (node.minTool === 'wishbone') {
-      return inv.has('wishbone', 1) || inv.has('silver', 1) || (inv.tools && inv.tools.silverPickaxe);
+    if (reqTier === 3) {
+      return playerTier >= 3 || inv.has('swampKey', 1);
     }
-    if (node.minTool === 'artisanCore') {
-      return inv.has('artisanCore', 1) || inv.has('blackMetal', 1);
+    if (reqTier === 4) {
+      return playerTier >= 4 || inv.has('wishbone', 1);
     }
-    if (node.minTool === 'dragonTears') {
-      return inv.has('dragonTears', 1) || inv.has('dragonSteel', 1);
+    if (reqTier >= 5) {
+      return playerTier >= 5 || inv.has('artisanCore', 1) || inv.has('dragonTears', 1);
     }
     return true;
   }

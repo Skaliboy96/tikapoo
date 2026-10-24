@@ -104,13 +104,22 @@ export default class CraftingMenu {
         cost: { wood: 4, stone: 5 }
       },
       {
-        id: 'antlerPickaxe',
+        id: 'stoneClub',
         category: 'tools',
-        name: '🔱 Sarvihakku (Antler Pickaxe - Tier 1)',
+        name: '🪵 Kivinuija (Stone Mace)',
         type: 'tool',
-        requiresWorkbench: true,
-        desc: 'Sarvipadon sarvista kaiverrettu hakku. Mahdollistaa Kuparin ja Tinan louhinnan Mustametsästä!',
-        cost: { hardAntler: 1, wood: 4 }
+        requiresWorkbench: false,
+        desc: 'Raskas kivipäinen murskausase. Murskaa luut ja tekee 38 vahinkoa.',
+        cost: { wood: 4, stone: 5 }
+      },
+      {
+        id: 'stoneDagger',
+        category: 'tools',
+        name: '🗡️ Piikivitikari (Stone Dagger)',
+        type: 'tool',
+        requiresWorkbench: false,
+        desc: 'Terävästä kivestä hiottu nopea tikari. Tekee 28 vahinkoa ripein iskuin.',
+        cost: { stone: 3, wood: 2 }
       },
       {
         id: 'shield',
@@ -122,6 +131,24 @@ export default class CraftingMenu {
         cost: { wood: 5, stone: 2 }
       },
       {
+        id: 'stoneShield',
+        category: 'tools',
+        name: '🛡️ Kivinen Tornikilpi (Stone Tower Shield)',
+        type: 'tool',
+        requiresWorkbench: true,
+        desc: 'Vankka kivilaatalla vahvistettu kilpi. Torjuu 45% saapuvasta vahingosta!',
+        cost: { stone: 7, wood: 4 }
+      },
+      {
+        id: 'stoneArmor',
+        category: 'tools',
+        name: '🪨 Kivipanssari (Stone Plate Armor)',
+        type: 'item',
+        requiresWorkbench: true,
+        desc: 'Kivilaatoista ja nahasta koottu luja rintapanssari. Vähentää vahinkoa 25%.',
+        cost: { stone: 8, leather: 2, wood: 2 }
+      },
+      {
         id: 'leatherArmor',
         category: 'tools',
         name: '🥋 Nahkahaarniska (Leather Armor)',
@@ -129,6 +156,24 @@ export default class CraftingMenu {
         requiresWorkbench: true,
         desc: 'Vahvasta petonahasta ommeltu rintapanssari. Vähentää vahinkoa 18%.',
         cost: { leather: 4, wood: 2 }
+      },
+      {
+        id: 'antlerPickaxe',
+        category: 'tools',
+        name: '🔱 Sarvihakku (Antler Pickaxe - Boss Tier 1)',
+        type: 'tool',
+        requiresWorkbench: true,
+        desc: 'Metsän Kauhun sarvista kaiverrettu hakku. Mahdollistaa Kuparin ja Tinan louhinnan Mustametsästä!',
+        cost: { hardAntler: 1, wood: 4 }
+      },
+      {
+        id: 'antlerBow',
+        category: 'tools',
+        name: '🏹 Sarvijousi (Ancient Horn Bow - Boss Tier 1)',
+        type: 'tool',
+        requiresWorkbench: true,
+        desc: 'Sarvipadon joustavista sarvista punottu jousi. Tekee 75 vahinkoa!',
+        cost: { hardAntler: 1, wood: 6, leather: 2 }
       },
 
       // --- BRONZE TIER (Mustametsä) ---
@@ -755,6 +800,12 @@ export default class CraftingMenu {
         fishingRod: 'Enables fishing from river piers and lakeshores [Press E on pier].',
         torch: 'Illuminates the dark wilderness and wards off nocturnal beasts. Deals fire damage!',
         stoneSpear: 'Sharp throwing & thrusting spear. Great reach and quick attacks.',
+        stoneClub: 'Heavy stone-headed mace. Crushes bones and deals 38 damage.',
+        stoneDagger: 'Swift flint dagger. Delivers rapid attacks dealing 28 damage.',
+        stoneShield: 'Bulky stone-plated shield. Blocks up to 45% incoming damage.',
+        stoneArmor: 'Chiseled stone plate cuirass. Grants 25% physical damage resistance.',
+        antlerPickaxe: 'Antler pickaxe carved from the Forest Beast. Mines copper and tin in the Black Forest.',
+        antlerBow: 'Ancient recurve bow carved from legendary beast horns. Deals 75 damage.',
         bronzeAxe: 'Forged bronze woodcutting axe. Chops hard timber trees faster. Deals 36 damage.',
         bronzePickaxe: 'Forged bronze pickaxe. Mines copper, tin, and rock veins easily.',
         bronzeSword: 'Forged bronze blade. Deals 48 damage with rapid swings.',

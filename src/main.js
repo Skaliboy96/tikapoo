@@ -807,6 +807,64 @@ async function init() {
     });
   }
 
+  // --- Fullscreen Toggle System ---
+  const toggleFullscreen = () => {
+    if (audioManager) audioManager.ensureContext();
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      const el = document.documentElement;
+      if (el.requestFullscreen) {
+        el.requestFullscreen().catch(() => {});
+      } else if (el.webkitRequestFullscreen) {
+        el.webkitRequestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+    }
+  };
+  window.toggleGameFullscreen = toggleFullscreen;
+
+  ['hud-fullscreen-btn', 'menu-fullscreen-btn', 'pause-fullscreen-btn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleFullscreen();
+      });
+    }
+  });
+
+  // --- Restart Game System ---
+  const restartGame = () => {
+    if (audioManager) audioManager.ensureContext();
+    const isFi = (typeof Localization !== 'undefined' && Localization.lang === 'en') ? false : true;
+    const msg = isFi
+      ? 'Haluatko varmasti aloittaa alusta? Kaikki tallentamaton edistyminen nollataan.'
+      : 'Are you sure you want to restart? All unsaved progress will be reset.';
+    if (window.confirm(msg)) {
+      try {
+        localStorage.removeItem('tikapoo_savegame');
+        localStorage.removeItem('tikapoo_daynight');
+        localStorage.removeItem('tikapoo_quests');
+        localStorage.removeItem('tikapoo_skills');
+        localStorage.removeItem('tikapoo_world_edits');
+        localStorage.removeItem('tikapoo_character');
+      } catch (e) {}
+      window.location.reload();
+    }
+  };
+
+  const pauseRestartBtn = document.getElementById('pause-restart-btn');
+  if (pauseRestartBtn) {
+    pauseRestartBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      restartGame();
+    });
+  }
+
   // Global ESC key and browser protection handler
   window.addEventListener('keydown', (e) => {
     // 1. Prevent accidental browser tab close (Ctrl+W), reload (Ctrl+R), print (Ctrl+P), save (Ctrl+S) while playing with WASD
@@ -1294,7 +1352,8 @@ async function init() {
       enemyManager.enemies,
       buildingSystem.campfires,
       currentBiome,
-      world.tombstones
+      world.tombstones,
+      bossManager ? bossManager.getBossMarkers() : []
     );
 
     // Render 3D Scene

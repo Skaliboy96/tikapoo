@@ -39,6 +39,9 @@ export default class Player {
     this.mana = 100;
     this.maxMana = 100;
 
+    // Mobile analog joystick 360-degree input vector
+    this.analogMove = new THREE.Vector2(0, 0);
+
     this.level = 1;
     this.xp = 0;
     this.xpNext = 100;
@@ -459,7 +462,7 @@ export default class Player {
 
     // 1. Shield visibility
     if (this.shieldOnArm) {
-      this.shieldOnArm.visible = (equipped === 'shield' || (this.inventory && this.inventory.tools && this.inventory.tools.shield));
+      this.shieldOnArm.visible = (equipped === 'shield' || equipped === 'stoneShield' || (this.inventory && this.inventory.tools && (this.inventory.tools.shield || this.inventory.tools.stoneShield)));
     }
 
     // 2. Map equipped tool to weaponPool key
@@ -469,10 +472,10 @@ export default class Player {
     else if (equipped === 'pickaxe' || equipped === 'antlerPickaxe' || equipped === 'bronzePickaxe' || equipped === 'ironPickaxe' || equipped === 'silverPickaxe') poolKey = 'pickaxe';
     else if (equipped === 'stoneSpear' || equipped === 'hornSpear' || equipped === 'bronzeSword' || equipped === 'scaleSword' || equipped === 'ironSword' ||
              equipped === 'steelSword' || equipped === 'silverSword' || equipped === 'blackMetalSword' ||
-             equipped === 'runeblade' || equipped === 'dragonSlayer' || equipped === 'weapon') poolKey = 'sword';
-    else if (equipped === 'hammer') poolKey = 'hammer';
+             equipped === 'runeblade' || equipped === 'dragonSlayer' || equipped === 'weapon' || equipped === 'stoneDagger') poolKey = 'sword';
+    else if (equipped === 'hammer' || equipped === 'stoneClub' || equipped === 'titanHammer') poolKey = 'hammer';
     else if (equipped === 'fishingRod') poolKey = 'fishingRod';
-    else if (equipped === 'huntingBow') poolKey = 'huntingBow';
+    else if (equipped === 'huntingBow' || equipped === 'antlerBow') poolKey = 'huntingBow';
     else if (equipped === 'runicStaff') poolKey = 'runicStaff';
 
     // Zero-allocation visibility toggle
@@ -500,6 +503,7 @@ export default class Player {
 
     const armorStyles = {
       none:         { color: this.charConfig?.clothingColor || 0x2e5339, metalness: 0.05, roughness: 0.85, name: 'none' },
+      stoneArmor:   { color: 0x7f8c8d, metalness: 0.2,  roughness: 0.9,  name: 'stone' },
       leatherArmor: { color: 0x6e411b, metalness: 0.1,  roughness: 0.75, name: 'leather' },
       bronzeArmor:  { color: 0xcd7f32, metalness: 0.85, roughness: 0.25, name: 'bronze' },
       beastArmor:   { color: 0x48321d, metalness: 0.15, roughness: 0.8,  name: 'beast' },
@@ -782,10 +786,17 @@ export default class Player {
     right.crossVectors(forward, this.camera.up).normalize();
 
     this.direction.set(0, 0, 0);
-    if (this.keys.forward) this.direction.add(forward);
-    if (this.keys.back) this.direction.sub(forward);
-    if (this.keys.right) this.direction.add(right);
-    if (this.keys.left) this.direction.sub(right);
+    if (this.analogMove && (this.analogMove.x !== 0 || this.analogMove.y !== 0)) {
+      // Smooth 360-degree analog joystick movement
+      this.direction.addScaledVector(forward, -this.analogMove.y);
+      this.direction.addScaledVector(right, this.analogMove.x);
+    } else {
+      // Keyboard WASD input
+      if (this.keys.forward) this.direction.add(forward);
+      if (this.keys.back) this.direction.sub(forward);
+      if (this.keys.right) this.direction.add(right);
+      if (this.keys.left) this.direction.sub(right);
+    }
 
     // Apply horizontal WASD movement with sliding collision check against buildings and obstacles
     if (this.direction.lengthSq() > 0) {
@@ -879,8 +890,9 @@ export default class Player {
     if (this.velocity.y < -35) this.velocity.y = -35;
     this.playerPos.y += this.velocity.y * delta;
 
-    // Ground collision & landing
-    const groundHeight = world ? world.getGroundHeight(this.playerPos.x, this.playerPos.z) : 0;
+    // Ground collision & landing (with guaranteed elevation floor so character never sinks underground or below riverbed)
+    const rawGroundH = world ? world.getGroundHeight(this.playerPos.x, this.playerPos.z) : 0;
+    const groundHeight = Math.max(rawGroundH, -1.25);
     if (this.playerPos.y <= groundHeight) {
       if (!this.isGrounded) {
         this.playAnimation('NinjaJump_Land');
@@ -900,19 +912,30 @@ export default class Player {
       this.isGrounded = true;
     }
 
-    // Basic Needs (Hunger, Thirst, Energy) & Mana
-    this.hunger = Math.max(0, this.hunger - 0.42 * delta);
-    const thirstDrain = isSprinting ? 0.95 : 0.52;
+    // Basic Needs (Hunger, Thirst, Energy) & Mana - balanced survival pacing
+    this.hunger = Math.max(0, this.hunger - 0.055 * delta);
+    const thirstDrain = isSprinting ? 0.16 : 0.085;
     this.thirst = Math.max(0, this.thirst - thirstDrain * delta);
-    const energyDrain = isSprinting ? 0.65 : 0.32;
+    const energyDrain = isSprinting ? 0.35 : 0.08;
     this.energy = Math.max(0, this.energy - energyDrain * delta);
     this.mana = Math.min(this.maxMana, this.mana + 8.0 * delta);
 
-    if (this.hunger <= 0) {
-      this.takeDamage(2.0 * delta, null, false);
-    }
-    if (this.thirst <= 0) {
-      this.takeDamage(2.0 * delta, null, false);
+    // Periodic Starvation/Thirst Tick (deal damage every 4s, never per-frame!)
+    this.needsTickTimer = (this.needsTickTimer || 0) + delta;
+    if (this.needsTickTimer >= 4.0) {
+      this.needsTickTimer = 0;
+      if (this.hunger <= 0 || this.thirst <= 0) {
+        if (this.health > 15) {
+          this.takeDamage(4, null, false);
+          if (this.hud && this.hud.showNotification) {
+            const isFi = !this.currentLang || this.currentLang === 'fi';
+            const msg = this.thirst <= 0
+              ? (isFi ? '⚠️ Kärsit janosta! Etsi vettä tai juomaa!' : '⚠️ Dehydrated! Drink water or beverage!')
+              : (isFi ? '⚠️ Olet nääntymässä nälkään! Syö ruokaa!' : '⚠️ Starving! Eat food to survive!');
+            this.hud.showNotification(msg, 3200);
+          }
+        }
+      }
     }
     if (this.hunger > 60 && this.thirst > 60 && this.health < this.maxHealth) {
       this.heal(0.8 * delta);
@@ -1053,7 +1076,10 @@ export default class Player {
     const reduction = (this.inventory && this.inventory.getDamageReduction)
       ? this.inventory.getDamageReduction()
       : 0;
-    const finalDamage = Math.max(1, Math.round(amount * (1 - reduction)));
+    const rawDamage = amount * (1 - reduction);
+    if (rawDamage < 0.5) return; // Ignore microscopic continuous ticks to prevent false -1 damage spam
+
+    const finalDamage = Math.max(1, Math.round(rawDamage));
 
     this.health = Math.max(0, this.health - finalDamage);
 

@@ -23,9 +23,24 @@ export default class BossManager {
     this.bossPhaseEl = document.getElementById('boss-hud-phase');
     this.bossHpValEl = document.getElementById('boss-hud-hp-val');
 
-    // Progression state: 0 = Boss 1 unlocked, 1 = Boss 2, ..., 4 = Boss 5
+    // Progression state & Defeated Bosses Tracking
+    let savedDefeated = [];
+    try {
+      savedDefeated = JSON.parse(localStorage.getItem('tikapoo_defeated_boss_ids') || '[]');
+    } catch (e) {
+      savedDefeated = [];
+    }
+    this.defeatedBossIds = new Set(savedDefeated);
+
     const savedProgress = localStorage.getItem('tikapoo_boss_progress');
     this.unlockedBossIndex = savedProgress !== null ? parseInt(savedProgress, 10) : 0;
+
+    // Backward-compat: if legacy save had unlockedBossIndex > 0, seed defeatedBossIds
+    for (let i = 0; i < this.unlockedBossIndex; i++) {
+      if (this.bossDefs && this.bossDefs[i]) {
+        this.defeatedBossIds.add(this.bossDefs[i].id);
+      }
+    }
 
     this.projectiles = [];
     this.particles = [];
@@ -458,17 +473,16 @@ export default class BossManager {
     return { group, flashMaterials };
   }
 
-  // --- Spawn currently unlocked bosses ---
+  // --- Spawn active bosses across all biomes ---
   spawnActiveBosses() {
     this.bosses = [];
 
     this.bossDefs.forEach((def, index) => {
-      // Spawn bosses up to the unlocked index
-      const isDefeated = (index < this.unlockedBossIndex);
-      const isUnlocked = (index <= this.unlockedBossIndex);
+      // Spawn all bosses that are alive and not yet defeated
+      const isDefeated = this.defeatedBossIds.has(def.id);
 
-      if (!isUnlocked || isDefeated) {
-        return; // Locked or already slain
+      if (isDefeated) {
+        return; // Slain in this world
       }
 
       const { group, flashMaterials } = this._createBossMesh(def);
@@ -595,23 +609,45 @@ export default class BossManager {
     }
     this.activeBoss = null;
 
-    // Grant legendary drops
-    Object.entries(boss.def.drops).forEach(([mat, qty]) => {
-      this.inventory.add(mat, qty);
-    });
+    // Mark boss as defeated in persistent set
+    this.defeatedBossIds.add(boss.def.id);
+    localStorage.setItem('tikapoo_defeated_boss_ids', JSON.stringify([...this.defeatedBossIds]));
 
-    // Advance progression
+    // Advance progression index
     this.unlockedBossIndex = Math.max(this.unlockedBossIndex, boss.index + 1);
     localStorage.setItem('tikapoo_boss_progress', this.unlockedBossIndex.toString());
 
-    // Epic Victory Announcement
+    // Grant legendary drops and display prominent notifications for each reward
+    const dropList = [];
+    Object.entries(boss.def.drops).forEach(([mat, qty]) => {
+      this.inventory.add(mat, qty);
+      const itemName = this.inventory.getItemName ? this.inventory.getItemName(mat) : mat;
+      dropList.push(`${qty}x ${itemName}`);
+      if (this.hud && this.hud.showPickupText) {
+        this.hud.showPickupText(`🎁 +${qty} ${itemName}!`);
+      }
+    });
+
+    // Epic Multi-Stage Victory Announcements
     if (this.hud) {
-      this.hud.showNotification(`🏆 ${boss.def.name} ON KUKISTETTU!`, 5500);
+      const isFi = !this.hud.currentLang || this.hud.currentLang === 'fi';
+      const victoryTitle = isFi
+        ? `🏆 ${boss.def.name.toUpperCase()} ON KUKISTETTU!`
+        : `🏆 ${boss.def.name.toUpperCase()} DEFEATED!`;
+      this.hud.showNotification(victoryTitle, 6500);
+
       setTimeout(() => {
         if (this.hud) {
-          this.hud.showNotification(boss.def.unlockMessage, 6500);
+          const rewardTitle = isFi ? '🎁 SAATU SAALIS' : '🎁 LOOT REWARD';
+          this.hud.showNotification(`${rewardTitle}: ${dropList.join(' • ')}`, 7500);
         }
-      }, 3500);
+      }, 2500);
+
+      setTimeout(() => {
+        if (this.hud) {
+          this.hud.showNotification(boss.def.unlockMessage, 8500);
+        }
+      }, 5500);
     }
 
     if (this.audioManager) {
@@ -1048,12 +1084,11 @@ export default class BossManager {
     return this.bosses.filter(b => b.isAlive).map(b => b.mesh);
   }
 
-  // Returns all 5 boss info for the World Map
+  // Returns all 5 boss info for the World Map & Minimap
   getBossMarkers() {
     return this.bossDefs.map((def, index) => {
-      let status = 'locked';
-      if (index < this.unlockedBossIndex) status = 'defeated';
-      else if (index === this.unlockedBossIndex) status = 'active';
+      const isDefeated = this.defeatedBossIds.has(def.id) || (index < this.unlockedBossIndex);
+      const status = isDefeated ? 'defeated' : 'active';
 
       return {
         id: def.id,

@@ -1161,7 +1161,7 @@ export default class BuildingSystem {
     const type = this.selectedStructure;
     let rad = 0;
     const tLower = (type || '').toLowerCase();
-    if (tLower.includes('wall') || tLower.includes('palisade') || tLower.includes('beam') || tLower.includes('log') || tLower.includes('gate')) {
+    if (tLower.includes('wall') || tLower.includes('palisade') || tLower.includes('beam') || tLower.includes('log') || tLower.includes('gate') || tLower.includes('fence')) {
       rad = 1.1;
     } else if (tLower.includes('door')) {
       rad = 0.9;
@@ -1169,7 +1169,7 @@ export default class BuildingSystem {
       rad = 0.95;
     } else if (tLower.includes('table') || tLower.includes('chest') || tLower.includes('barrel') || tLower.includes('bed')) {
       rad = 0.75;
-    } else if (tLower.includes('campfire') || tLower.includes('chair') || tLower.includes('torch')) {
+    } else if (tLower.includes('campfire') || tLower.includes('chair') || tLower.includes('torch') || tLower.includes('candle')) {
       rad = 0.55;
     }
 
@@ -1223,15 +1223,16 @@ export default class BuildingSystem {
 
     const p = solidMesh.position;
     let rad = 0;
-    if (type === 'woodenWall' || type === 'stoneWall' || type === 'palisade') {
+    const tLower = (type || '').toLowerCase();
+    if (tLower.includes('wall') || tLower.includes('palisade') || tLower.includes('beam') || tLower.includes('log') || tLower.includes('gate') || tLower.includes('fence')) {
       rad = 1.1;
-    } else if (type === 'woodenDoor') {
+    } else if (tLower.includes('door')) {
       rad = 0.9;
-    } else if (type === 'smelter' || type === 'forge' || type === 'workbench') {
+    } else if (tLower.includes('smelter') || tLower.includes('forge') || tLower.includes('workbench') || tLower.includes('cauldron')) {
       rad = 0.95;
-    } else if (type === 'table' || type === 'chest' || type === 'barrel' || type === 'bed') {
+    } else if (tLower.includes('table') || tLower.includes('chest') || tLower.includes('barrel') || tLower.includes('bed')) {
       rad = 0.75;
-    } else if (type === 'campfire' || type === 'chair' || type === 'standingTorch') {
+    } else if (tLower.includes('campfire') || tLower.includes('chair') || tLower.includes('torch') || tLower.includes('candle')) {
       rad = 0.55;
     }
 

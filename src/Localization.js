@@ -18,11 +18,14 @@ class LocalizationManager {
         menu_settings: 'SETTINGS',
         menu_continue: 'CONTINUE ADVENTURE',
         menu_load: '📂 LOAD SAVE (.JSON)',
+        menu_fullscreen: '⛶ FULLSCREEN MODE',
         menu_back: 'Back to Menu',
 
         // Pause Menu
         pause_title: 'GAME PAUSED',
         pause_resume: 'RESUME GAME',
+        pause_restart: '🔄 RESTART GAME',
+        pause_fullscreen: '⛶ FULLSCREEN MODE',
         pause_save: '💾 SAVE GAME (EXPORT)',
         pause_load: '📂 LOAD SAVE (IMPORT)',
         pause_settings: 'SETTINGS',
@@ -308,11 +311,14 @@ class LocalizationManager {
         menu_settings: 'ASETUKSET',
         menu_continue: 'JATKA SEIKKAILUA',
         menu_load: '📂 LATAA TALLENNUS (.JSON)',
+        menu_fullscreen: '⛶ KOKO NÄYTTÖ',
         menu_back: 'Takaisin valikkoon',
 
         // Pause Menu
         pause_title: 'PELI PYSÄYTETTY',
         pause_resume: 'JATKA PELIÄ',
+        pause_restart: '🔄 ALOITA ALUSTA',
+        pause_fullscreen: '⛶ KOKO NÄYTTÖ',
         pause_save: '💾 TALLENNA PELI (EXPORT)',
         pause_load: '📂 LATAA TALLENNUS (IMPORT)',
         pause_settings: 'ASETUKSET',
