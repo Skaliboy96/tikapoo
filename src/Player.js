@@ -729,6 +729,24 @@ export default class Player {
     });
   }
 
+  isAnyMenuOpen() {
+    const mainMenu = document.getElementById('main-menu');
+    if (mainMenu && mainMenu.style.display !== 'none' && !mainMenu.classList.contains('hidden')) return true;
+
+    const pauseMenu = document.getElementById('pause-menu');
+    if (pauseMenu && (pauseMenu.classList.contains('active') || pauseMenu.style.display === 'flex')) return true;
+
+    const modal = document.querySelector(
+      '.modal.active, .menu-modal.active, #crafting-menu.active, #backpack-screen.active, #map-screen.active, #npc-dialogue.active, #char-creator-modal.active, #dev-password-modal.active'
+    );
+    if (modal) return true;
+
+    const stModal = document.getElementById('skill-tree-modal');
+    if (stModal && stModal.style.display !== 'none' && stModal.style.display !== '') return true;
+
+    return false;
+  }
+
   update(delta, world, combat = null) {
     if (this.playerMixer) {
       this.playerMixer.update(delta);
@@ -746,7 +764,31 @@ export default class Player {
       this.updateArmorVisuals(this.inventory.equippedArmor);
     }
 
-    if (!this.controls.isLocked) {
+    // Check if any UI menu or dialogue is open
+    const isMobile = window.isTouchDevice || ('ontouchstart' in window) || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const hasModal = this.isAnyMenuOpen();
+
+    if (hasModal) {
+      // Menu is open: freeze player movement inputs, but ensure gravity updates if in mid-air
+      if (this.isFalling) {
+        this.velocity.y -= 25.0 * delta;
+        this.playerPos.y += this.velocity.y * delta;
+        if (world) {
+          const groundY = world.getGroundHeight(this.playerPos.x, this.playerPos.z);
+          if (this.playerPos.y <= groundY) {
+            this.playerPos.y = groundY;
+            this.velocity.y = 0;
+            this.isGrounded = true;
+            this.isFalling = false;
+          }
+        }
+        if (this.camera) this.camera.position.set(this.playerPos.x, this.playerPos.y + this.eyeHeight, this.playerPos.z);
+      }
+      return;
+    }
+
+    // On mobile touch devices, pointer lock does not exist, so active gameplay proceeds whenever no menu is open
+    if (!isMobile && !this.controls.isLocked) {
       return;
     }
 
@@ -1170,14 +1212,24 @@ export default class Player {
       this.xp -= this.xpNext;
       this.xpNext = Math.round(this.xpNext * 1.5);
       this.skillPoints += 1;
-      this.maxHealth += 5;
-      this.maxStamina += 5;
+
+      // Passive level-up stat increases (+8 Max HP, +6 Max Stamina, +5 Max Mana)
+      this.maxHealth = 100 + (this.level - 1) * 8;
+      this.maxStamina = 100 + (this.level - 1) * 6;
+      this.maxMana = 100 + (this.level - 1) * 5;
       this.health = this.maxHealth;
       this.stamina = this.maxStamina;
+      this.mana = this.maxMana;
 
       if (this.audioManager) this.audioManager.playLevelUp();
       if (this.hud) {
-        this.hud.showNotification(`🎉 TASO NOUSI! Olet nyt tasolla ${this.level}! Paina [O] avataksesi uusia taitoja.`, 5000);
+        const isFi = !this.currentLang || this.currentLang === 'fi';
+        const msg = isFi
+          ? `🎉 TASO NOUSI! Olet nyt tasolla ${this.level}! (+8 Max HP, +6 Kestävyys, +5 Mana, +1 Taitopiste)`
+          : `🎉 LEVEL UP! You reached Level ${this.level}! (+8 Max HP, +6 Stamina, +5 Mana, +1 Skill Point)`;
+        this.hud.showNotification(msg, 5500);
+        this.hud.updateHealth(this.health, this.maxHealth);
+        this.hud.updateStamina(this.stamina, this.maxStamina);
       }
 
       if (this.skillTree) {

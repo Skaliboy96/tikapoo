@@ -362,6 +362,7 @@ export default class ResourceNode {
       }
       if (this.audioManager) this.audioManager.playMine();
       if (this.questManager) this.questManager.onCollect('stone', yieldCount);
+      if (this.achievementManager) this.achievementManager.onMine(1);
       if (this.player) this.player.addXP(25);
     } else if (node.type === 'tree') {
       yieldCount = Math.floor(Math.random() * 3) + 3; // 3 to 5
@@ -375,6 +376,7 @@ export default class ResourceNode {
       }
       if (this.audioManager) this.audioManager.playChop();
       if (this.questManager) this.questManager.onCollect('wood', yieldCount);
+      if (this.achievementManager) this.achievementManager.onChop(1);
       if (this.player) this.player.addXP(18);
     } else if (node.type === 'stone') {
       const isLoose = node.isLooseStone || (node.name && node.name.includes('Irtokivi'));
@@ -388,6 +390,7 @@ export default class ResourceNode {
         else this.audioManager.playMine();
       }
       if (this.questManager) this.questManager.onCollect('stone', yieldCount);
+      if (this.achievementManager) this.achievementManager.onMine(1);
       if (this.player) this.player.addXP(isLoose ? 6 : 18);
     } else if (node.type === 'bush') {
       const berryRoll = Math.random();

@@ -474,10 +474,18 @@ export default class MobileControls {
   }
 
   _setupGlobalTouchPolicy() {
-    // Prevent iOS rubber-banding and pull-to-refresh
+    // Prevent iOS rubber-banding and pull-to-refresh while allowing natural touch scrolling in all menus
     document.addEventListener('touchmove', (e) => {
-      // Allow scroll only inside active modal lists (e.g. crafting recipes, backpack items)
-      if (e.target.closest('.crafting-list, .backpack-grid, .modal-body, .instructions-body')) {
+      // Allow scroll inside all active modals, dialogues, quests, recipes, achievements, and panels
+      if (e.target.closest(
+        '.modal, .menu-modal, .crafting-modal, #crafting-menu, ' +
+        '#backpack-screen, .backpack-modal, #map-screen, .map-modal, ' +
+        '#npc-dialogue, .npc-dialogue-modal, #skill-tree-modal, .skill-tree-box, ' +
+        '#char-creator-modal, .char-creator-container, #pause-menu, ' +
+        '.st-quests-container, .st-achievements-container, .skill-tree-columns, ' +
+        '.recipe-grid, .crafting-list, .backpack-grid, .instructions-body, .modal-body, ' +
+        '.npc-quests-list, #npc-dialogue-box, .guide-content, .backpack-items-panel, [data-scrollable]'
+      )) {
         return;
       }
       e.preventDefault();
@@ -700,61 +708,76 @@ export default class MobileControls {
     // 3. Top Quick Menu Pills
     this._setupQuickMenuButtons();
 
-    // 4. Touch Camera Look / Orbit on the right half of the screen
-    window.addEventListener('touchstart', (e) => {
-      // Ignore if touch is inside joystick, action buttons, top bar, or modal
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        const touch = e.changedTouches[i];
-        const target = document.elementFromPoint(touch.clientX, touch.clientY);
-        if (target && (
-          target.closest('button, .touch-action-btn, .mobile-pill-btn, .hotbar-slot, .modal.active, .menu-modal.active, #mobile-joystick-zone, input, select')
-        )) {
+    // 4. Touch Camera Look / Orbit on the right half of the screen (smooth multitouch, independent of joystick)
+    const getActiveCameraTouches = (touches) => {
+      const result = [];
+      for (let i = 0; i < touches.length; i++) {
+        const t = touches[i];
+        if (this.joystickActive && t.identifier === this.joystickTouchId) continue;
+        const target = document.elementFromPoint(t.clientX, t.clientY);
+        if (target && target.closest('button, .touch-action-btn, .mobile-pill-btn, .hotbar-slot, .modal.active, .menu-modal.active, #mobile-joystick-zone, input, select')) {
           continue;
         }
-
-        // Two-finger pinch check
-        if (e.touches.length === 2) {
-          this.isPinching = true;
-          this.pinchDist = Math.hypot(
-            e.touches[0].clientX - e.touches[1].clientX,
-            e.touches[0].clientY - e.touches[1].clientY
-          );
-          return;
+        if (t.clientX > window.innerWidth * 0.28) {
+          result.push(t);
         }
+      }
+      return result;
+    };
 
-        // Right screen half = camera look drag
-        if (touch.clientX > window.innerWidth * 0.35 && this.cameraTouchId === null) {
-          this.cameraTouchId = touch.identifier;
-          this.cameraLastPos = { x: touch.clientX, y: touch.clientY };
+    window.addEventListener('touchstart', (e) => {
+      const camTouches = getActiveCameraTouches(e.touches);
+
+      // Dedicated two-finger pinch zoom ONLY if two fingers are placed together in the camera look zone
+      if (camTouches.length >= 2) {
+        this.isPinching = true;
+        this.pinchDist = Math.hypot(
+          camTouches[0].clientX - camTouches[1].clientX,
+          camTouches[0].clientY - camTouches[1].clientY
+        );
+        return;
+      }
+
+      // Single-finger camera orbit (works flawlessly while moving with joystick)
+      if (camTouches.length === 1) {
+        this.isPinching = false;
+        if (this.cameraTouchId === null || this.cameraTouchId !== camTouches[0].identifier) {
+          this.cameraTouchId = camTouches[0].identifier;
+          this.cameraLastPos = { x: camTouches[0].clientX, y: camTouches[0].clientY };
+          this.cameraTapStart = { time: performance.now(), x: camTouches[0].clientX, y: camTouches[0].clientY };
+          this.cameraTapMoved = 0;
         }
       }
     }, { passive: true });
 
     window.addEventListener('touchmove', (e) => {
-      // 2-finger pinch zoom
-      if (this.isPinching && e.touches.length === 2 && this.player) {
+      const camTouches = getActiveCameraTouches(e.touches);
+
+      // 1. Two-finger pinch zoom (strictly in camera area, never triggered by joystick)
+      if (this.isPinching && camTouches.length >= 2 && this.player) {
         const currentDist = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
+          camTouches[0].clientX - camTouches[1].clientX,
+          camTouches[0].clientY - camTouches[1].clientY
         );
         const diff = this.pinchDist - currentDist;
-        if (Math.abs(diff) > 2) {
+        if (Math.abs(diff) > 8) {
           this.player.targetCameraDistance = Math.max(
             1.8,
-            Math.min(6.5, this.player.targetCameraDistance + diff * 0.015)
+            Math.min(6.5, this.player.targetCameraDistance + diff * 0.012)
           );
           this.pinchDist = currentDist;
         }
         return;
       }
 
-      // Camera look drag
+      // 2. Camera look drag (independent of joystick)
       if (this.cameraTouchId !== null) {
         for (let i = 0; i < e.changedTouches.length; i++) {
           const touch = e.changedTouches[i];
           if (touch.identifier === this.cameraTouchId) {
             const dx = touch.clientX - this.cameraLastPos.x;
             const dy = touch.clientY - this.cameraLastPos.y;
+            this.cameraTapMoved += Math.hypot(dx, dy);
             this.cameraLastPos = { x: touch.clientX, y: touch.clientY };
 
             // Rotate camera (YXZ order)
@@ -773,18 +796,32 @@ export default class MobileControls {
     }, { passive: false });
 
     const handleCameraTouchEnd = (e) => {
-      if (e.touches.length < 2) {
+      const camTouches = getActiveCameraTouches(e.touches);
+      if (camTouches.length < 2) {
         this.isPinching = false;
       }
       let camFound = false;
-      for (let i = 0; i < e.touches.length; i++) {
-        if (e.touches[i].identifier === this.cameraTouchId) {
+      for (let i = 0; i < camTouches.length; i++) {
+        if (camTouches[i].identifier === this.cameraTouchId) {
           camFound = true;
           break;
         }
       }
       if (!camFound) {
-        this.cameraTouchId = null;
+        // Quick tap: if near interactive target (chest, gravestone, NPC, campfire), trigger interaction!
+        if (this.cameraTapStart && (performance.now() - this.cameraTapStart.time < 350) && this.cameraTapMoved < 16) {
+          if (this.isNearAnyInteractable() && window.triggerGameInteraction) {
+            window.triggerGameInteraction();
+          }
+        }
+        this.cameraTapStart = null;
+
+        if (camTouches.length > 0) {
+          this.cameraTouchId = camTouches[0].identifier;
+          this.cameraLastPos = { x: camTouches[0].clientX, y: camTouches[0].clientY };
+        } else {
+          this.cameraTouchId = null;
+        }
       }
     };
 
@@ -872,44 +909,54 @@ export default class MobileControls {
     }
   }
 
+  isNearAnyInteractable() {
+    if (!this.player) return false;
+    const pPos = this.player.getPosition ? this.player.getPosition() : this.player.playerPos;
+    if (!pPos) return false;
+
+    // 1. NPC targeted
+    if (this.npcManager && this.npcManager.targetedNPC) return true;
+
+    // 2. Chest nearby
+    if (this.world && this.world.wildChests) {
+      for (const c of this.world.wildChests) {
+        if (!c.isOpened && pPos.distanceTo(c.position) < 3.8) return true;
+      }
+    }
+
+    // 3. Tombstone nearby
+    if (this.world && this.world.tombstones) {
+      for (const t of this.world.tombstones) {
+        if (pPos.distanceTo(t.position) < 3.8) return true;
+      }
+    }
+
+    // 4. Campfire nearby
+    if (this.world && this.world.campfires) {
+      for (const cf of this.world.campfires) {
+        if (Math.hypot(pPos.x - cf.baseX, pPos.z - cf.baseZ) < 4.2) return true;
+      }
+    }
+
+    return false;
+  }
+
   performInteractTrigger() {
+    if (window.triggerGameInteraction) {
+      window.triggerGameInteraction();
+      return;
+    }
+
     // 1. NPC interaction
     if (this.npcManager && this.npcManager.targetedNPC) {
       this.npcManager.onKeyE();
       return;
     }
 
-    // 2. Campfire / cooking / resting
-    const pPos = this.player.getPosition();
-    let nearFire = false;
-    if (this.world && this.world.campfires) {
-      for (const cf of this.world.campfires) {
-        if (Math.hypot(pPos.x - cf.baseX, pPos.z - cf.baseZ) < 4.5) {
-          nearFire = true;
-          break;
-        }
-      }
-    }
-
-    if (nearFire) {
-      if (this.inventory.has('meat', 1)) {
-        this.inventory.remove('meat', 1);
-        this.inventory.add('cookedMeat', 1);
-        if (this.audioManager) this.audioManager.playEat();
-        if (this.hud) this.hud.showNotification('🍗 Paistoit mehukkaan paistin leiritulella! (+50 Nälkä, +35 HP)');
-      } else if (this.inventory.has('salmon', 1) || this.inventory.has('pike', 1) || this.inventory.has('trout', 1)) {
-        const fish = this.inventory.has('salmon', 1) ? 'salmon' : (this.inventory.has('pike', 1) ? 'pike' : 'trout');
-        this.inventory.remove(fish, 1);
-        this.inventory.add('cookedFish', 1);
-        if (this.audioManager) this.audioManager.playEat();
-        if (this.hud) this.hud.showNotification('🍲 Paistoit kalan rapeaksi leiritulella! (+45 Nälkä, +30 HP)');
-      }
+    // 2. Player generic interact
+    if (this.player && this.player.tryInteract) {
       this.player.tryInteract();
-      return;
     }
-
-    // 3. Ground resource gathering or water drinking
-    this.player.tryInteract();
   }
 
   update(delta) {
@@ -917,14 +964,96 @@ export default class MobileControls {
 
     // Dynamically update interact button icon/label based on player context
     const subLabel = document.getElementById('btn-interact-sub');
+    const interactBtn = document.getElementById('btn-mobile-interact');
+    const iconSpan = interactBtn ? interactBtn.querySelector('.btn-icon') : null;
+
     if (subLabel && this.player) {
+      const pPos = this.player.getPosition ? this.player.getPosition() : this.player.playerPos;
+      const isFi = (typeof Localization !== 'undefined' && Localization.lang === 'en') ? false : true;
+
+      // 1. NPC targeted
       if (this.npcManager && this.npcManager.targetedNPC) {
-        subLabel.textContent = 'PUHU';
-      } else if (this.fishingSystem && this.fishingSystem.state === 'bite') {
-        subLabel.textContent = 'KALA!';
-      } else {
-        subLabel.textContent = 'KÄYTÄ';
+        subLabel.textContent = isFi ? 'PUHU' : 'TALK';
+        if (iconSpan) iconSpan.textContent = '💬';
+        if (interactBtn) interactBtn.classList.add('highlight');
+        return;
       }
+
+      // 2. Wild chest nearby
+      let nearChest = false;
+      if (this.world && this.world.wildChests && pPos) {
+        for (const c of this.world.wildChests) {
+          if (!c.isOpened && pPos.distanceTo(c.position) < 3.8) {
+            nearChest = true;
+            break;
+          }
+        }
+      }
+      if (nearChest) {
+        subLabel.textContent = isFi ? 'AVAA' : 'OPEN';
+        if (iconSpan) iconSpan.textContent = '🎁';
+        if (interactBtn) interactBtn.classList.add('highlight');
+        return;
+      }
+
+      // 3. Tombstone nearby
+      let nearTomb = false;
+      if (this.world && this.world.tombstones && pPos) {
+        for (const t of this.world.tombstones) {
+          if (pPos.distanceTo(t.position) < 3.8) {
+            nearTomb = true;
+            break;
+          }
+        }
+      }
+      if (nearTomb) {
+        subLabel.textContent = isFi ? 'KERÄÄ' : 'LOOT';
+        if (iconSpan) iconSpan.textContent = '🪦';
+        if (interactBtn) interactBtn.classList.add('highlight');
+        return;
+      }
+
+      // 4. Fishing bite
+      if (this.fishingSystem && this.fishingSystem.state === 'bite') {
+        subLabel.textContent = isFi ? 'KALA!' : 'FISH!';
+        if (iconSpan) iconSpan.textContent = '🎣';
+        if (interactBtn) interactBtn.classList.add('highlight');
+        return;
+      }
+
+      // 5. Campfire / cooking / resting
+      let nearFire = false;
+      if (this.world && this.world.campfires && pPos) {
+        for (const cf of this.world.campfires) {
+          if (Math.hypot(pPos.x - cf.baseX, pPos.z - cf.baseZ) < 4.2) {
+            nearFire = true;
+            break;
+          }
+        }
+      }
+      if (nearFire) {
+        const canCook = this.inventory && (this.inventory.has('meat', 1) || this.inventory.has('trout', 1) || this.inventory.has('pike', 1) || this.inventory.has('salmon', 1));
+        subLabel.textContent = canCook ? (isFi ? 'PAISTA' : 'COOK') : (isFi ? 'LEPÄÄ' : 'REST');
+        if (iconSpan) iconSpan.textContent = '🔥';
+        if (interactBtn) interactBtn.classList.add('highlight');
+        return;
+      }
+
+      // 6. Water edge
+      if (pPos) {
+        const riverX = -16 + Math.sin(pPos.z * 0.015) * 20;
+        if (Math.abs(pPos.x - riverX) < 13 && pPos.y < 1.4) {
+          subLabel.textContent = isFi ? 'JUO' : 'DRINK';
+          if (iconSpan) iconSpan.textContent = '💧';
+          if (interactBtn) interactBtn.classList.add('highlight');
+          return;
+        }
+      }
+
+      // Default state
+      subLabel.textContent = isFi ? 'KÄYTÄ' : 'USE';
+      if (iconSpan) iconSpan.textContent = '✋';
+      if (interactBtn) interactBtn.classList.remove('highlight');
     }
   }
 }

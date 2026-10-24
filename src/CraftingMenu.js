@@ -734,13 +734,17 @@ export default class CraftingMenu {
     if (this.container) {
       this.container.classList.remove('active');
     }
-    setTimeout(() => {
-      const mainMenu = document.getElementById('main-menu');
-      const isMenu = mainMenu && mainMenu.style.display !== 'none';
-      if (!isMenu && this.controls && !this.controls.isLocked) {
-        this.controls.lock();
-      }
-    }, 60);
+    if (window.restoreGameFocus) {
+      window.restoreGameFocus();
+    } else {
+      setTimeout(() => {
+        const mainMenu = document.getElementById('main-menu');
+        const isMenu = mainMenu && mainMenu.style.display !== 'none';
+        if (!isMenu && this.controls && !this.controls.isLocked) {
+          this.controls.lock();
+        }
+      }, 60);
+    }
   }
 
   isNearWorkbench() {
@@ -975,6 +979,7 @@ export default class CraftingMenu {
 
       if (this.audioManager) this.audioManager.playCraft();
       if (this.questManager) this.questManager.onCraft(recipe.id);
+      if (this.achievementManager) this.achievementManager.onCraft(recipe.id);
       if (this.hud) {
         this.hud.showNotification(`⚔️ Valmistettu ja varustettu: ${recipe.name}!`);
       }
@@ -992,6 +997,7 @@ export default class CraftingMenu {
         this.inventory.add(recipe.id, count);
       }
       if (this.audioManager) this.audioManager.playCraft();
+      if (this.achievementManager) this.achievementManager.onCraft(recipe.id);
       if (this.hud) {
         this.hud.showNotification(`📦 Valmistettu: ${recipe.name}!`);
         this.hud.showPickupText(`+${count} ${recipe.name}`);

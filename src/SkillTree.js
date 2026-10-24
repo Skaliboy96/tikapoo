@@ -9,17 +9,18 @@ import * as THREE from 'three';
  * - 🏹 Jousiammunta (Ranger / Archery)
  */
 export default class SkillTree {
-  constructor(player, combat, hud, audioManager, questManager = null) {
+  constructor(player, combat, hud, audioManager, questManager = null, achievementManager = null) {
     this.player = player;
     this.combat = combat;
     this.hud = hud;
     this.audioManager = audioManager;
     this.questManager = questManager;
+    this.achievementManager = achievementManager;
     this.hotbar = null;
 
     this.isOpen = false;
     this.modalEl = null;
-    this.currentTab = 'skills'; // 'skills' or 'quests'
+    this.currentTab = 'skills'; // 'skills', 'quests', or 'achievements'
 
     // Specialization definitions
     this.skills = {
@@ -267,6 +268,11 @@ export default class SkillTree {
   close() {
     this.isOpen = false;
     if (this.modalEl) this.modalEl.style.display = 'none';
+    if (window.restoreGameFocus) {
+      window.restoreGameFocus();
+    } else if (this.player && this.player.controls) {
+      this.player.controls.lock();
+    }
   }
 
   render() {
@@ -371,6 +377,63 @@ export default class SkillTree {
           </div>
         </div>
       `;
+    } else if (this.currentTab === 'achievements') {
+      const am = this.achievementManager;
+      const allAch = am ? Object.values(am.achievements) : [];
+      const unlockedCount = allAch.filter(a => a.unlocked).length;
+
+      contentHtml = `
+        <div class="st-achievements-container" style="display: flex; flex-direction: column; gap: 16px; max-height: 60vh; overflow-y: auto; padding-right: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 22, 32, 0.9); border: 1px solid rgba(212, 175, 55, 0.35); border-radius: 8px; padding: 12px 18px;">
+            <div>
+              <h3 style="margin: 0; color: #f1c40f; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+                🏆 ${isFi ? 'SAAVUTUKSET & EDISTYMINEN' : 'ACHIEVEMENTS & PROGRESSION'}
+              </h3>
+              <p style="margin: 4px 0 0 0; color: #bbb; font-size: 0.85rem;">
+                ${isFi ? 'Suorita saavutuksia ansaitaksesi kokemuspisteitä (XP) ja taitopisteitä!' : 'Complete achievements to earn XP and Skill Points!'}
+              </p>
+            </div>
+            <div style="text-align: right;">
+              <span style="font-size: 1.3rem; font-weight: bold; color: #2ecc71;">${unlockedCount} / ${allAch.length}</span>
+              <span style="display: block; font-size: 0.75rem; color: #888;">${isFi ? 'AVATTU' : 'UNLOCKED'}</span>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 14px;">
+            ${allAch.map(a => {
+              const pct = Math.min(100, Math.round((a.progress / (a.target || 1)) * 100));
+              const title = isFi ? a.title : (a.titleEn || a.title);
+              const desc = isFi ? a.desc : (a.descEn || a.desc);
+              return `
+                <div style="background: ${a.unlocked ? 'rgba(25, 40, 30, 0.95)' : 'rgba(16, 20, 28, 0.9)'}; border: 1px solid ${a.unlocked ? '#2ecc71' : 'rgba(255,255,255,0.12)'}; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-size: 1.5rem;">${a.icon}</span>
+                      <span style="font-weight: bold; color: ${a.unlocked ? '#fff' : '#ddd'}; font-size: 1.02rem;">${title}</span>
+                    </div>
+                    <span style="background: ${a.unlocked ? 'rgba(46, 204, 113, 0.2)' : 'rgba(241, 196, 15, 0.15)'}; color: ${a.unlocked ? '#2ecc71' : '#f1c40f'}; border: 1px solid ${a.unlocked ? '#2ecc71' : 'rgba(241, 196, 15, 0.4)'}; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; font-weight: bold;">
+                      ${a.unlocked ? (isFi ? '✅ AVATTU' : '✅ COMPLETED') : `${a.progress}/${a.target}`}
+                    </span>
+                  </div>
+                  <div style="color: #bbb; font-size: 0.88rem; line-height: 1.35;">${desc}</div>
+                  
+                  <!-- Progress bar -->
+                  <div style="margin-top: 4px;">
+                    <div style="background: rgba(0,0,0,0.5); border-radius: 4px; height: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+                      <div style="background: ${a.unlocked ? '#2ecc71' : 'linear-gradient(90deg, #f39c12, #f1c40f)'}; height: 100%; width: ${pct}%; transition: width 0.3s;"></div>
+                    </div>
+                  </div>
+
+                  <div style="margin-top: 4px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.8rem; color: #f1c40f; display: flex; justify-content: space-between;">
+                    <span>🎁 ${isFi ? 'Palkinto' : 'Reward'}: <strong>${a.rewardText}</strong></span>
+                    ${a.unlocked ? '<span style="color: #2ecc71; font-weight: bold;">+ SAATU</span>' : ''}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
     } else {
       // Skills Tab
       const trees = [
@@ -450,23 +513,29 @@ export default class SkillTree {
       <div class="skill-tree-box">
         <div class="skill-tree-header">
           <div class="skill-tree-title-group">
-            <h2>⭐ ${isFi ? 'KOKEMUS & TEHTÄVÄT [O]' : 'CHARACTER & QUESTS [O]'}</h2>
-            <div class="skill-tree-meta">
+            <h2>⭐ ${isFi ? 'KOKEMUS, TEHTÄVÄT & SAAVUTUKSET [O]' : 'CHARACTER, QUESTS & ACHIEVEMENTS [O]'}</h2>
+            <div class="skill-tree-meta" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; align-items: center;">
               <span class="st-badge">🏆 ${isFi ? 'Taso' : 'Level'}: ${level}</span>
               <span class="st-badge st-xp">${isFi ? 'Kokemus' : 'XP'}: ${xp} / ${xpNext} XP</span>
               <span class="st-badge st-sp">✨ ${isFi ? 'Taitopisteet' : 'Skill Points'}: <strong>${skillPoints}</strong></span>
+              <span class="st-badge" style="background: rgba(46, 204, 113, 0.15); border-color: #2ecc71; color: #2ecc71;">
+                ❤️ HP: <strong>${p ? p.maxHealth : 100}</strong> • ⚡ Kestävyys: <strong>${p ? p.maxStamina : 100}</strong> • 🔮 Mana: <strong>${p ? p.maxMana : 100}</strong> • ⚔️ +${(level - 1) * 2} Vahinko
+              </span>
             </div>
           </div>
           <button id="close-skilltree-btn" class="modal-close">✕</button>
         </div>
 
-        <!-- Navigation Tabs: Skills vs Quests -->
-        <div class="st-tabs-row" style="display: flex; gap: 12px; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.12); padding-bottom: 10px;">
-          <button class="st-tab-btn ${this.currentTab === 'skills' ? 'active' : ''}" data-tab="skills" style="padding: 8px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; background: ${this.currentTab === 'skills' ? '#2e7d32' : 'rgba(255,255,255,0.08)'}; color: #fff; border: 1px solid ${this.currentTab === 'skills' ? '#4caf50' : 'rgba(255,255,255,0.15)'}; font-family: inherit;">
+        <!-- Navigation Tabs: Skills vs Quests vs Achievements -->
+        <div class="st-tabs-row" style="display: flex; gap: 10px; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.12); padding-bottom: 10px; flex-wrap: wrap;">
+          <button class="st-tab-btn ${this.currentTab === 'skills' ? 'active' : ''}" data-tab="skills" style="padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; background: ${this.currentTab === 'skills' ? '#2e7d32' : 'rgba(255,255,255,0.08)'}; color: #fff; border: 1px solid ${this.currentTab === 'skills' ? '#4caf50' : 'rgba(255,255,255,0.15)'}; font-family: inherit;">
             ${isFi ? '⭐ TAIDOT & ERIKOISLIIKKEET' : '⭐ SKILLS & ABILITIES'}
           </button>
-          <button class="st-tab-btn ${this.currentTab === 'quests' ? 'active' : ''}" data-tab="quests" style="padding: 8px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; background: ${this.currentTab === 'quests' ? '#2e7d32' : 'rgba(255,255,255,0.08)'}; color: #fff; border: 1px solid ${this.currentTab === 'quests' ? '#4caf50' : 'rgba(255,255,255,0.15)'}; font-family: inherit;">
+          <button class="st-tab-btn ${this.currentTab === 'quests' ? 'active' : ''}" data-tab="quests" style="padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; background: ${this.currentTab === 'quests' ? '#2e7d32' : 'rgba(255,255,255,0.08)'}; color: #fff; border: 1px solid ${this.currentTab === 'quests' ? '#4caf50' : 'rgba(255,255,255,0.15)'}; font-family: inherit;">
             ${isFi ? '📜 TEHTÄVÄT (QUESTS)' : '📜 QUESTS & OBJECTIVES'}
+          </button>
+          <button class="st-tab-btn ${this.currentTab === 'achievements' ? 'active' : ''}" data-tab="achievements" style="padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; background: ${this.currentTab === 'achievements' ? '#2e7d32' : 'rgba(255,255,255,0.08)'}; color: #fff; border: 1px solid ${this.currentTab === 'achievements' ? '#4caf50' : 'rgba(255,255,255,0.15)'}; font-family: inherit;">
+            ${isFi ? '🏆 SAAVUTUKSET (ACHIEVEMENTS)' : '🏆 ACHIEVEMENTS & TROPHIES'}
           </button>
         </div>
 

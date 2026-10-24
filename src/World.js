@@ -342,7 +342,7 @@ export default class World {
     // Scandinavian Sun with tight high-density shadow frustum centered dynamically on player
     this.sun = new THREE.DirectionalLight(0xfff0d0, 1.95);
     this.sun.position.set(85, 120, 65);
-    this.sun.castShadow = !isMobileDevice; // Never cast shadows on mobile to save GPU memory & prevent WebKit crashes
+    this.sun.castShadow = true; // Enabled for beautiful grounded shadows on both mobile and desktop
     if (!isMobileDevice) {
       this.sun.shadow.mapSize.width = 2048;
       this.sun.shadow.mapSize.height = 2048;
@@ -357,8 +357,17 @@ export default class World {
       this.sun.shadow.bias = -0.0001;
       this.sun.shadow.normalBias = 0.04;
     } else {
-      this.sun.shadow.mapSize.width = 256;
-      this.sun.shadow.mapSize.height = 256;
+      this.sun.shadow.mapSize.width = 1024;
+      this.sun.shadow.mapSize.height = 1024;
+      this.sun.shadow.camera.near = 1.0;
+      this.sun.shadow.camera.far = 160;
+      const d = 55; // Focused shadow frustum around mobile player
+      this.sun.shadow.camera.left = -d;
+      this.sun.shadow.camera.right = d;
+      this.sun.shadow.camera.top = d;
+      this.sun.shadow.camera.bottom = -d;
+      this.sun.shadow.bias = -0.0005;
+      this.sun.shadow.normalBias = 0.05;
     }
 
     this.scene.add(this.sun);
@@ -383,7 +392,7 @@ export default class World {
 
   initTerrain() {
     const size = 1400; // Expansive Scandinavian wilderness
-    const segments = isMobileDevice ? 140 : 250;
+    const segments = isMobileDevice ? 180 : 250;
     const groundGeo = new THREE.PlaneGeometry(size, size, segments, segments);
     groundGeo.rotateX(-Math.PI / 2);
 
@@ -531,7 +540,7 @@ export default class World {
 
   initWater() {
     const size = 1400;
-    const waterGeo = new THREE.PlaneGeometry(size, size, isMobileDevice ? 16 : 32, isMobileDevice ? 16 : 32);
+    const waterGeo = new THREE.PlaneGeometry(size, size, isMobileDevice ? 24 : 32, isMobileDevice ? 24 : 32);
     waterGeo.rotateX(-Math.PI / 2);
 
     this.waterNormal = this._generateWaterNormal();
@@ -584,7 +593,7 @@ export default class World {
       grassMat.shadowSide = THREE.DoubleSide;
     }
 
-    const count = isMobileDevice ? 300 : 7000;
+    const count = isMobileDevice ? 1600 : 7000;
     this.instancedGrass = new THREE.InstancedMesh(grassGeo, grassMat, count);
     this.instancedGrass.receiveShadow = true;
 
@@ -679,7 +688,7 @@ export default class World {
       fernMat.shadowSide = THREE.DoubleSide;
     }
 
-    const count = isMobileDevice ? 100 : 3500;
+    const count = isMobileDevice ? 500 : 3500;
     this.instancedFerns = new THREE.InstancedMesh(fernGeo, fernMat, count);
     this.instancedFerns.receiveShadow = true;
 
@@ -1658,8 +1667,8 @@ export default class World {
       }
     };
 
-    // 1. Dedicated Black Forest Grove: 110 dense ancient pines on desktop, 20 on mobile
-    const bfCount = isMobileDevice ? 20 : 110;
+    // 1. Dedicated Black Forest Grove: 110 dense ancient pines on desktop, 45 on mobile
+    const bfCount = isMobileDevice ? 45 : 110;
     for (let i = 0; i < bfCount; i++) {
       const x = -165 + Math.random() * 80;
       const z = -165 + Math.random() * 80;
@@ -1668,8 +1677,8 @@ export default class World {
       spawnTree(model, x, z, scale, 'Aarniometsän Valtava Mänty');
     }
 
-    // 2. Dedicated Swamp Bog: 85 eerie twisted trees on desktop, 16 on mobile
-    const swampCount = isMobileDevice ? 16 : 85;
+    // 2. Dedicated Swamp Bog: 85 eerie twisted trees on desktop, 35 on mobile
+    const swampCount = isMobileDevice ? 35 : 85;
     for (let i = 0; i < swampCount; i++) {
       const x = -195 + Math.random() * 100;
       const z = 90 + Math.random() * 105;
@@ -1678,8 +1687,8 @@ export default class World {
       spawnTree(model, x, z, scale, 'Suon Känsäinen Runkopuu');
     }
 
-    // 3. Dedicated Mountain Alpine Pines: 75 alpine pines on desktop, 15 on mobile
-    const mountainCount = isMobileDevice ? 15 : 75;
+    // 3. Dedicated Mountain Alpine Pines: 75 alpine pines on desktop, 30 on mobile
+    const mountainCount = isMobileDevice ? 30 : 75;
     for (let i = 0; i < mountainCount; i++) {
       const x = 95 + Math.random() * 100;
       const z = -195 + Math.random() * 110;
@@ -1690,8 +1699,8 @@ export default class World {
       spawnTree(model, x, z, scale, 'Tunturin Alppimänty');
     }
 
-    // 4. Dedicated Rune Plains: 50 broadleaf oaks on desktop, 12 on mobile
-    const plainsCount = isMobileDevice ? 12 : 50;
+    // 4. Dedicated Rune Plains: 50 broadleaf oaks on desktop, 25 on mobile
+    const plainsCount = isMobileDevice ? 25 : 50;
     for (let i = 0; i < plainsCount; i++) {
       const x = 135 + Math.random() * 100;
       const z = -65 + Math.random() * 110;
@@ -1700,8 +1709,8 @@ export default class World {
       spawnTree(model, x, z, scale, 'Riimutasangon Muinaistammi');
     }
 
-    // 5. Dedicated Ashlands: 65 charred dead trees on desktop, 12 on mobile
-    const ashCount = isMobileDevice ? 12 : 65;
+    // 5. Dedicated Ashlands: 65 charred dead trees on desktop, 25 on mobile
+    const ashCount = isMobileDevice ? 25 : 65;
     for (let i = 0; i < ashCount; i++) {
       const x = -60 + Math.random() * 120;
       const z = 190 + Math.random() * 110;
@@ -1710,8 +1719,8 @@ export default class World {
       spawnTree(model, x, z, scale, 'Sysivuoren Hiiltynyt Runko');
     }
 
-    // 6. Remaining trees distributed across the expansive wilderness (120 on mobile, 950 on desktop)
-    const totalTrees = isMobileDevice ? 50 : 950;
+    // 6. Remaining trees distributed across the expansive wilderness (240 on mobile, 950 on desktop)
+    const totalTrees = isMobileDevice ? 240 : 950;
     for (let i = 0; i < totalTrees; i++) {
       let x, z, dist;
       do {
@@ -1766,7 +1775,7 @@ export default class World {
   // --- Authentic Finnish Birch Forests (Pohjolan Koivikot) ---
   generateBirchForests() {
     const birchModels = ['BirchTree_1', 'BirchTree_2', 'BirchTree_3'];
-    const totalBirches = isMobileDevice ? 15 : 260;
+    const totalBirches = isMobileDevice ? 75 : 260;
 
     for (let i = 0; i < totalBirches; i++) {
       let x, z;

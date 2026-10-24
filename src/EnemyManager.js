@@ -310,8 +310,13 @@ export default class EnemyManager {
       enemy.hasBeenHit = true;
       enemy.state = 'chase';
       if (enemy.hpFill) {
-        const ratio = Math.max(0, enemy.health / enemy.maxHealth);
+        const ratio = Math.max(0, Math.min(1.0, enemy.health / enemy.maxHealth));
         enemy.hpFill.scale.x = ratio;
+        if (enemy.hpFill.material && enemy.hpFill.material.color) {
+          if (ratio > 0.5) enemy.hpFill.material.color.setHex(0x2ecc71);
+          else if (ratio > 0.25) enemy.hpFill.material.color.setHex(0xf39c12);
+          else enemy.hpFill.material.color.setHex(0xff3838);
+        }
       }
 
       enemy.playAnim('Hit_Knockback', false);
@@ -462,19 +467,30 @@ export default class EnemyManager {
       group.add(leftEye, rightEye);
     }
 
-    // Overhead Health Bar Billboard
+    // Overhead Health Bar Billboard with robust billboarding & z-fighting fix
     const hpGroup = new THREE.Group();
     hpGroup.position.set(0, 2.2 * blueprint.scale, 0);
 
     const bgGeo = new THREE.PlaneGeometry(1.2 * blueprint.scale, 0.14);
-    const bgMat = new THREE.MeshBasicMaterial({ color: 0x111111, side: THREE.DoubleSide });
+    const bgMat = new THREE.MeshBasicMaterial({ color: 0x111822, side: THREE.DoubleSide });
     const hpBg = new THREE.Mesh(bgGeo, bgMat);
     hpGroup.add(hpBg);
 
-    const fillGeo = new THREE.PlaneGeometry(1.15 * blueprint.scale, 0.1);
-    const fillMat = new THREE.MeshBasicMaterial({ color: 0xe74c3c, side: THREE.DoubleSide });
+    const fillWidth = 1.16 * blueprint.scale;
+    const fillGeo = new THREE.PlaneGeometry(fillWidth, 0.1);
+    fillGeo.translate(fillWidth / 2, 0, 0); // Anchor to left edge so it shrinks from right to left
+    const fillMat = new THREE.MeshBasicMaterial({
+      color: 0x2ecc71,
+      side: THREE.DoubleSide,
+      depthTest: true,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2
+    });
     const hpFill = new THREE.Mesh(fillGeo, fillMat);
-    hpFill.position.z = 0.01;
+    hpFill.position.set(-fillWidth / 2, 0, 0.02);
+    hpFill.renderOrder = 3;
     hpGroup.add(hpFill);
 
     group.add(hpGroup);
@@ -576,8 +592,13 @@ export default class EnemyManager {
         enemy.hasBeenHit = true;
         enemy.state = 'chase';
         if (enemy.hpFill) {
-          const ratio = Math.max(0, enemy.health / enemy.maxHealth);
+          const ratio = Math.max(0, Math.min(1.0, enemy.health / enemy.maxHealth));
           enemy.hpFill.scale.x = ratio;
+          if (enemy.hpFill.material && enemy.hpFill.material.color) {
+            if (ratio > 0.5) enemy.hpFill.material.color.setHex(0x2ecc71);
+            else if (ratio > 0.25) enemy.hpFill.material.color.setHex(0xf39c12);
+            else enemy.hpFill.material.color.setHex(0xff3838);
+          }
         }
 
         enemy.playAnim('Hit_Knockback', false);
@@ -643,8 +664,9 @@ export default class EnemyManager {
         enemy.mixer.update(delta);
       }
 
-      if (camera && enemy.hpGroup) {
-        enemy.hpGroup.quaternion.copy(camera.quaternion);
+      if (camera && enemy.hpGroup && enemy.mesh) {
+        // Correctly orient billboard to face camera regardless of enemy body rotation
+        enemy.hpGroup.quaternion.copy(enemy.mesh.quaternion).invert().multiply(camera.quaternion);
       }
 
       const distToPlayer = enemy.mesh.position.distanceTo(playerPos);
@@ -785,6 +807,9 @@ export default class EnemyManager {
     }
     if (this.questManager) {
       this.questManager.onKill();
+    }
+    if (this.achievementManager) {
+      this.achievementManager.onKill();
     }
   }
 

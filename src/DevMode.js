@@ -618,6 +618,9 @@ export default class DevMode {
     }
     const pauseMenu = document.getElementById('pause-menu');
     if (pauseMenu) pauseMenu.style.display = '';
+    if (!this.isActive && window.restoreGameFocus) {
+      window.restoreGameFocus();
+    }
   }
 
   verifyPassword() {
@@ -687,6 +690,10 @@ export default class DevMode {
 
     if (this.hud) {
       this.hud.showNotification('Poistuttu kehittäjätilasta.', 2000);
+    }
+
+    if (window.restoreGameFocus) {
+      window.restoreGameFocus();
     }
   }
 

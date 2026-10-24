@@ -339,29 +339,35 @@ export default class Inventory {
   }
 
   getWeaponDamage() {
-    if (this.equippedTool === 'dragonSlayer') return 250;
-    if (this.equippedTool === 'runeblade') return 175;
-    if (this.equippedTool === 'blackMetalSword') return 145;
-    if (this.equippedTool === 'titanHammer') return 130;
-    if (this.equippedTool === 'silverSword') return 110;
-    if (this.equippedTool === 'steelSword') return 95;
-    if (this.equippedTool === 'scaleSword') return 85;
-    if (this.equippedTool === 'antlerBow') return 75;
-    if (this.equippedTool === 'ironSword') return 68;
-    if (this.equippedTool === 'huntingBow') return 60;
-    if (this.equippedTool === 'runicStaff') return 58;
-    if (this.equippedTool === 'ironAxe') return 56;
-    if (this.equippedTool === 'hornSpear') return 55;
-    if (this.equippedTool === 'bronzeSword') return 48;
-    if (this.equippedTool === 'stoneClub') return 38;
-    if (this.equippedTool === 'bronzeAxe') return 36;
-    if (this.equippedTool === 'stoneSpear') return 35;
-    if (this.equippedTool === 'stoneDagger') return 28;
-    if (this.equippedTool === 'stoneAxe') return 25;
-    if (this.equippedTool === 'antlerPickaxe') return 24;
-    if (this.equippedTool === 'torch') return 22; // deals burn damage!
-    if (this.equippedTool === 'pickaxe' || this.equippedTool === 'bronzePickaxe') return 22;
-    return 15; // Bare hands
+    let dmg = 15; // Bare hands
+    if (this.equippedTool === 'dragonSlayer') dmg = 250;
+    else if (this.equippedTool === 'runeblade') dmg = 175;
+    else if (this.equippedTool === 'blackMetalSword') dmg = 145;
+    else if (this.equippedTool === 'titanHammer') dmg = 130;
+    else if (this.equippedTool === 'silverSword') dmg = 110;
+    else if (this.equippedTool === 'steelSword') dmg = 95;
+    else if (this.equippedTool === 'scaleSword') dmg = 85;
+    else if (this.equippedTool === 'antlerBow') dmg = 75;
+    else if (this.equippedTool === 'ironSword') dmg = 68;
+    else if (this.equippedTool === 'huntingBow') dmg = 60;
+    else if (this.equippedTool === 'runicStaff') dmg = 58;
+    else if (this.equippedTool === 'ironAxe') dmg = 56;
+    else if (this.equippedTool === 'hornSpear') dmg = 55;
+    else if (this.equippedTool === 'bronzeSword') dmg = 48;
+    else if (this.equippedTool === 'stoneClub') dmg = 38;
+    else if (this.equippedTool === 'bronzeAxe') dmg = 36;
+    else if (this.equippedTool === 'stoneSpear') dmg = 35;
+    else if (this.equippedTool === 'stoneDagger') dmg = 28;
+    else if (this.equippedTool === 'stoneAxe') dmg = 25;
+    else if (this.equippedTool === 'antlerPickaxe') dmg = 24;
+    else if (this.equippedTool === 'torch') dmg = 22; // deals burn damage!
+    else if (this.equippedTool === 'pickaxe' || this.equippedTool === 'bronzePickaxe') dmg = 22;
+
+    // Passive level stat bonus: +2 damage per level above 1
+    if (this.player && this.player.level > 1) {
+      dmg += (this.player.level - 1) * 2;
+    }
+    return dmg;
   }
 
   getDamageReduction() {

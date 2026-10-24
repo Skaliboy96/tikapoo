@@ -227,13 +227,17 @@ export default class BackpackScreen {
     this.selectedItemKey = null;
     if (this.actionsBarEl) this.actionsBarEl.style.display = 'none';
 
-    setTimeout(() => {
-      const mainMenu = document.getElementById('main-menu');
-      const isMenu = mainMenu && mainMenu.style.display !== 'none';
-      if (!isMenu && this.controls && !this.controls.isLocked) {
-        this.controls.lock();
-      }
-    }, 60);
+    if (window.restoreGameFocus) {
+      window.restoreGameFocus();
+    } else {
+      setTimeout(() => {
+        const mainMenu = document.getElementById('main-menu');
+        const isMenu = mainMenu && mainMenu.style.display !== 'none';
+        if (!isMenu && this.controls && !this.controls.isLocked) {
+          this.controls.lock();
+        }
+      }, 60);
+    }
   }
 
   refresh() {

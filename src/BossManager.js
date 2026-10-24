@@ -516,7 +516,10 @@ export default class BossManager {
         takeDamage: (amount) => {
           if (!boss.isAlive) return;
           if (boss.invulnerable) {
-            if (this.hud) this.hud.showNotification('🛡️ Bossi on suojattu riimukivillä! Tuhoa riimukivet ensin!');
+            if (this.hud) {
+              if (this.hud.showBossTelegraph) this.hud.showBossTelegraph('🛡️ Bossi on suojattu riimukivillä! Tuhoa riimukivet ensin!');
+              else this.hud.showNotification('🛡️ Bossi on suojattu riimukivillä! Tuhoa riimukivet ensin!');
+            }
             return;
           }
 
@@ -539,7 +542,10 @@ export default class BossManager {
           }
           if (boss.health < boss.maxHealth * 0.25 && boss.phase === 2) {
             boss.phase = 3;
-            if (this.hud) this.hud.showNotification(`⚠️ ${boss.def.name} siirtyy RAIVOTILAAN!`);
+            if (this.hud) {
+              if (this.hud.showBossTelegraph) this.hud.showBossTelegraph(`⚠️ ${boss.def.name} siirtyy RAIVOTILAAN!`);
+              else this.hud.showNotification(`⚠️ ${boss.def.name} siirtyy RAIVOTILAAN!`);
+            }
           }
 
           if (boss.health <= 0) {
@@ -561,7 +567,8 @@ export default class BossManager {
 
   triggerPhase2(boss) {
     if (this.hud) {
-      this.hud.showNotification(`⚡ ${boss.def.name} – VAIHE 2 ALKAA!`);
+      if (this.hud.showBossTelegraph) this.hud.showBossTelegraph(`⚡ ${boss.def.name} – VAIHE 2 ALKAA!`);
+      else this.hud.showNotification(`⚡ ${boss.def.name} – VAIHE 2 ALKAA!`);
     }
     if (boss.def.type === 'wraith') {
       // Spawn 3 floating rune stones that grant invulnerability until broken
@@ -581,10 +588,16 @@ export default class BossManager {
           takeDamage: () => {
             boss.mesh.remove(stone);
             boss.runeStones = boss.runeStones.filter(s => s !== stone);
-            if (this.hud) this.hud.showNotification('💥 Riimukivi tuhottu!');
+            if (this.hud) {
+              if (this.hud.showBossTelegraph) this.hud.showBossTelegraph('💥 Riimukivi tuhottu!');
+              else this.hud.showNotification('💥 Riimukivi tuhottu!');
+            }
             if (boss.runeStones.length === 0) {
               boss.invulnerable = false;
-              if (this.hud) this.hud.showNotification('✨ Riimukilpi murtui! Bossi on jälleen haavoittuvainen!');
+              if (this.hud) {
+                if (this.hud.showBossTelegraph) this.hud.showBossTelegraph('✨ Riimukilpi murtui! Bossi on haavoittuvainen!');
+                else this.hud.showNotification('✨ Riimukilpi murtui! Bossi on jälleen haavoittuvainen!');
+              }
             }
           }
         };
@@ -662,6 +675,9 @@ export default class BossManager {
       if (this.questManager.onBossKill) {
         this.questManager.onBossKill(boss.def.id);
       }
+    }
+    if (this.achievementManager) {
+      this.achievementManager.onBossKill(boss.def.id);
     }
 
     // Spawn the next boss immediately
@@ -813,7 +829,10 @@ export default class BossManager {
               boss.beastState = 'telegraph';
               boss.stateTimer = 1.0;
               boss.specialTimer = 8.5;
-              if (this.hud) this.hud.showNotification('⚡ Sarvipeto virittää ukkosrynnäkköä! Valmistaudu väistämään!');
+              if (this.hud) {
+                if (this.hud.showBossTelegraph) this.hud.showBossTelegraph('⚡ Sarvipeto virittää ukkosrynnäkköä! Väistä!');
+                else this.hud.showNotification('⚡ Sarvipeto virittää ukkosrynnäkköä! Valmistaudu väistämään!');
+              }
             }
           } else if (boss.beastState === 'telegraph') {
             boss.stateTimer -= delta;
@@ -887,7 +906,10 @@ export default class BossManager {
           if (boss.specialTimer <= 0) {
             boss.specialTimer = 4.5;
             this.fireProjectile(bPos, playerPos, 0x2ecc71, 24);
-            if (this.hud) this.hud.showNotification('☣️ Näkki ampuu myrkkyä!');
+            if (this.hud) {
+              if (this.hud.showBossTelegraph) this.hud.showBossTelegraph('☣️ Näkki ampuu myrkkyä!');
+              else this.hud.showNotification('☣️ Näkki ampuu myrkkyä!');
+            }
           }
           if (distToPlayer > 6.0) {
             const moveDir = new THREE.Vector3(dx, 0, dz).normalize();
@@ -903,7 +925,10 @@ export default class BossManager {
           if (boss.specialTimer <= 0) {
             boss.specialTimer = 5.5;
             this.fireProjectile(bPos, playerPos, 0x888888, 38, 0.8);
-            if (this.hud) this.hud.showNotification('🪨 Kallionmurskaaja heittää lohkareen!');
+            if (this.hud) {
+              if (this.hud.showBossTelegraph) this.hud.showBossTelegraph('🪨 Kallionmurskaaja heittää lohkareen!');
+              else this.hud.showNotification('🪨 Kallionmurskaaja heittää lohkareen!');
+            }
           }
           const speed = (boss.phase === 3) ? 5.2 : 3.0;
           if (distToPlayer > 6.5) {
@@ -924,6 +949,10 @@ export default class BossManager {
             boss.mesh.position.x = boss.def.arenaPos.x + Math.cos(randAng) * 16;
             boss.mesh.position.z = boss.def.arenaPos.z + Math.sin(randAng) * 16;
             this.fireProjectile(boss.mesh.position, playerPos, 0x00d2d3, 30);
+            if (this.hud) {
+              if (this.hud.showBossTelegraph) this.hud.showBossTelegraph('💠 Riimunvartija teleporttaa & ampuu riimusäteen!');
+              else this.hud.showNotification('💠 Riimunvartija teleporttaa & ampuu riimusäteen!');
+            }
           }
           if (boss.userData.runeRing) {
             boss.userData.runeRing.rotation.z += delta * 2.0;
@@ -942,7 +971,10 @@ export default class BossManager {
             boss.specialTimer = 6.0;
             // Dragon flame barrage
             this.fireProjectile(bPos, playerPos, 0xff3838, 55, 0.6);
-            if (this.hud) this.hud.showNotification('🔥 Varjodraakki syöksee varjotulta!');
+            if (this.hud) {
+              if (this.hud.showBossTelegraph) this.hud.showBossTelegraph('🔥 Varjodraakki syöksee varjotulta!');
+              else this.hud.showNotification('🔥 Varjodraakki syöksee varjotulta!');
+            }
           }
           if (distToPlayer > 8.0) {
             const moveDir = new THREE.Vector3(dx, 0, dz).normalize();

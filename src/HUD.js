@@ -170,6 +170,32 @@ export default class HUD {
     }, duration);
   }
 
+  showBossTelegraph(text, duration = 3200) {
+    if (!this.bossTelegraphEl) {
+      let el = document.getElementById('boss-telegraph-banner');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'boss-telegraph-banner';
+        document.body.appendChild(el);
+      }
+      this.bossTelegraphEl = el;
+    }
+    this.bossTelegraphEl.textContent = text;
+    this.bossTelegraphEl.classList.remove('show');
+    // Force reflow for re-triggering CSS animation
+    void this.bossTelegraphEl.offsetWidth;
+    this.bossTelegraphEl.classList.add('show');
+
+    if (this._bossTelegraphTimeout) {
+      clearTimeout(this._bossTelegraphTimeout);
+    }
+    this._bossTelegraphTimeout = setTimeout(() => {
+      if (this.bossTelegraphEl) {
+        this.bossTelegraphEl.classList.remove('show');
+      }
+    }, duration);
+  }
+
   flashRed() {
     if (!this.flashOverlay) return;
     this.flashOverlay.classList.add('active');

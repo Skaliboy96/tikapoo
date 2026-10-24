@@ -86,17 +86,27 @@ canvas {
   bottom: 120px;
   transform: translateX(-50%);
   color: #ffffff;
-  background: rgba(10, 15, 20, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(10, 15, 20, 0.88);
+  border: 1.5px solid rgba(241, 196, 15, 0.4);
   padding: 8px 18px;
   border-radius: 6px;
   font-size: 14px;
   letter-spacing: 0.5px;
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
   z-index: 110;
   display: none;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7), 0 0 12px rgba(241, 196, 15, 0.2);
   backdrop-filter: blur(4px);
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+
+#tooltip:active {
+  transform: translateX(-50%) scale(0.96);
+  background: rgba(25, 35, 48, 0.95);
 }
 
 #tooltip.visible {
@@ -167,6 +177,45 @@ canvas {
 #notification.show {
   opacity: 1;
   transform: translate(-50%, 0);
+}
+
+/* Center-Screen Boss Move & Combat Telegraph Banner (Does NOT block top boss health bar/name) */
+#boss-telegraph-banner {
+  position: fixed;
+  top: 36%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.92);
+  padding: 10px 24px;
+  background: radial-gradient(circle at center, rgba(30, 8, 12, 0.96) 0%, rgba(16, 6, 10, 0.92) 100%);
+  border: 2px solid #e74c3c;
+  border-radius: 8px;
+  color: #f1c40f;
+  font-family: 'Cinzel', serif, sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-align: center;
+  text-transform: uppercase;
+  text-shadow: 0 0 14px rgba(231, 76, 60, 0.9), 0 2px 4px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.85), 0 0 22px rgba(231, 76, 60, 0.55), inset 0 0 12px rgba(231, 76, 60, 0.25);
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.25s ease-out, transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+#boss-telegraph-banner.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.0);
+}
+
+@media (max-width: 768px) {
+  #boss-telegraph-banner {
+    font-size: 12px;
+    padding: 7px 16px;
+    top: 32%;
+    max-width: 88vw;
+  }
 }
 
 /* HUD bottom-left */
@@ -3670,19 +3719,21 @@ canvas {
   background: rgba(30, 40, 60, 0.95);
 }
 
-/* ===== Comprehensive Mobile Optimization ===== */
-@media (max-width: 900px) {
+/* ===== Comprehensive Mobile Optimization (iOS & Android Safe Areas, Portrait & Landscape) ===== */
+@media (max-width: 900px), (pointer: coarse) {
   #hud {
-    top: 8px !important;
-    left: 8px !important;
+    top: max(8px, env(safe-area-inset-top, 8px)) !important;
+    left: max(8px, env(safe-area-inset-left, 8px)) !important;
     bottom: auto !important;
-    width: 140px !important;
-    min-width: 120px !important;
-    max-width: 150px !important;
+    width: 135px !important;
+    min-width: 110px !important;
+    max-width: 145px !important;
     padding: 5px 8px !important;
     gap: 3px !important;
-    background: rgba(10, 14, 20, 0.85) !important;
+    background: rgba(10, 14, 20, 0.88) !important;
     border-radius: 6px !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.8) !important;
+    z-index: 108 !important;
   }
   #hud .hud-buttons-row,
   #hud .hud-controls-hint {
@@ -3705,7 +3756,7 @@ canvas {
     font-size: 8px !important;
   }
   #hud .hud-xp-bar-bg {
-    width: 35px !important;
+    width: 32px !important;
     height: 3px !important;
   }
   #hud .hud-xp-val {
@@ -3716,33 +3767,57 @@ canvas {
     padding: 0 3px !important;
   }
 
+  .mobile-top-bar {
+    top: max(6px, env(safe-area-inset-top, 6px)) !important;
+    right: max(6px, env(safe-area-inset-right, 6px)) !important;
+    display: flex !important;
+    gap: 3px !important;
+    z-index: 109 !important;
+  }
+
+  /* Compact Icon-Only Pills on Small Mobile / Portrait to prevent overlapping with HUD */
+  @media (max-width: 680px), (orientation: portrait) {
+    .mobile-pill-btn span {
+      display: none !important;
+    }
+    .mobile-pill-btn {
+      padding: 5px 7px !important;
+      font-size: 13px !important;
+      border-radius: 10px !important;
+    }
+  }
+
   #minimap-container {
-    top: 42px !important;
-    right: 8px !important;
+    top: max(40px, calc(env(safe-area-inset-top, 8px) + 34px)) !important;
+    right: max(8px, env(safe-area-inset-right, 8px)) !important;
     bottom: auto !important;
-    width: 90px !important;
-    height: 90px !important;
+    width: 76px !important;
+    height: 76px !important;
     border-radius: 50% !important;
     padding: 2px !important;
+    background: rgba(10, 14, 20, 0.85) !important;
+    z-index: 106 !important;
   }
   #minimap {
-    width: 86px !important;
-    height: 86px !important;
+    width: 72px !important;
+    height: 72px !important;
     border-radius: 50% !important;
   }
 
   #game-clock-container {
-    top: 138px !important;
-    right: 8px !important;
-    padding: 2px 6px !important;
-    font-size: 9px !important;
+    top: max(120px, calc(env(safe-area-inset-top, 8px) + 114px)) !important;
+    right: max(8px, env(safe-area-inset-right, 8px)) !important;
+    padding: 2px 5px !important;
+    font-size: 8.5px !important;
     border-radius: 4px !important;
+    z-index: 106 !important;
   }
 
   #hotbar {
-    bottom: 8px !important;
-    transform: translateX(-50%) scale(0.72) !important;
+    bottom: max(6px, env(safe-area-inset-bottom, 6px)) !important;
+    transform: translateX(-50%) scale(0.68) !important;
     transform-origin: bottom center !important;
+    z-index: 106 !important;
   }
 
   #quest-log {
@@ -3770,10 +3845,94 @@ canvas {
   .pause-box,
   .menu-container {
     max-width: 95vw !important;
-    max-height: 90vh !important;
+    max-height: 88vh !important;
     overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 }
+
+/* Landscape Mode for Smartphones */
+@media (orientation: landscape) and (max-height: 500px) {
+  #hud {
+    top: max(6px, env(safe-area-inset-top, 6px)) !important;
+    left: max(6px, env(safe-area-inset-left, 6px)) !important;
+    padding: 4px 6px !important;
+    width: 120px !important;
+  }
+  #minimap-container {
+    top: max(36px, calc(env(safe-area-inset-top, 6px) + 30px)) !important;
+    right: max(8px, env(safe-area-inset-right, 8px)) !important;
+    width: 68px !important;
+    height: 68px !important;
+  }
+  #minimap {
+    width: 64px !important;
+    height: 64px !important;
+  }
+  #game-clock-container {
+    top: max(108px, calc(env(safe-area-inset-top, 6px) + 102px)) !important;
+    right: max(8px, env(safe-area-inset-right, 8px)) !important;
+  }
+  #hotbar {
+    bottom: max(4px, env(safe-area-inset-bottom, 4px)) !important;
+    transform: translateX(-50%) scale(0.62) !important;
+  }
+}
+
+/* ============================================================
+   UNIVERSAL MOBILE TOUCH SCROLLING & INTERACTIVITY
+   ============================================================ */
+.modal, .menu-modal, .crafting-modal, #crafting-menu,
+#backpack-screen, .backpack-modal, #map-screen, .map-modal,
+#npc-dialogue, .npc-dialogue-modal, #skill-tree-modal, .skill-tree-box,
+#char-creator-modal, .char-creator-container, #pause-menu,
+.st-quests-container, .st-achievements-container, .skill-tree-columns,
+.recipe-grid, .crafting-list, .backpack-grid, .instructions-body, .modal-body,
+.npc-quests-list, #npc-dialogue-box, .guide-content, .backpack-items-panel,
+.crafting-body, .backpack-body, .map-body, .npc-dialogue-content {
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+#btn-mobile-interact.highlight {
+  background: radial-gradient(circle, rgba(241, 196, 15, 0.45) 0%, rgba(20, 24, 32, 0.95) 70%) !important;
+  border-color: #f1c40f !important;
+  box-shadow: 0 0 16px rgba(241, 196, 15, 0.6), inset 0 0 10px rgba(241, 196, 15, 0.3) !important;
+  animation: pulse-interact-btn 1.4s infinite alternate ease-in-out;
+}
+@keyframes pulse-interact-btn {
+  0% { transform: scale(1.0); }
+  100% { transform: scale(1.08); }
+}
+
+@media (max-width: 900px) {
+  .npc-dialogue-modal {
+    max-width: 95vw !important;
+    max-height: 86vh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+  }
+  .skill-tree-box {
+    max-width: 96vw !important;
+    max-height: 88vh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+  }
+  .st-quests-container,
+  .st-achievements-container {
+    max-height: 52vh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+  }
+  .skill-tree-columns {
+    grid-template-columns: 1fr !important;
+    max-height: 52vh !important;
+  }
+}
+
 
 
 

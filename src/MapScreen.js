@@ -183,13 +183,17 @@ export default class MapScreen {
     this.isOpen = false;
     this.isDragging = false;
     if (this.overlayEl) this.overlayEl.classList.remove('active');
-    setTimeout(() => {
-      const mainMenu = document.getElementById('main-menu');
-      const isMenu = mainMenu && mainMenu.style.display !== 'none';
-      if (!isMenu && this.controls && !this.controls.isLocked) {
-        this.controls.lock();
-      }
-    }, 60);
+    if (window.restoreGameFocus) {
+      window.restoreGameFocus();
+    } else {
+      setTimeout(() => {
+        const mainMenu = document.getElementById('main-menu');
+        const isMenu = mainMenu && mainMenu.style.display !== 'none';
+        if (!isMenu && this.controls && !this.controls.isLocked) {
+          this.controls.lock();
+        }
+      }, 60);
+    }
   }
 
   _updateQuests() {

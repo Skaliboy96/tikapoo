@@ -218,6 +218,9 @@ export default class FishingSystem {
     if (this.questManager && this.questManager.onCatchFish) {
       this.questManager.onCatchFish();
     }
+    if (this.achievementManager) {
+      this.achievementManager.onFish(1);
+    }
 
     this._spawnLeapingFish(this.bobberPos, this.player.getPosition());
     this.resetFishing();

@@ -23,6 +23,7 @@ import AnimalManager from './AnimalManager.js';
 import FishingSystem from './FishingSystem.js';
 import BossManager from './BossManager.js';
 import SkillTree from './SkillTree.js';
+import AchievementManager from './AchievementManager.js';
 import CharacterCreator from './CharacterCreator.js';
 import MobileControls from './MobileControls.js';
 import Localization from './Localization.js';
@@ -75,17 +76,17 @@ async function init() {
   );
 
   const renderer = new THREE.WebGLRenderer({
-    antialias: !isTouchDevice, // Save precious mobile GPU bandwidth & memory
-    powerPreference: isTouchDevice ? 'low-power' : 'high-performance',
+    antialias: true,
+    powerPreference: 'high-performance',
     precision: isTouchDevice ? 'mediump' : 'highp',
     stencil: false,
     depth: true
   });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(isTouchDevice ? 1.0 : Math.min(window.devicePixelRatio, 2.0));
-  // Disable heavy shadow map framebuffers on mobile to eliminate iOS WebKit memory exhaustion and infinite reload loops
-  renderer.shadowMap.enabled = !isTouchDevice;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.setPixelRatio(isTouchDevice ? Math.min(window.devicePixelRatio, 1.5) : Math.min(window.devicePixelRatio, 2.0));
+  // Enable clean grounded shadows on mobile with high performance
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = isTouchDevice ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
   container.appendChild(renderer.domElement);
@@ -133,8 +134,10 @@ async function init() {
 
   const buildingSystem = new BuildingSystem(scene, inventory, hud, audioManager, assetLoader, controls);
 
-  // QuestManager needs inventory, player, hud
+  // QuestManager & AchievementManager
   const questManager = new QuestManager(inventory, player, hud);
+  const achievementManager = new AchievementManager(player, hud, audioManager);
+  player.achievementManager = achievementManager;
 
   // Loot drops manager (spawns 3D physical ground drops on enemy death)
   const lootManager = new LootManager(scene, world, inventory, hud, audioManager, questManager, assetLoader);
@@ -144,21 +147,26 @@ async function init() {
 
   // Fishing system (cast rod at river, bite detection, timed catch mini-game)
   const fishingSystem = new FishingSystem(scene, world, player, inventory, hud, audioManager, questManager);
+  fishingSystem.achievementManager = achievementManager;
   player.buildingSystem = buildingSystem;
   inventory.buildingSystem = buildingSystem;
   inventory.player = player;
 
   // 5 Biome Bosses System (Unique Mechanics, Arenas, Progressive Unlocks & Legendary Drops)
   const bossManager = new BossManager(scene, world, inventory, hud, audioManager, questManager, assetLoader, player);
+  bossManager.achievementManager = achievementManager;
 
   const craftingMenu = new CraftingMenu(inventory, buildingSystem, player, hud, audioManager, controls, questManager);
+  craftingMenu.achievementManager = achievementManager;
   const resourceNode = new ResourceNode(scene, world, inventory, hud, player, audioManager, questManager);
+  resourceNode.achievementManager = achievementManager;
   const enemyManager = new EnemyManager(scene, world, inventory, hud, audioManager, questManager, assetLoader, lootManager);
+  enemyManager.achievementManager = achievementManager;
   const combat = new Combat(scene, camera, player, enemyManager, inventory, hud, audioManager, assetLoader, animalManager, bossManager);
   const dayNightCycle = new DayNightCycle(scene, world, hud, audioManager, questManager);
 
-  // Skill Tree & Special Abilities (Keys 1-4, Tree UI on [O], Quests Tab)
-  const skillTree = new SkillTree(player, combat, hud, audioManager, questManager);
+  // Skill Tree & Special Abilities (Keys 1-4, Tree UI on [O], Quests Tab, Achievements Tab)
+  const skillTree = new SkillTree(player, combat, hud, audioManager, questManager, achievementManager);
   player.skillTree = skillTree;
 
   // Valheim 8-slot Action Bar (Hotbar) with Top Abilities Bar
@@ -261,9 +269,10 @@ async function init() {
     renderer
   });
 
-  // Forward buildingSystem quest notifications
+  // Forward buildingSystem quest & achievement notifications
   buildingSystem.onPlace = (structureType) => {
     questManager.onBuild(structureType);
+    if (achievementManager) achievementManager.onBuild();
   };
 
   // Set player position above initial terrain spawn
@@ -719,6 +728,23 @@ async function init() {
       if (p && p.catch) p.catch(() => {});
     } catch (e) {}
   };
+  window.safeLockControls = safeLockControls;
+
+  window.restoreGameFocus = () => {
+    if (!isGameStarted) return;
+    const isTouch = (
+      'ontouchstart' in window ||
+      navigator.maxTouchPoints > 0 ||
+      /Android|iPhone|iPad|iPod|Windows Phone|webOS|BlackBerry/i.test(navigator.userAgent) ||
+      window.innerWidth <= 900
+    );
+    if (isTouch) {
+      if (controls) controls.isLocked = true;
+      return;
+    }
+    // Desktop: lock pointer
+    safeLockControls();
+  };
 
   document.addEventListener('pointerlockerror', () => {
     // Gracefully handle browser pointer lock cooldown rejection without UI lockup
@@ -757,9 +783,7 @@ async function init() {
       pauseMenu.classList.remove('active');
     }
     lastResumeTime = performance.now();
-    setTimeout(() => {
-      safeLockControls();
-    }, 70);
+    window.restoreGameFocus();
   };
 
   if (pauseResumeBtn) {
@@ -1032,158 +1056,187 @@ async function init() {
     return distToRiver < 13 && pos.y < 1.4;
   }
 
-  // --- Keyboard: E for Interactions (NPC, Wild Chests, Campfire Cooking, River Drinking) ---
+  // --- Unified Interaction Trigger (Used by Key [E], Mobile Touch Buttons, and On-Screen Prompts) ---
+  function triggerInteraction() {
+    if (!isGameStarted) return false;
+    const isFi = (typeof Localization !== 'undefined' && Localization.lang === 'en') ? false : true;
+
+    // 1. NPC interaction takes precedence when looking at NPC
+    if (npcManager && npcManager.targetedNPC) {
+      npcManager.onKeyE();
+      return true;
+    }
+
+    const pPos = player ? player.getPosition() : null;
+    if (!pPos) return false;
+
+    // 1.5 Player Gravestone loot recovery
+    let nearbyTombstone = null;
+    if (world && world.tombstones) {
+      for (const t of world.tombstones) {
+        if (pPos.distanceTo(t.position) < 3.8) {
+          nearbyTombstone = t;
+          break;
+        }
+      }
+    }
+
+    if (nearbyTombstone) {
+      let countRecovered = 0;
+      if (nearbyTombstone.items && inventory) {
+        for (const [itemKey, amt] of Object.entries(nearbyTombstone.items)) {
+          if (amt > 0) {
+            inventory.add(itemKey, amt);
+            countRecovered += amt;
+          }
+        }
+      }
+      if (audioManager && audioManager.playPickup) {
+        audioManager.playPickup();
+      }
+      if (hud) {
+        hud.showNotification(
+          isFi ? `🪦 Sait tavarasi takaisin hautakiveltä! (+${countRecovered} esinettä)` : `🪦 Recovered your items from Gravestone! (+${countRecovered} items)`,
+          4000
+        );
+        if (hud.showPickupText) hud.showPickupText(isFi ? '🪦 +Tavarat palautettu' : '🪦 +Items recovered');
+        if (hud.hideTooltip) hud.hideTooltip();
+      }
+      world.removeTombstone(nearbyTombstone);
+      return true;
+    }
+
+    // 2. Hidden Treasure Chests in the wild
+    let nearbyChest = null;
+    if (world && world.wildChests) {
+      for (const c of world.wildChests) {
+        if (!c.isOpened && pPos.distanceTo(c.position) < 3.8) {
+          nearbyChest = c;
+          break;
+        }
+      }
+    }
+
+    if (nearbyChest) {
+      try {
+        nearbyChest.isOpened = true;
+        // Hide glow beacon cleanly (zero scene graph re-evaluation or shader recompilation hitch)
+        if (nearbyChest.glowMarker) {
+          nearbyChest.glowMarker.visible = false;
+        }
+        if (nearbyChest.glowLight) {
+          nearbyChest.glowLight.intensity = 0;
+          nearbyChest.glowLight.visible = false;
+        }
+
+        try {
+          if (audioManager && audioManager.playChestOpen) {
+            audioManager.playChestOpen();
+          } else if (audioManager && audioManager.playPickup) {
+            audioManager.playPickup();
+          }
+        } catch (audioErr) {
+          console.warn('Chest audio notice:', audioErr);
+        }
+
+        // Visual chest lid opening animation on the armature bone ONLY
+        if (nearbyChest.mesh) {
+          const topBone = nearbyChest.mesh.getObjectByName('Chest_Top');
+          if (topBone) {
+            topBone.rotation.x = -Math.PI * 0.45;
+          }
+        }
+
+        // Generous treasure rewards added in a single clean batch update
+        const chestRewards = [
+          { item: 'bronze', count: 2 },
+          { item: 'iron', count: 2 },
+          { item: 'cookedMeat', count: 3 },
+          { item: 'leather', count: 3 },
+          { item: 'wood', count: 14 },
+          { item: 'stone', count: 10 }
+        ];
+        if (inventory) {
+          if (inventory.addBatch) {
+            inventory.addBatch(chestRewards);
+          } else {
+            chestRewards.forEach(r => inventory.add(r.item, r.count));
+          }
+        }
+        if (hud) {
+          if (hud.showNotification) {
+            hud.showNotification(
+              isFi ? '🎁 Aarrearkku avattu! (+2 Rauta, +2 Pronssi, +3 Liha, +3 Nahka, +14 Puu, +10 Kivi)' : '🎁 Treasure Chest opened! (+2 Iron, +2 Bronze, +3 Cooked Meat, +3 Leather, +14 Wood, +10 Stone)',
+              3500
+            );
+          }
+          if (hud.showPickupText) {
+            hud.showPickupText(isFi ? '🎁 +Aarteet kerätty!' : '🎁 +Treasure collected!');
+          }
+          if (hud.hideTooltip) {
+            hud.hideTooltip();
+          }
+        }
+      } catch (err) {
+        console.error('Chest opening error handled:', err);
+      }
+      return true;
+    }
+
+    const nearFire = getNearbyCampfire(pPos);
+
+    // 3. Campfire cooking & resting
+    if (nearFire) {
+      if (inventory.has('meat', 1)) {
+        inventory.remove('meat', 1);
+        inventory.add('cookedMeat', 1);
+        if (audioManager && audioManager.playEat) audioManager.playEat();
+        if (hud) hud.showNotification(isFi ? '🍗 Paistoit mehukkaan paistin leiritulella! (+50 Nälkä, +35 HP)' : '🍗 Cooked a juicy roast on the campfire! (+50 Hunger, +35 HP)');
+        questManager.onCraft('cookedMeat');
+      } else if (inventory.has('salmon', 1) || inventory.has('pike', 1) || inventory.has('trout', 1)) {
+        const fish = inventory.has('salmon', 1) ? 'salmon' : (inventory.has('pike', 1) ? 'pike' : 'trout');
+        inventory.remove(fish, 1);
+        inventory.add('cookedFish', 1);
+        if (audioManager && audioManager.playEat) audioManager.playEat();
+        if (hud) hud.showNotification(isFi ? '🍲 Paistoit kalan rapeaksi leiritulella! (+45 Nälkä, +30 HP)' : '🍲 Cooked fish crispy on the campfire! (+45 Hunger, +30 HP)');
+        questManager.onCraft('cookedFish');
+      }
+      player.tryInteract();
+      return true;
+    }
+
+    // 4. Water drinking
+    if (isNearWaterEdge(pPos)) {
+      player.tryInteract();
+      return true;
+    }
+
+    // 5. General fallback
+    if (player && player.tryInteract) {
+      player.tryInteract();
+    }
+    return false;
+  }
+  window.triggerGameInteraction = triggerInteraction;
+
+  // Direct click / tap on HUD interaction tooltip triggers interaction
+  const hudTooltip = document.getElementById('tooltip');
+  if (hudTooltip) {
+    const handleTooltipTap = (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      triggerInteraction();
+    };
+    hudTooltip.addEventListener('click', handleTooltipTap);
+    hudTooltip.addEventListener('touchend', handleTooltipTap);
+  }
+
+  // --- Keyboard: E for Interactions ---
   window.addEventListener('keydown', (e) => {
     if (!controls.isLocked || !isGameStarted) return;
 
     if (e.code === 'KeyE') {
-      // 1. NPC interaction takes precedence when looking at NPC
-      if (npcManager.targetedNPC) {
-        npcManager.onKeyE();
-        return;
-      }
-
-      const pPos = player.getPosition();
-
-      // 1.5 Player Gravestone loot recovery
-      let nearbyTombstone = null;
-      if (world && world.tombstones) {
-        for (const t of world.tombstones) {
-          if (pPos.distanceTo(t.position) < 3.2) {
-            nearbyTombstone = t;
-            break;
-          }
-        }
-      }
-
-      if (nearbyTombstone) {
-        let countRecovered = 0;
-        if (nearbyTombstone.items && inventory) {
-          for (const [itemKey, amt] of Object.entries(nearbyTombstone.items)) {
-            if (amt > 0) {
-              inventory.add(itemKey, amt);
-              countRecovered += amt;
-            }
-          }
-        }
-        if (audioManager && audioManager.playPickup) {
-          audioManager.playPickup();
-        }
-        if (hud) {
-          const isFi = (typeof Localization !== 'undefined' && Localization.lang === 'en') ? false : true;
-          hud.showNotification(
-            isFi ? `🪦 Sait tavarasi takaisin hautakiveltä! (+${countRecovered} esinettä)` : `🪦 Recovered your items from Gravestone! (+${countRecovered} items)`,
-            4000
-          );
-          if (hud.showPickupText) hud.showPickupText('🪦 +Tavarat palautettu');
-          if (hud.hideTooltip) hud.hideTooltip();
-        }
-        world.removeTombstone(nearbyTombstone);
-        return;
-      }
-
-      // 2. Hidden Treasure Chests in the wild
-      let nearbyChest = null;
-      if (world && world.wildChests) {
-        for (const c of world.wildChests) {
-          if (!c.isOpened && pPos.distanceTo(c.position) < 3.2) {
-            nearbyChest = c;
-            break;
-          }
-        }
-      }
-
-      if (nearbyChest) {
-        try {
-          nearbyChest.isOpened = true;
-          // Hide glow beacon cleanly (zero scene graph re-evaluation or shader recompilation hitch)
-          if (nearbyChest.glowMarker) {
-            nearbyChest.glowMarker.visible = false;
-          }
-          if (nearbyChest.glowLight) {
-            nearbyChest.glowLight.intensity = 0;
-            nearbyChest.glowLight.visible = false;
-          }
-
-          try {
-            if (audioManager && audioManager.playChestOpen) {
-              audioManager.playChestOpen();
-            } else if (audioManager && audioManager.playPickup) {
-              audioManager.playPickup();
-            }
-          } catch (audioErr) {
-            console.warn('Chest audio notice:', audioErr);
-          }
-
-          // Visual chest lid opening animation on the armature bone ONLY
-          // Avoids mutating SkinnedMesh node rotation directly which causes vertex transform corruption
-          if (nearbyChest.mesh) {
-            const topBone = nearbyChest.mesh.getObjectByName('Chest_Top');
-            if (topBone) {
-              topBone.rotation.x = -Math.PI * 0.45;
-            }
-          }
-
-          // Generous treasure rewards added in a single clean batch update
-          const chestRewards = [
-            { item: 'bronze', count: 2 },
-            { item: 'iron', count: 2 },
-            { item: 'cookedMeat', count: 3 },
-            { item: 'leather', count: 3 },
-            { item: 'wood', count: 14 },
-            { item: 'stone', count: 10 }
-          ];
-          if (inventory) {
-            if (inventory.addBatch) {
-              inventory.addBatch(chestRewards);
-            } else {
-              chestRewards.forEach(r => inventory.add(r.item, r.count));
-            }
-          }
-          if (hud) {
-            if (hud.showNotification) {
-              hud.showNotification('🎁 Aarrearkku avattu! (+2 Rauta, +2 Pronssi, +3 Liha, +3 Nahka, +14 Puu, +10 Kivi)', 3500);
-            }
-            if (hud.showPickupText) {
-              hud.showPickupText('🎁 +Aarteet kerätty!');
-            }
-            if (hud.hideTooltip) {
-              hud.hideTooltip();
-            }
-          }
-        } catch (err) {
-          console.error('Chest opening error handled:', err);
-        }
-        return;
-      }
-
-      const nearFire = getNearbyCampfire(pPos);
-
-      // 3. Campfire cooking & resting
-      if (nearFire) {
-        if (inventory.has('meat', 1)) {
-          inventory.remove('meat', 1);
-          inventory.add('cookedMeat', 1);
-          audioManager.playEat();
-          hud.showNotification('🍗 Paistoit mehukkaan paistin leiritulella! (+50 Nälkä, +35 HP)');
-          questManager.onCraft('cookedMeat');
-        } else if (inventory.has('salmon', 1) || inventory.has('pike', 1) || inventory.has('trout', 1)) {
-          const fish = inventory.has('salmon', 1) ? 'salmon' : (inventory.has('pike', 1) ? 'pike' : 'trout');
-          inventory.remove(fish, 1);
-          inventory.add('cookedFish', 1);
-          audioManager.playEat();
-          hud.showNotification('🍲 Paistoit kalan rapeaksi leiritulella! (+45 Nälkä, +30 HP)');
-          questManager.onCraft('cookedFish');
-        }
-        player.tryInteract();
-        return;
-      }
-
-      // 4. Water drinking
-      if (isNearWaterEdge(pPos)) {
-        player.tryInteract();
-        return;
-      }
+      triggerInteraction();
     }
   });
 
@@ -1210,7 +1263,7 @@ async function init() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    const maxRatio = (mobileControls && mobileControls.isTouchDevice) ? Math.min(window.devicePixelRatio, 1.25) : Math.min(window.devicePixelRatio, 2.0);
+    const maxRatio = (mobileControls && mobileControls.isTouchDevice) ? Math.min(window.devicePixelRatio, 1.5) : Math.min(window.devicePixelRatio, 2.0);
     renderer.setPixelRatio(maxRatio);
   });
 
@@ -1281,12 +1334,18 @@ async function init() {
 
     // Contextual interaction tooltips for gravestones, chests, campfire and water
     const pPos = player.getPosition();
-    if (locked && !resourceNode.isAimingAtHarvestable() && !npcManager.targetedNPC) {
-      const nearTomb = (world && world.tombstones) ? world.tombstones.find(t => pPos.distanceTo(t.position) < 3.2) : null;
+    const isTouch = window.isTouchDevice || ('ontouchstart' in window) || /Android|iPhone|iPad|iPod|Windows Phone|webOS|BlackBerry/i.test(navigator.userAgent) || window.innerWidth <= 900;
+    const isFi = (typeof Localization !== 'undefined' && Localization.lang === 'en') ? false : true;
+
+    // Show tooltips whenever no modal is active (don't strictly require desktop pointer lock)
+    const anyModal = (craftingMenu && craftingMenu.isOpen) || (mapScreen && mapScreen.isOpen) || (backpackScreen && backpackScreen.isOpen) || (skillTree && skillTree.isOpen) || (characterCreator && characterCreator.isOpen) || (pauseMenu && pauseMenu.classList.contains('active'));
+
+    if (!anyModal && !resourceNode.isAimingAtHarvestable() && !npcManager.targetedNPC) {
+      const nearTomb = (world && world.tombstones) ? world.tombstones.find(t => pPos.distanceTo(t.position) < 3.8) : null;
       let nearbyChest = null;
       if (!nearTomb && world && world.wildChests) {
         for (const c of world.wildChests) {
-          if (!c.isOpened && pPos.distanceTo(c.position) < 3.2) {
+          if (!c.isOpened && pPos.distanceTo(c.position) < 3.8) {
             nearbyChest = c;
             break;
           }
@@ -1294,26 +1353,40 @@ async function init() {
       }
 
       if (nearTomb) {
-        const isFi = (typeof Localization !== 'undefined' && Localization.lang === 'en') ? false : true;
-        hud.showTooltip(isFi ? '[E] Kerää tavarat hautakiveltä 🪦' : '[E] Recover items from Gravestone 🪦');
+        hud.showTooltip(isTouch
+          ? (isFi ? '🪦 Kerää tavarat hautakiveltä (napauta)' : '🪦 Recover items from Gravestone (tap)')
+          : (isFi ? '[E] Kerää tavarat hautakiveltä 🪦' : '[E] Recover items from Gravestone 🪦')
+        );
       } else if (nearbyChest) {
-        hud.showTooltip(`[E] ${Localization.t('chest_prompt', 'Avaa Aarrearkku')}`);
+        hud.showTooltip(isTouch
+          ? (isFi ? '🎁 Avaa Aarrearkku (napauta)' : '🎁 Open Treasure Chest (tap)')
+          : (isFi ? '[E] Avaa Aarrearkku 🎁' : '[E] Open Treasure Chest 🎁')
+        );
       } else {
         const nearFire = getNearbyCampfire(pPos);
         if (nearFire) {
           const canCook = inventory.has('meat', 1) || inventory.has('trout', 1) || inventory.has('pike', 1) || inventory.has('salmon', 1);
           if (canCook) {
-            hud.showTooltip('[E] Paista raaka liha tai kala leiritulella 🔥');
+            hud.showTooltip(isTouch
+              ? (isFi ? '🍗 Paista ruokaa nuotiolla (napauta)' : '🍗 Cook food on campfire (tap)')
+              : (isFi ? '[E] Paista raaka liha tai kala leiritulella 🔥' : '[E] Cook meat or fish on campfire 🔥')
+            );
           } else {
-            hud.showTooltip('🔥 Lämmin leirituli (Valmista ruokaa tai lämmittele)');
+            hud.showTooltip(isTouch
+              ? (isFi ? '🔥 Lepää leiritulella (napauta)' : '🔥 Rest by campfire (tap)')
+              : (isFi ? '[E] Lepää leiritulella 🔥' : '[E] Rest by campfire 🔥')
+            );
           }
         } else if (isNearWaterEdge(pPos)) {
-          hud.showTooltip('[E] Juo raikasta tunturivettä 💧');
+          hud.showTooltip(isTouch
+            ? (isFi ? '💧 Juo raikasta tunturivettä (napauta)' : '💧 Drink fresh mountain water (tap)')
+            : (isFi ? '[E] Juo raikasta tunturivettä 💧' : '[E] Drink mountain river water 💧')
+          );
         } else {
           hud.hideTooltip();
         }
       }
-    } else if (locked && (resourceNode.isAimingAtHarvestable() || npcManager.targetedNPC)) {
+    } else if (!anyModal && (resourceNode.isAimingAtHarvestable() || npcManager.targetedNPC)) {
       // Handled by resourceNode or npcManager
     } else {
       hud.hideTooltip();

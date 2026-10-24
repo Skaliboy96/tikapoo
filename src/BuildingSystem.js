@@ -97,9 +97,9 @@ export default class BuildingSystem {
             <span id="b-hud-cost" class="b-hud-cost">🪵 5 Puuta</span>
           </div>
         </div>
-        <button id="b-hud-next" class="b-hud-btn b-hud-arrow" title="Seuraava pala [E]">[E] ▶</button>
-        <button id="b-hud-rot" class="b-hud-btn b-hud-action" title="Käännä palaa 90° [R]">🔄 Käännä [R]</button>
-        <button id="b-hud-menu" class="b-hud-btn b-hud-menu-btn" title="Avaa koko rakennusvalikko [B]">⚒️ Valikko [B]</button>
+        <button id="b-hud-next" class="b-hud-btn b-hud-arrow" title="Seuraava pala">▶</button>
+        <button id="b-hud-rot" class="b-hud-btn b-hud-action" title="Käännä palaa 90°">🔄 Käännä</button>
+        <button id="b-hud-menu" class="b-hud-btn b-hud-menu-btn" title="Avaa koko rakennusvalikko">⚒️ Valikko</button>
       `;
       document.body.appendChild(hudBar);
 
@@ -263,15 +263,19 @@ export default class BuildingSystem {
     if (this.modalEl) {
       this.modalEl.style.display = 'none';
     }
-    setTimeout(() => {
-      const anyOtherModal = document.querySelector('.modal.active') ||
-                            document.querySelector('.menu-modal.active') ||
-                            document.querySelector('#crafting-menu.active') ||
-                            document.querySelector('#backpack-screen.active');
-      if (!anyOtherModal && this.controls && !this.controls.isLocked) {
-        try { this.controls.lock(); } catch (e) {}
-      }
-    }, 60);
+    if (window.restoreGameFocus) {
+      window.restoreGameFocus();
+    } else {
+      setTimeout(() => {
+        const anyOtherModal = document.querySelector('.modal.active') ||
+                              document.querySelector('.menu-modal.active') ||
+                              document.querySelector('#crafting-menu.active') ||
+                              document.querySelector('#backpack-screen.active');
+        if (!anyOtherModal && this.controls && !this.controls.isLocked) {
+          try { this.controls.lock(); } catch (e) {}
+        }
+      }, 60);
+    }
   }
 
   toggleBuildMenu() {

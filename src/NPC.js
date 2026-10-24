@@ -384,13 +384,17 @@ export default class NPC {
     if (this.dialogueEl) this.dialogueEl.classList.remove('active');
     this.activeNPC = null;
     this.targetedNPC = null;
-    setTimeout(() => {
-      const mainMenu = document.getElementById('main-menu');
-      const isMenu = mainMenu && mainMenu.style.display !== 'none';
-      if (!isMenu && this.controls && !this.controls.isLocked) {
-        this.controls.lock();
-      }
-    }, 60);
+    if (window.restoreGameFocus) {
+      window.restoreGameFocus();
+    } else {
+      setTimeout(() => {
+        const mainMenu = document.getElementById('main-menu');
+        const isMenu = mainMenu && mainMenu.style.display !== 'none';
+        if (!isMenu && this.controls && !this.controls.isLocked) {
+          this.controls.lock();
+        }
+      }, 60);
+    }
   }
 
   update(delta, camera, isLocked) {
@@ -424,7 +428,8 @@ export default class NPC {
       }
     });
 
-    if (!isLocked || this.activeNPC) return;
+    const isTouch = window.isTouchDevice || ('ontouchstart' in window) || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if ((!isLocked && !isTouch) || this.activeNPC) return;
 
     this.raycaster.setFromCamera({ x: 0, y: 0 }, camera);
     const meshes = this.npcs.flatMap(n => {
@@ -438,7 +443,10 @@ export default class NPC {
       const npc = hits[0].object.userData.npc;
       if (npc) {
         this.targetedNPC = npc;
-        this.hud.showTooltip(`[E] Puhu: ${npc.name} (${npc.title})`);
+        const prompt = isTouch
+          ? `💬 Puhu: ${npc.name} (${npc.title}) (napauta)`
+          : `[E] Puhu: ${npc.name} (${npc.title})`;
+        this.hud.showTooltip(prompt);
         if (this._ePressed) {
           this._ePressed = false;
           this.openDialogue(npc);
