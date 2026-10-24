@@ -501,13 +501,34 @@ export default class AssetLoader {
     this.loaded = 0;
     this.updateProgress('aloitetaan');
 
-    const modelPromises = modelManifest.map(m => this.loadModel(m.name, m.url));
-    const objPromises = objManifest.map(o => this.loadOBJ(o.name, o.obj, o.mtl));
-    const texPromises = textureManifest.map(t => this.loadTexture(t.name, t.url, t.wrap, t.rx, t.ry));
-    const rigGeneralPromise = this.loadAnimations('/assets/KayKit_Adventurers_2.0_FREE/KayKit_Adventurers_2.0_FREE/Animations/gltf/Rig_Medium/Rig_Medium_General.glb', 'rigMedium');
-    const rigMovementPromise = this.loadAnimations('/assets/KayKit_Adventurers_2.0_FREE/KayKit_Adventurers_2.0_FREE/Animations/gltf/Rig_Medium/Rig_Medium_MovementBasic.glb', 'rigMedium');
+    // Safe throttled concurrency pool runner:
+    // Prevents mobile browser connection socket timeouts and RAM decoding spikes
+    const runInPool = async (tasks, concurrency = 6) => {
+      const results = [];
+      const executing = [];
+      for (const task of tasks) {
+        const p = Promise.resolve().then(() => task());
+        results.push(p);
+        if (concurrency <= tasks.length) {
+          const e = p.then(() => executing.splice(executing.indexOf(e), 1));
+          executing.push(e);
+          if (executing.length >= concurrency) {
+            await Promise.race(executing);
+          }
+        }
+      }
+      return Promise.all(results);
+    };
 
-    await Promise.all([...modelPromises, ...objPromises, ...texPromises, rigGeneralPromise, rigMovementPromise]);
+    const tasks = [
+      ...modelManifest.map(m => () => this.loadModel(m.name, m.url)),
+      ...objManifest.map(o => () => this.loadOBJ(o.name, o.obj, o.mtl)),
+      ...textureManifest.map(t => () => this.loadTexture(t.name, t.url, t.wrap, t.rx, t.ry)),
+      () => this.loadAnimations('/assets/KayKit_Adventurers_2.0_FREE/KayKit_Adventurers_2.0_FREE/Animations/gltf/Rig_Medium/Rig_Medium_General.glb', 'rigMedium'),
+      () => this.loadAnimations('/assets/KayKit_Adventurers_2.0_FREE/KayKit_Adventurers_2.0_FREE/Animations/gltf/Rig_Medium/Rig_Medium_MovementBasic.glb', 'rigMedium')
+    ];
+
+    await runInPool(tasks, 6);
     this.updateProgress('Valmis!');
     return this;
   }

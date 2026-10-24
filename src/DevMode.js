@@ -47,6 +47,13 @@ export default class DevMode {
     this.selectedObject = null;
     this.selectionBox = null;
 
+    // Drag / Move selected object state
+    this.isDraggingObject = false;
+    this.isMoveModeActive = false;
+    this.dragStartX = 0;
+    this.dragStartY = 0;
+    this.dragMoved = false;
+
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
 
@@ -278,6 +285,7 @@ export default class DevMode {
     });
 
     // Inspector Actions
+    document.getElementById('dev-drag-obj-btn')?.addEventListener('click', () => this.toggleMoveMode());
     document.getElementById('dev-delete-obj-btn')?.addEventListener('click', () => this.deleteSelectedObject());
     document.getElementById('dev-tp-to-obj-btn')?.addEventListener('click', () => this.teleportToSelected());
     document.getElementById('dev-insp-close-btn')?.addEventListener('click', () => this.deselectObject());
@@ -405,13 +413,48 @@ export default class DevMode {
       }
     });
 
-    // Right-mouse look & mouse movement in DevMode
+    // Mouse interaction & movement in DevMode
     window.addEventListener('mousedown', (e) => {
       if (!this.isActive) return;
+
+      // Right click: camera look
       if (e.button === 2) {
         this.isRightMouseDown = true;
         this.prevMouseX = e.clientX;
         this.prevMouseY = e.clientY;
+        return;
+      }
+
+      // Left click: check for object dragging
+      if (e.button === 0) {
+        if (e.target.closest('.dev-toolbar') ||
+            e.target.closest('.dev-bottom-drawer') ||
+            e.target.closest('.dev-inspector-card') ||
+            e.target.closest('.dev-placement-banner') ||
+            e.target.closest('.menu-modal')) {
+          return;
+        }
+
+        this.dragStartX = e.clientX;
+        this.dragStartY = e.clientY;
+        this.dragMoved = false;
+
+        // If an object is already selected, allow clicking & dragging it across the ground
+        if (this.selectedObject) {
+          if (this.isMoveModeActive) {
+            this.isDraggingObject = true;
+          } else {
+            this.mouse.set(
+              (e.clientX / window.innerWidth) * 2 - 1,
+              -(e.clientY / window.innerHeight) * 2 + 1
+            );
+            this.raycaster.setFromCamera(this.mouse, this.camera);
+            const hits = this.raycaster.intersectObject(this.selectedObject, true);
+            if (hits.length > 0) {
+              this.isDraggingObject = true;
+            }
+          }
+        }
       }
     });
 
@@ -419,6 +462,13 @@ export default class DevMode {
       if (!this.isActive) return;
       if (e.button === 2) {
         this.isRightMouseDown = false;
+      }
+      if (e.button === 0 && this.isDraggingObject) {
+        this.isDraggingObject = false;
+        document.body.style.cursor = '';
+        if (this.dragMoved) {
+          if (this.hud) this.hud.showNotification('📍 Kohde siirretty uuteen sijaintiin!', 1600);
+        }
       }
     });
 
@@ -448,6 +498,44 @@ export default class DevMode {
         this.camera.quaternion.setFromEuler(this.cameraEuler);
       }
 
+      // Dragging selected object on terrain
+      if (this.isDraggingObject && this.selectedObject) {
+        const distMoved = Math.hypot(e.clientX - this.dragStartX, e.clientY - this.dragStartY);
+        if (distMoved > 5) {
+          this.dragMoved = true;
+          document.body.style.cursor = 'grabbing';
+        }
+
+        this.mouse.set(
+          (e.clientX / window.innerWidth) * 2 - 1,
+          -(e.clientY / window.innerHeight) * 2 + 1
+        );
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+
+        let hitPoint = null;
+        if (this.world?.groundMesh) {
+          const hits = this.raycaster.intersectObject(this.world.groundMesh, false);
+          if (hits.length > 0) {
+            hitPoint = hits[0].point;
+          }
+        }
+
+        if (!hitPoint) {
+          const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -this.selectedObject.position.y);
+          const target = new THREE.Vector3();
+          if (this.raycaster.ray.intersectPlane(plane, target)) {
+            hitPoint = target;
+          }
+        }
+
+        if (hitPoint) {
+          const newX = hitPoint.x;
+          const newZ = hitPoint.z;
+          const newY = this.world ? this.world.getGroundHeight(newX, newZ) : hitPoint.y;
+          this.moveSelectedObjectTo(newX, newY, newZ);
+        }
+      }
+
       // Update ghost preview placement position if active
       if (this.activePlacement && this.placementGhost) {
         this.updatePlacementGhost(e);
@@ -467,6 +555,12 @@ export default class DevMode {
     // Left click handling in Dev Mode (Select, Delete, or Place)
     window.addEventListener('click', (e) => {
       if (!this.isActive) return;
+
+      // If user just dragged the selected object, do not trigger click selection/deselection
+      if (this.dragMoved) {
+        this.dragMoved = false;
+        return;
+      }
 
       // Ignore clicks on dev panel UI elements
       if (e.target.closest('.dev-toolbar') ||
@@ -933,7 +1027,91 @@ export default class DevMode {
     }
   }
 
+  toggleMoveMode(force = null) {
+    this.isMoveModeActive = (force !== null) ? force : !this.isMoveModeActive;
+    const btn = document.getElementById('dev-drag-obj-btn');
+    if (btn) {
+      btn.classList.toggle('active', this.isMoveModeActive);
+      btn.style.background = this.isMoveModeActive ? 'rgba(0, 229, 255, 0.55)' : 'rgba(0, 229, 255, 0.2)';
+      btn.textContent = this.isMoveModeActive ? '✋ Siirtotila PÄÄLLÄ (Raahaa)' : '✋ Siirrä hiirellä (Raahaa)';
+    }
+    if (this.hud && this.isMoveModeActive) {
+      this.hud.showNotification('✋ Siirtotila PÄÄLLÄ: Raahaa valittua kohdetta maastossa hiirellä!', 2500);
+    }
+  }
+
+  moveSelectedObjectTo(x, y, z) {
+    if (!this.selectedObject) return;
+    this.selectedObject.position.set(x, y, z);
+
+    // 1. Update attached resourceNode coordinates
+    const resNode = this.selectedObject.userData?.resourceNode;
+    if (resNode && resNode.position) {
+      resNode.position.set(x, y, z);
+    }
+
+    // 2. Update in world.trees list
+    if (this.world?.trees) {
+      const tree = this.world.trees.find(t => t.mesh === this.selectedObject);
+      if (tree && tree.position) {
+        tree.position.set(x, y, z);
+      }
+    }
+
+    // 3. Update in world.stones list
+    if (this.world?.stones) {
+      const stone = this.world.stones.find(s => s.mesh === this.selectedObject);
+      if (stone && stone.position) {
+        stone.position.set(x, y, z);
+      }
+    }
+
+    // 4. Update in world.wildChests list
+    if (this.world?.wildChests) {
+      const chest = this.world.wildChests.find(c => c.mesh === this.selectedObject);
+      if (chest) {
+        chest.position.set(x, y, z);
+        if (chest.glowMarker) {
+          chest.glowMarker.position.set(x, y + 0.85, z);
+        }
+      }
+    }
+
+    // 5. Update in buildingSystem.placedStructures
+    if (this.buildingSystem?.placedStructures) {
+      const st = this.buildingSystem.placedStructures.find(s => s.mesh === this.selectedObject);
+      if (st && st.position) {
+        st.position.set(x, y, z);
+      }
+    }
+
+    // 6. Update in persistent edits.placed for world saving & exporting
+    if (this.edits?.placed && this.selectedObject.userData?.customId) {
+      const editEntry = this.edits.placed.find(p => p.id === this.selectedObject.userData.customId);
+      if (editEntry) {
+        editEntry.x = x;
+        editEntry.y = y;
+        editEntry.z = z;
+        this._saveToStorage();
+      }
+    }
+
+    // 7. Update glowing BoxHelper selection outline
+    if (this.selectionBox) {
+      this.selectionBox.update();
+    }
+
+    // 8. Update coordinates in inspector UI card
+    if (this.inspPos) {
+      this.inspPos.textContent = `X: ${x.toFixed(1)}, Y: ${y.toFixed(1)}, Z: ${z.toFixed(1)}`;
+    }
+  }
+
   deselectObject() {
+    this.toggleMoveMode(false);
+    this.isDraggingObject = false;
+    this.dragMoved = false;
+    document.body.style.cursor = '';
     if (this.selectionBox) {
       this.scene.remove(this.selectionBox);
       this.selectionBox.geometry?.dispose();

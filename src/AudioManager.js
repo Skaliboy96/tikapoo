@@ -34,14 +34,28 @@ export default class AudioManager {
     this.bossStep = 0;
     this.activeBossDef = null;
 
-    this.initAudioContext();
+    // Mobile-friendly Lazy AudioContext initialization on first user interaction (iOS Safari compliant)
+    const unlockAudio = () => {
+      this.ensureContext();
+      window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+    };
+    window.addEventListener('pointerdown', unlockAudio, { once: true, passive: true });
+    window.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
+    window.addEventListener('keydown', unlockAudio, { once: true, passive: true });
   }
 
   initAudioContext() {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (AudioContext) {
-      this.ctx = new AudioContext();
-      this._setupGainRouting();
+    if (this.ctx) return;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      try {
+        this.ctx = new AudioContextClass();
+        this._setupGainRouting();
+      } catch (e) {
+        console.warn('AudioContext creation notice:', e);
+      }
     }
   }
 
@@ -74,7 +88,7 @@ export default class AudioManager {
       this.initAudioContext();
     }
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      this.ctx.resume().catch(() => {});
     }
   }
 

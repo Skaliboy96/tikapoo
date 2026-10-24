@@ -50,13 +50,14 @@ export default class CharacterCreator {
     this.prevMouseX = 0;
     this.clock = new THREE.Clock();
 
-    this._initThreePreview();
+    // Lazy WebGL preview: Only initialize renderer when modal is actually opened!
+    // Prevents allocating 2 simultaneous WebGL contexts on mobile (iOS WebKit context crash fix)
     this._initUI();
     this._setupListeners();
   }
 
   _initThreePreview() {
-    if (!this.previewCanvas) return;
+    if (!this.previewCanvas || this.renderer) return;
 
     const width = this.previewCanvas.clientWidth || 360;
     const height = this.previewCanvas.clientHeight || 480;
@@ -71,12 +72,12 @@ export default class CharacterCreator {
     const isMobile = window.innerWidth <= 900 || ('ontouchstart' in window);
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.previewCanvas,
-      antialias: !isMobile,
+      antialias: false,
       alpha: false,
       powerPreference: 'low-power'
     });
     this.renderer.setSize(width, height);
-    this.renderer.setPixelRatio(isMobile ? Math.min(window.devicePixelRatio, 1.25) : Math.min(window.devicePixelRatio, 1.5));
+    this.renderer.setPixelRatio(isMobile ? 1.0 : Math.min(window.devicePixelRatio, 1.25));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.1;
 
@@ -281,6 +282,7 @@ export default class CharacterCreator {
     if (this.container) {
       this.container.style.display = 'flex';
     }
+    this._initThreePreview();
     this._syncUIFromConfig();
     this.buildPreviewModel();
     this.clock.start();
@@ -291,6 +293,13 @@ export default class CharacterCreator {
     this.isOpen = false;
     if (this.container) {
       this.container.style.display = 'none';
+    }
+    // Clean up WebGL context so only main game WebGLRenderer remains active
+    if (this.renderer) {
+      try {
+        this.renderer.dispose();
+      } catch (e) {}
+      this.renderer = null;
     }
   }
 

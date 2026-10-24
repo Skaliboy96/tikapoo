@@ -78,8 +78,9 @@ async function init() {
   });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(isTouchDevice ? Math.min(window.devicePixelRatio, 1.25) : Math.min(window.devicePixelRatio, 2.0));
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = isTouchDevice ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+  // Disable heavy shadow map framebuffers on mobile to eliminate iOS WebKit memory exhaustion and infinite reload loops
+  renderer.shadowMap.enabled = !isTouchDevice;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
   container.appendChild(renderer.domElement);
@@ -235,6 +236,9 @@ async function init() {
   // Set player position above initial terrain spawn
   const initialGroundY = world.getGroundHeight(0, 0);
   player.playerPos.set(0, initialGroundY, 0);
+
+  // Global dev reference for runtime diagnostics & benchmarking
+  window.__game = { world, player, devMode, inventory, hud, audioManager, scene, controls, startGame: () => startGame() };
 
   // --- Initial Menu Visibility State ---
   let isGameStarted = false;
@@ -890,28 +894,32 @@ async function init() {
       if (nearbyChest) {
         try {
           nearbyChest.isOpened = true;
-          // Clean up glow marker without removing any PointLight (avoids WebGL shader recompilation hitch)
+          // Hide glow beacon cleanly (zero scene graph re-evaluation or shader recompilation hitch)
           if (nearbyChest.glowMarker) {
-            scene.remove(nearbyChest.glowMarker);
-            nearbyChest.glowMarker = null;
+            nearbyChest.glowMarker.visible = false;
           }
           if (nearbyChest.glowLight) {
             nearbyChest.glowLight.intensity = 0;
             nearbyChest.glowLight.visible = false;
           }
-          if (audioManager && audioManager.playChestOpen) {
-            audioManager.playChestOpen();
-          } else if (audioManager && audioManager.playPickup) {
-            audioManager.playPickup();
+
+          try {
+            if (audioManager && audioManager.playChestOpen) {
+              audioManager.playChestOpen();
+            } else if (audioManager && audioManager.playPickup) {
+              audioManager.playPickup();
+            }
+          } catch (audioErr) {
+            console.warn('Chest audio notice:', audioErr);
           }
 
-          // Visual chest lid opening animation!
+          // Visual chest lid opening animation on the armature bone ONLY
+          // Avoids mutating SkinnedMesh node rotation directly which causes vertex transform corruption
           if (nearbyChest.mesh) {
-            nearbyChest.mesh.traverse(child => {
-              if (child.name === 'Chest_Wood_Lid' || child.name === 'Chest_Top') {
-                child.rotation.x = -Math.PI * 0.45;
-              }
-            });
+            const topBone = nearbyChest.mesh.getObjectByName('Chest_Top');
+            if (topBone) {
+              topBone.rotation.x = -Math.PI * 0.45;
+            }
           }
 
           // Generous treasure rewards added in a single clean batch update
