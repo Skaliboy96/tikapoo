@@ -333,19 +333,24 @@ export default class World {
     // Scandinavian Sun with tight high-density shadow frustum centered dynamically on player
     this.sun = new THREE.DirectionalLight(0xfff0d0, 1.95);
     this.sun.position.set(85, 120, 65);
-    this.sun.castShadow = true;
-    this.sun.shadow.mapSize.width = 2048;
-    this.sun.shadow.mapSize.height = 2048;
-    this.sun.shadow.camera.near = 1.0;
-    this.sun.shadow.camera.far = 380;
+    this.sun.castShadow = !isMobileDevice; // Never cast shadows on mobile to save GPU memory & prevent WebKit crashes
+    if (!isMobileDevice) {
+      this.sun.shadow.mapSize.width = 2048;
+      this.sun.shadow.mapSize.height = 2048;
+      this.sun.shadow.camera.near = 1.0;
+      this.sun.shadow.camera.far = 380;
 
-    const d = 95; // Crisp, sharp shadow texel density
-    this.sun.shadow.camera.left = -d;
-    this.sun.shadow.camera.right = d;
-    this.sun.shadow.camera.top = d;
-    this.sun.shadow.camera.bottom = -d;
-    this.sun.shadow.bias = -0.0001;
-    this.sun.shadow.normalBias = 0.04;
+      const d = 95; // Crisp, sharp shadow texel density
+      this.sun.shadow.camera.left = -d;
+      this.sun.shadow.camera.right = d;
+      this.sun.shadow.camera.top = d;
+      this.sun.shadow.camera.bottom = -d;
+      this.sun.shadow.bias = -0.0001;
+      this.sun.shadow.normalBias = 0.04;
+    } else {
+      this.sun.shadow.mapSize.width = 256;
+      this.sun.shadow.mapSize.height = 256;
+    }
 
     this.scene.add(this.sun);
     this.scene.add(this.sun.target);
@@ -369,7 +374,7 @@ export default class World {
 
   initTerrain() {
     const size = 1400; // Expansive Scandinavian wilderness
-    const segments = isMobileDevice ? 80 : 250;
+    const segments = isMobileDevice ? 50 : 250;
     const groundGeo = new THREE.PlaneGeometry(size, size, segments, segments);
     groundGeo.rotateX(-Math.PI / 2);
 
@@ -570,7 +575,7 @@ export default class World {
       grassMat.shadowSide = THREE.DoubleSide;
     }
 
-    const count = isMobileDevice ? 600 : 7000;
+    const count = isMobileDevice ? 300 : 7000;
     this.instancedGrass = new THREE.InstancedMesh(grassGeo, grassMat, count);
     this.instancedGrass.receiveShadow = true;
 
@@ -665,7 +670,7 @@ export default class World {
       fernMat.shadowSide = THREE.DoubleSide;
     }
 
-    const count = isMobileDevice ? 250 : 3500;
+    const count = isMobileDevice ? 100 : 3500;
     this.instancedFerns = new THREE.InstancedMesh(fernGeo, fernMat, count);
     this.instancedFerns.receiveShadow = true;
 
@@ -1661,7 +1666,7 @@ export default class World {
     }
 
     // 6. Remaining trees distributed across the expansive wilderness (120 on mobile, 950 on desktop)
-    const totalTrees = isMobileDevice ? 120 : 950;
+    const totalTrees = isMobileDevice ? 50 : 950;
     for (let i = 0; i < totalTrees; i++) {
       let x, z, dist;
       do {
@@ -1716,7 +1721,7 @@ export default class World {
   // --- Authentic Finnish Birch Forests (Pohjolan Koivikot) ---
   generateBirchForests() {
     const birchModels = ['BirchTree_1', 'BirchTree_2', 'BirchTree_3'];
-    const totalBirches = isMobileDevice ? 35 : 260;
+    const totalBirches = isMobileDevice ? 15 : 260;
 
     for (let i = 0; i < totalBirches; i++) {
       let x, z;

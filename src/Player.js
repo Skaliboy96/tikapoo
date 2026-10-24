@@ -118,29 +118,26 @@ export default class Player {
     // Load saved or default character configuration
     const savedChar = localStorage.getItem('tikapoo_character');
     let config = {
+      name: 'Eerik',
       gender: 'male',
-      headStyle: 'hood',
+      headStyle: 'hair',
       hairStyle: 'short',
       hairColor: 0x3d2817,
       skinColor: 0xf5d0b5,
-      clothingColor: 0x2e5339
+      clothingColor: 0x2e5339,
+      model: 'Rogue'
     };
     if (savedChar) {
-      try { config = { ...config, ...JSON.parse(savedChar) }; } catch (e) {}
+      try {
+        config = { ...config, ...JSON.parse(savedChar) };
+      } catch (e) {}
     }
+    // Always enforce basic starting clothes with open head and customizable hair (no forced hoods or starting outfits)
+    config.headStyle = 'hair';
+    config.model = 'Rogue';
     this.charConfig = config;
 
-    const isFemale = config.gender === 'female';
-    const isHood = config.headStyle === 'hood';
-    const style = config.style || 'rogue';
-
-    let modelName = config.model;
-    if (!modelName) {
-      if (style === 'ranger') modelName = 'Ranger_Adv';
-      else if (style === 'barbarian') modelName = 'Barbarian';
-      else if (style === 'mage') modelName = 'Mage';
-      else modelName = isFemale ? (isHood ? 'Rogue_Hooded' : 'Ranger_Adv') : (isHood ? 'Rogue_Hooded' : 'Rogue');
-    }
+    const modelName = 'Rogue';
 
     // Create animated Valheim Viking character with natural standing idle and customizations
     const charData = this.assetLoader.createAnimatedCharacter(modelName, 'Idle_A', config);

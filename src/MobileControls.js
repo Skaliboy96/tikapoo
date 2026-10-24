@@ -81,9 +81,9 @@ export default class MobileControls {
     }
     document.body.classList.add('mobile-mode');
 
-    // Adapt pixel ratio for smooth 60fps on mobile GPUs (avoids overheating / battery drain)
+    // Adapt pixel ratio for rock-solid 60fps on mobile GPUs & prevent WebKit canvas buffer crashes
     if (this.renderer) {
-      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+      this.renderer.setPixelRatio(1.0);
     }
   }
 

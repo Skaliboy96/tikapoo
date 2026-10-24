@@ -298,12 +298,13 @@ export default class MapScreen {
     }
 
     // 4. Landmarks (only if explored)
+    const isFi = Localization.lang === 'fi';
     const landmarks = [
-      { name: '🏛️ Keskuskylä', x: 0, z: -10, color: '#f1c40f' },
-      { name: '⚓ Satamakylä', x: -22, z: 32, color: '#3498db' },
-      { name: '🏰 Metsävartion Linnake', x: 35, z: -62, color: '#e67e22' },
-      { name: '🔮 Muinainen Pyhäkkö', x: 85, z: -25, color: '#00d4ff' },
-      { name: '🌉 Jokisilta', x: -2, z: 28, color: '#bdc3c7' }
+      { name: isFi ? '🏛️ Keskuskylä' : '🏛️ Central Village', x: 0, z: -10, color: '#f1c40f' },
+      { name: isFi ? '⚓ Satamakylä' : '⚓ Fishermen Haven', x: -22, z: 32, color: '#3498db' },
+      { name: isFi ? '🏰 Metsävartion Linnake' : '🏰 Highland Fortress', x: 35, z: -62, color: '#e67e22' },
+      { name: isFi ? '🔮 Muinainen Pyhäkkö' : '🔮 Ancient Sanctuary', x: 85, z: -25, color: '#00d4ff' },
+      { name: isFi ? '🌉 Jokisilta' : '🌉 River Bridge', x: -2, z: 28, color: '#bdc3c7' }
     ];
     landmarks.forEach(lm => {
       if (!explorationTracker.isExplored(lm.x, lm.z)) return;
@@ -344,7 +345,9 @@ export default class MapScreen {
         ctx.restore();
 
         // Label box
-        const tag = bm.status === 'defeated' ? '👑 KUKISTETTU' : '🔥 AKTIIVINEN';
+        const tag = bm.status === 'defeated'
+          ? (isFi ? '👑 KUKISTETTU' : '👑 DEFEATED')
+          : (isFi ? '🔥 AKTIIVINEN' : '🔥 ACTIVE');
         const tagColor = bm.status === 'defeated' ? '#2ecc71' : '#ff7675';
 
         ctx.fillStyle = 'rgba(10, 15, 20, 0.9)';

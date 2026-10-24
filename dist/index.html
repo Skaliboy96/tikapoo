@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=MedievalSharp&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/index-DIx5pDHI.js"></script>
+  <script type="module" crossorigin src="/assets/index-oUmA1w0l.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/index-BRgHo0vq.css">
 </head>
 <body>
@@ -370,94 +370,87 @@
     <div class="char-creator-container">
       <div class="char-creator-header">
         <div class="char-rune-title">ᚺ ᚨ ᚺ ᛗ ᛟ • ᛚ ᚢ ᛟ ᚾ ᛏ ᛁ</div>
-        <h2 data-i18n="cc_title">Luo Pohjolan Selviytyjä</h2>
-        <p data-i18n="cc_subtitle">Valitse ulkomuotosi, tyylisi ja varusteesi ennen astumista erämaahan</p>
+        <h2 data-i18n="cc_title">Create Nordic Hero</h2>
+        <p data-i18n="cc_subtitle">Customize gender, hairstyle, hair color, skin tone, and clothing</p>
       </div>
 
       <div class="char-creator-content">
         <!-- 3D Turntable Preview -->
         <div class="char-preview-panel">
           <canvas id="char-preview-canvas" width="360" height="480"></canvas>
-          <div class="char-preview-hint" data-i18n="cc_turntable_hint">🔄 Käännä hahmoa raahaamalla hiirellä</div>
+          <div class="char-preview-hint" data-i18n="cc_turntable_hint">🔄 Drag with mouse to rotate character</div>
         </div>
 
         <!-- Customization Controls -->
         <div class="char-options-panel">
           <!-- Name -->
           <div class="char-option-group">
-            <label class="char-group-label" data-i18n="cc_name">Hahmon Nimi</label>
-            <input id="char-name-input" type="text" class="char-text-input" value="Eerik" maxlength="18" placeholder="Kirjoita nimi...">
+            <label class="char-group-label" data-i18n="cc_name">Character Name</label>
+            <input id="char-name-input" type="text" class="char-text-input" value="Eerik" maxlength="18" placeholder="Enter name...">
           </div>
 
           <!-- Gender -->
           <div class="char-option-group">
-            <label class="char-group-label" data-i18n="cc_gender">Sukupuoli</label>
+            <label class="char-group-label" data-i18n="cc_gender">Gender</label>
             <div class="char-btn-row">
-              <button class="char-toggle-btn active" data-char-gender="male" data-i18n="cc_male">🧔 Mies</button>
-              <button class="char-toggle-btn" data-char-gender="female" data-i18n="cc_female">👩 Nainen</button>
+              <button class="char-toggle-btn active" data-char-gender="male" data-i18n="cc_male">🧔 Male</button>
+              <button class="char-toggle-btn" data-char-gender="female" data-i18n="cc_female">👩 Female</button>
             </div>
           </div>
 
-          <!-- Starting Outfit / Archetype Style -->
+          <!-- Hairstyle -->
           <div class="char-option-group">
-            <label class="char-group-label" data-i18n="cc_style_label">Aloitusasu &amp; Tyyli</label>
+            <label class="char-group-label" data-i18n="cc_hair_style">Hairstyle</label>
             <div class="char-btn-row char-btn-wrap">
-              <button class="char-toggle-btn active" data-char-style="rogue" data-i18n="cc_style_rogue">🗡️ Seikkailija (Tunika &amp; Hiukset)</button>
-              <button class="char-toggle-btn" data-char-style="ranger" data-i18n="cc_style_ranger">🏹 Eränkävijä (Huppu &amp; Viitta)</button>
-              <button class="char-toggle-btn" data-char-style="barbarian" data-i18n="cc_style_warrior">⚔️ Soturi (Viikinkiasu)</button>
-              <button class="char-toggle-btn" data-char-style="mage" data-i18n="cc_style_mage">🔮 Maagi (Riimukaapu)</button>
-            </div>
-          </div>
-
-          <!-- Hair Style -->
-          <div id="char-hair-style-row" class="char-option-group">
-            <label class="char-group-label" data-i18n="cc_hair_style">Hiustyyli</label>
-            <div class="char-btn-row char-btn-wrap">
-              <button class="char-toggle-btn active" data-char-hair-style="short" data-i18n="cc_hair_short">✂️ Lyhyet</button>
-              <button class="char-toggle-btn" data-char-hair-style="long" data-i18n="cc_hair_long">💇 Pitkät</button>
-              <button class="char-toggle-btn" data-char-hair-style="ponytail" data-i18n="cc_hair_ponytail">👱 Ponnari</button>
-              <button class="char-toggle-btn" data-char-hair-style="bald" data-i18n="cc_hair_bald">🪓 Kalju</button>
+              <button class="char-toggle-btn active" data-char-hair-style="short" data-i18n="cc_hair_short">✂️ Short Viking</button>
+              <button class="char-toggle-btn" data-char-hair-style="long" data-i18n="cc_hair_long">💇 Long</button>
+              <button class="char-toggle-btn" data-char-hair-style="ponytail" data-i18n="cc_hair_ponytail">👱 Ponytail</button>
+              <button class="char-toggle-btn" data-char-hair-style="bald" data-i18n="cc_hair_bald">🪓 Shaved / Bald</button>
             </div>
           </div>
 
           <!-- Hair Color -->
           <div class="char-option-group">
-            <label class="char-group-label" data-i18n="cc_hair_color">Hiusten Väri</label>
+            <label class="char-group-label" data-i18n="cc_hair_color">Hair Color</label>
             <div class="char-swatch-row">
-              <button class="char-swatch-btn" data-char-hair-color="d4a559" style="background:#d4a559" title="Vaalea"></button>
-              <button class="char-swatch-btn active" data-char-hair-color="3d2817" style="background:#3d2817" title="Kastanja"></button>
-              <button class="char-swatch-btn" data-char-hair-color="8a3324" style="background:#8a3324" title="Punainen"></button>
-              <button class="char-swatch-btn" data-char-hair-color="1a1a1a" style="background:#1a1a1a" title="Musta"></button>
-              <button class="char-swatch-btn" data-char-hair-color="9e9e9e" style="background:#9e9e9e" title="Harmaa"></button>
+              <button class="char-swatch-btn" data-char-hair-color="e6c280" style="background:#e6c280" title="Blonde"></button>
+              <button class="char-swatch-btn active" data-char-hair-color="3d2817" style="background:#3d2817" title="Chestnut"></button>
+              <button class="char-swatch-btn" data-char-hair-color="8a3324" style="background:#8a3324" title="Red"></button>
+              <button class="char-swatch-btn" data-char-hair-color="1a1a1a" style="background:#1a1a1a" title="Black"></button>
+              <button class="char-swatch-btn" data-char-hair-color="9e9e9e" style="background:#9e9e9e" title="Grey"></button>
+              <button class="char-swatch-btn" data-char-hair-color="f0f0f0" style="background:#f0f0f0" title="Platinum"></button>
             </div>
           </div>
 
           <!-- Skin Tone -->
           <div class="char-option-group">
-            <label class="char-group-label" data-i18n="cc_skin_color">Ihonväri</label>
+            <label class="char-group-label" data-i18n="cc_skin_color">Skin Tone</label>
             <div class="char-swatch-row">
-              <button class="char-swatch-btn active" data-char-skin="f5d0b5" style="background:#f5d0b5" title="Pohjoisen vaalea"></button>
-              <button class="char-swatch-btn" data-char-skin="dba77a" style="background:#dba77a" title="Päivettynyt"></button>
-              <button class="char-swatch-btn" data-char-skin="aa7855" style="background:#aa7855" title="Sään karaisema"></button>
+              <button class="char-swatch-btn active" data-char-skin="f5d0b5" style="background:#f5d0b5" title="Nordic Fair"></button>
+              <button class="char-swatch-btn" data-char-skin="dba77a" style="background:#dba77a" title="Tanned"></button>
+              <button class="char-swatch-btn" data-char-skin="aa7855" style="background:#aa7855" title="Weathered"></button>
+              <button class="char-swatch-btn" data-char-skin="6b4423" style="background:#6b4423" title="Deep"></button>
             </div>
           </div>
 
-          <!-- Starting Clothing Color -->
+          <!-- Starting Basic Clothes Color -->
           <div class="char-option-group">
-            <label class="char-group-label" data-i18n="cc_cloth_color">Vaatteiden Väri</label>
+            <label class="char-group-label" data-i18n="cc_cloth_color">Clothing Color</label>
             <div class="char-swatch-row">
-              <button class="char-swatch-btn active" data-char-cloth="2e5339" style="background:#2e5339" title="Havunvihreä"></button>
-              <button class="char-swatch-btn" data-char-cloth="4a3c2c" style="background:#4a3c2c" title="Eränruskea"></button>
-              <button class="char-swatch-btn" data-char-cloth="233d54" style="background:#233d54" title="Pohjolansininen"></button>
-              <button class="char-swatch-btn" data-char-cloth="5c2429" style="background:#5c2429" title="Viininpunainen"></button>
+              <button class="char-swatch-btn active" data-char-cloth="2e5339" style="background:#2e5339" title="Forest Green"></button>
+              <button class="char-swatch-btn" data-char-cloth="4a3c2c" style="background:#4a3c2c" title="Hunter Brown"></button>
+              <button class="char-swatch-btn" data-char-cloth="233d54" style="background:#233d54" title="Nordic Blue"></button>
+              <button class="char-swatch-btn" data-char-cloth="5c2429" style="background:#5c2429" title="Crimson"></button>
+              <button class="char-swatch-btn" data-char-cloth="2d3436" style="background:#2d3436" title="Charcoal"></button>
+              <button class="char-swatch-btn" data-char-cloth="8a7b64" style="background:#8a7b64" title="Linen"></button>
             </div>
           </div>
         </div>
       </div>
 
       <div class="char-creator-actions">
-        <button id="char-create-back-btn" class="char-action-btn char-btn-back" data-i18n="cc_back">⬅️ TAKAISIN VALIKKOON</button>
-        <button id="char-create-confirm-btn" class="char-action-btn char-btn-confirm" data-i18n="cc_confirm">⚔️ VAHVISTA &amp; ASTU POHJOLAAN</button>
+        <button id="char-create-back-btn" class="char-action-btn char-btn-back" data-i18n="cc_back">⬅️ BACK TO MENU</button>
+        <button id="char-create-confirm-btn" class="char-action-btn char-btn-confirm" data-i18n="cc_confirm">⚔️ CONFIRM &amp; ENTER REALM</button>
       </div>
     </div>
   </div>
@@ -519,25 +512,25 @@
     <div id="modal-lore" class="menu-modal">
       <div class="modal-box">
         <div class="modal-header">
-          <h2>🗺️ Kylät ja Maailman Kolkat</h2>
+          <h2 data-i18n="lore_title">🗺️ Villages &amp; Landmarks of the Realm</h2>
           <button class="modal-close" data-close="modal-lore">✕</button>
         </div>
         <div class="modal-body">
           <div class="lore-card">
-            <h3>🏛️ Keskuskylä (The Valley Settlement)</h3>
-            <p>Laakson sydämessä sijaitseva suojaisa kylä. Täältä löydät Päällikön Suurtuvan, Sepän Pajan, Vilkkaat Kauppakojut sekä kylänvanhin Einarin ja seppä Ilmarin.</p>
+            <h3 data-i18n="lore_central_title">🏛️ Central Village (The Valley Settlement)</h3>
+            <p data-i18n="lore_central_desc">A sheltered settlement in the heart of the valley. Here you will find the Chieftain's Great Hall, the Blacksmith's Forge, bustling market stalls, Elder Einar, and blacksmith Ilmari.</p>
           </div>
           <div class="lore-card">
-            <h3>⚓ Satamakylä (Fishermen's Haven)</h3>
-            <p>Joen mutkaan rakennettu kalastajayhteisö pitkine laitureineen ja savustamoineen. Joesta voit kalastaa taimenia, haukia ja kultalohia. Kalastaja Toivo opastaa laiturilla.</p>
+            <h3 data-i18n="lore_port_title">⚓ Satamakylä (Fishermen's Haven)</h3>
+            <p data-i18n="lore_port_desc">A riverside fishing settlement with long wooden piers and smokehouses. Fish for trout, northern pike, and golden salmon here. Fisherman Toivo guides you at the pier.</p>
           </div>
           <div class="lore-card">
-            <h3>🏰 Metsävartion Linnake (Highland Fortress)</h3>
-            <p>Pohjoisen harjanteen laella seisova kivinen vartiotorni ja varuskuntatupa. Vartiotornin laelta avautuu esteetön näkymä koko laaksoon.</p>
+            <h3 data-i18n="lore_fort_title">🏰 Highland Fortress (Forest Guard)</h3>
+            <p data-i18n="lore_fort_desc">A stone watchtower and garrison hall standing atop the northern ridge. The fortress parapet commands an unobstructed view across the entire valley.</p>
           </div>
           <div class="lore-card">
-            <h3>🔮 Muinainen Pyhäkkö (Ancient Sanctuary)</h3>
-            <p>Itäisillä kukkuloilla lepäävät sammaloituneet riimuholvit, joiden keskellä sykkii arvoituksellinen hehkuva turkoosi kristalli.</p>
+            <h3 data-i18n="lore_ruins_title">🔮 Ancient Sanctuary</h3>
+            <p data-i18n="lore_ruins_desc">Moss-covered runic vaults resting in the eastern hills, centered around a mysteriously pulsing turquoise crystal.</p>
           </div>
         </div>
       </div>
@@ -561,11 +554,11 @@
                 <small data-i18n="setting_shadows_sub">Pehmeät varjot ja varjokartan resoluutio</small>
               </div>
               <select id="shadow-quality-select">
-                <option value="very_low">Erittäin matala (Pois / Max FPS)</option>
-                <option value="low">Matala (512x512)</option>
-                <option value="medium">Keskitaso (1024x1024)</option>
-                <option value="high" selected>Korkea (2048x2048 PCF)</option>
-                <option value="ultra">Ultra (4096x4096 Pehmeä PCF)</option>
+                <option value="very_low" data-i18n="opt_shadow_vlow">Erittäin matala (Pois / Max FPS)</option>
+                <option value="low" data-i18n="opt_shadow_low">Matala (512x512)</option>
+                <option value="medium" data-i18n="opt_shadow_med">Keskitaso (1024x1024)</option>
+                <option value="high" data-i18n="opt_shadow_high" selected>Korkea (2048x2048 PCF)</option>
+                <option value="ultra" data-i18n="opt_shadow_ultra">Ultra (4096x4096 Pehmeä PCF)</option>
               </select>
             </div>
 
@@ -575,11 +568,11 @@
                 <small data-i18n="setting_render_dist_sub">Maaston ja metsän näkyvyysetäisyys</small>
               </div>
               <select id="render-dist-select">
-                <option value="very_low">Erittäin matala (400m)</option>
-                <option value="low">Matala (650m)</option>
-                <option value="medium" selected>Keskitaso (900m)</option>
-                <option value="high">Korkea (1200m)</option>
-                <option value="ultra">Ultra (1600m)</option>
+                <option value="very_low" data-i18n="opt_dist_vlow">Erittäin matala (400m)</option>
+                <option value="low" data-i18n="opt_dist_low">Matala (650m)</option>
+                <option value="medium" data-i18n="opt_dist_med" selected>Keskitaso (900m)</option>
+                <option value="high" data-i18n="opt_dist_high">Korkea (1200m)</option>
+                <option value="ultra" data-i18n="opt_dist_ultra">Ultra (1600m)</option>
               </select>
             </div>
 
@@ -589,11 +582,11 @@
                 <small data-i18n="setting_foliage_sub">Tuulessa huojuvien heinien ja saniaisten määrä</small>
               </div>
               <select id="foliage-density-select">
-                <option value="very_low">Erittäin matala (Pois)</option>
-                <option value="low">Matala (2 500 kpl)</option>
-                <option value="medium">Keskitaso (5 000 kpl)</option>
-                <option value="high" selected>Korkea (10 000 kpl)</option>
-                <option value="ultra">Ultra (15 000 kpl)</option>
+                <option value="very_low" data-i18n="opt_foliage_vlow">Erittäin matala (Pois)</option>
+                <option value="low" data-i18n="opt_foliage_low">Matala (2 500 kpl)</option>
+                <option value="medium" data-i18n="opt_foliage_med">Keskitaso (5 000 kpl)</option>
+                <option value="high" data-i18n="opt_foliage_high" selected>Korkea (10 000 kpl)</option>
+                <option value="ultra" data-i18n="opt_foliage_ultra">Ultra (15 000 kpl)</option>
               </select>
             </div>
 
@@ -660,8 +653,8 @@
                 <small data-i18n="setting_camera_sub">Vaihda pelissä myös [F5] tai [P]-näppäimellä</small>
               </div>
               <select id="camera-pref-select">
-                <option value="3rd" selected>Kolmas persoona (Valheim-tyyli)</option>
-                <option value="1st">Ensimmäinen persoona (FPS)</option>
+                <option value="3rd" data-i18n="opt_cam_3rd" selected>Kolmas persoona (Valheim-tyyli)</option>
+                <option value="1st" data-i18n="opt_cam_1st">Ensimmäinen persoona (FPS)</option>
               </select>
             </div>
 

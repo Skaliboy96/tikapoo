@@ -599,36 +599,24 @@ export default class AssetLoader {
 
     if (isMobileClient) {
       const mobileModelNames = new Set([
-        // Characters
-        'Barbarian', 'Knight', 'Mage', 'Ranger_Adv', 'Rogue', 'Rogue_Hooded',
-        'Skeleton_Warrior', 'Skeleton_Mage', 'Skeleton_Rogue', 'Skeleton_Minion',
+        // Characters: 2 essential rigs (Rogue for player & all humanoids, Skeleton_Warrior for all skeletons)
+        'Rogue', 'Skeleton_Warrior',
         // Weapons & Shields
-        'Skeleton_Blade', 'Skeleton_Axe', 'Skeleton_Staff', 'Skeleton_Crossbow',
-        'Skeleton_Shield_Large_A', 'Skeleton_Shield_Small_A',
-        'sword_2handed', 'sword_1handed', 'shield_badge', 'shield_round_barbarian',
-        'staff', 'bow_withString', 'crossbow_1handed', 'dagger', 'wand',
-        // Trees
-        'Pine_1', 'Pine_3', 'CommonTree_1', 'CommonTree_3', 'DeadTree_1', 'TwistedTree_1',
+        'sword_1handed', 'sword_2handed', 'shield_badge', 'staff', 'bow_withString', 'dagger',
+        // Trees (1 of each core type: Pine, Common, Dead)
+        'Pine_1', 'CommonTree_1', 'DeadTree_1',
         // Foliage & Rocks
-        'Bush_Common', 'Bush_Common_Flowers', 'Grass_Common_Tall', 'Flower_3_Group',
-        'Clover_1', 'Fern_1', 'Plant_1', 'Mushroom_Common', 'Mushroom_Laetiporus',
-        'Rock_Medium_1', 'Pebble_Round_1',
-        // Props & Crafting
-        'Chest_Wood', 'Barrel', 'Barrel_Apples', 'Axe_Bronze', 'Sword_Bronze', 'Pickaxe_Bronze',
-        'WeaponStand', 'Anvil_Log', 'Cauldron', 'Bench', 'Torch_Metal', 'FarmCrate_Apple',
-        'Table_Large', 'Workbench', 'Workbench_Drawers', 'Bed_Twin1',
-        // Village structures
-        'Wall_Plaster_Straight', 'Wall_Plaster_Window_Wide_Flat', 'Wall_Plaster_Door_Flat',
-        'Roof_RoundTiles_4x4', 'Roof_RoundTiles_6x8', 'Floor_WoodDark',
-        'Prop_Wagon', 'Prop_WoodenFence_Single', 'Prop_Crate', 'Prop_Chimney', 'Stairs_Exterior_Straight'
+        'Bush_Common', 'Grass_Common_Tall', 'Flower_3_Group', 'Fern_1',
+        'Rock_Medium_1', 'Pebble_Round_1', 'Mushroom_Common',
+        // Essential Props
+        'Chest_Wood', 'Barrel', 'Torch_Metal', 'Workbench', 'Table_Large', 'Bench', 'Anvil_Log',
+        // Modular Village Architecture
+        'Wall_Plaster_Straight', 'Wall_Plaster_Door_Flat', 'Roof_RoundTiles_4x4',
+        'Floor_WoodDark', 'Prop_WoodenFence_Single', 'Prop_Crate', 'Stairs_Exterior_Straight'
       ]);
       activeModelManifest = modelManifest.filter(m => mobileModelNames.has(m.name));
-
-      const mobileObjNames = new Set([
-        'BirchTree_1', 'BushBerries_1', 'Rock_Moss_1', 'WoodLog_Moss', 'Wheat',
-        'LargeBuilding01', 'SmallBuilding01', 'SmallBuilding02', 'TallBuilding01', 'TallBuilding02', 'TinyBuilding01'
-      ]);
-      activeObjManifest = objManifest.filter(o => mobileObjNames.has(o.name));
+      // Completely eliminate heavy OBJ models and duplicate palettes on mobile (zero OBJ parsing & zero extra texture loads)
+      activeObjManifest = [];
     }
 
     this.total = activeModelManifest.length + textureManifest.length + activeObjManifest.length + 2;
@@ -636,7 +624,7 @@ export default class AssetLoader {
     this.updateProgress('aloitetaan');
 
     // Safe throttled concurrency pool runner:
-    // Prevents mobile browser connection socket timeouts and RAM decoding spikes
+    // Uses concurrency of 2 on mobile to prevent socket timeout and peak memory spikes
     const runInPool = async (tasks, concurrency = 6) => {
       const results = [];
       const executing = [];
@@ -662,7 +650,7 @@ export default class AssetLoader {
       () => this.loadAnimations('/assets/KayKit_Adventurers_2.0_FREE/KayKit_Adventurers_2.0_FREE/Animations/gltf/Rig_Medium/Rig_Medium_MovementBasic.glb', 'rigMedium')
     ];
 
-    const poolConcurrency = isMobileClient ? 4 : 6;
+    const poolConcurrency = isMobileClient ? 2 : 6;
     await runInPool(tasks, poolConcurrency);
 
     // Guaranteed 100% completion
@@ -680,25 +668,51 @@ export default class AssetLoader {
       if (name.startsWith('Pine_')) source = this.models['Pine_1'] || this.models['Pine_3'];
       else if (name.startsWith('CommonTree_')) source = this.models['CommonTree_1'] || this.models['CommonTree_3'];
       else if (name.startsWith('DeadTree_')) source = this.models['DeadTree_1'];
-      else if (name.startsWith('TwistedTree_')) source = this.models['TwistedTree_1'];
-      else if (name.startsWith('BirchTree_')) source = this.models['BirchTree_1'];
+      else if (name.startsWith('TwistedTree_')) source = this.models['DeadTree_1'] || this.models['CommonTree_1'];
+      else if (name.startsWith('BirchTree_')) source = this.models['CommonTree_1'];
       else if (name.startsWith('Rock_Medium_')) source = this.models['Rock_Medium_1'];
-      else if (name.startsWith('Rock_Moss_')) source = this.models['Rock_Moss_1'];
-      else if (name === 'Flower_4_Group') source = this.models['Flower_3_Group'];
-      else if (name.startsWith('Grass_')) source = this.models['Grass_Common_Tall'];
-      else if (name.startsWith('Plant_')) source = this.models['Plant_1'];
-      else if (name === 'TreeStump_Moss') source = this.models['WoodLog_Moss'];
+      else if (name.startsWith('Rock_Moss_')) source = this.models['Rock_Medium_1'];
+      else if (name.startsWith('BushBerries_') || name.startsWith('Bush_')) source = this.models['Bush_Common'];
+      else if (name.startsWith('WoodLog_Moss') || name === 'TreeStump_Moss') source = this.models['CommonTree_1'] || this.models['DeadTree_1'];
+      else if (name === 'Wheat' || name.startsWith('Grass_')) source = this.models['Grass_Common_Tall'];
+      else if (name.startsWith('Flower_') || name.startsWith('Plant_') || name === 'Clover_1') source = this.models['Flower_3_Group'] || this.models['Bush_Common'];
+      else if (name.startsWith('Mushroom_')) source = this.models['Mushroom_Common'];
       else if (name === 'CandleStick_Stand') source = this.models['Torch_Metal'];
-      else if (name === 'FarmCrate_Carrot') source = this.models['FarmCrate_Apple'];
+      else if (name.startsWith('FarmCrate_')) source = this.models['Prop_Crate'] || this.models['Chest_Wood'];
       else if (name === 'Chair_1') source = this.models['Bench'];
-      else if (name === 'Stall_Empty' || name === 'Stall_Cart_Empty') source = this.models['Prop_Wagon'];
-      else if (name === 'Bookcase_2') source = this.models['Table_Large'];
+      else if (name.startsWith('Stall_') || name === 'Prop_Wagon') source = this.models['Table_Large'];
+      else if (name.startsWith('Workbench')) source = this.models['Workbench'];
+      else if (name === 'Bookcase_2' || name === 'Bed_Twin1') source = this.models['Table_Large'] || this.models['Bench'];
+      else if (name === 'Barrel_Apples') source = this.models['Barrel'];
       else if (name.startsWith('Wall_UnevenBrick_')) source = this.models['Wall_Plaster_Straight'];
-      else if (name === 'Wall_Arch' || name.startsWith('Door_')) source = this.models['Wall_Plaster_Door_Flat'];
-      else if (name === 'Roof_Tower_RoundTiles') source = this.models['Roof_RoundTiles_4x4'];
-      else if (name === 'WindowShutters_Wide_Flat_Open') source = this.models['Wall_Plaster_Window_Wide_Flat'];
-      else if (name === 'Floor_Brick') source = this.models['Floor_WoodDark'];
-      else if (name === 'Prop_WoodenFence_Extension1') source = this.models['Prop_WoodenFence_Single'];
+      else if (name === 'Wall_Arch' || name.startsWith('Door_') || name.includes('Window') || name === 'Prop_Chimney') source = this.models['Wall_Plaster_Door_Flat'] || this.models['Wall_Plaster_Straight'];
+      else if (name.startsWith('Roof_')) source = this.models['Roof_RoundTiles_4x4'];
+      else if (name.startsWith('Floor_')) source = this.models['Floor_WoodDark'];
+      else if (name.startsWith('Prop_WoodenFence_')) source = this.models['Prop_WoodenFence_Single'];
+      else if (name.startsWith('LargeBuilding') || name.startsWith('SmallBuilding') || name.startsWith('TallBuilding') || name.startsWith('TinyBuilding')) {
+        source = this.models['Wall_Plaster_Straight'];
+      }
+      else if (name.startsWith('Skeleton_')) {
+        if (name.includes('Blade') || name.includes('Axe') || name.includes('Staff')) source = this.models['sword_1handed'];
+        else if (name.includes('Crossbow')) source = this.models['bow_withString'];
+        else if (name.includes('Shield')) source = this.models['shield_badge'];
+        else source = this.models['Skeleton_Warrior'];
+      }
+      else if (name === 'Barbarian' || name === 'Knight' || name === 'Mage' || name === 'Ranger_Adv' || name.includes('Rogue')) {
+        source = this.models['Rogue'];
+      }
+      else if (name.includes('sword') || name.includes('Sword') || name.includes('dagger') || name.includes('Axe') || name.includes('Pickaxe')) {
+        source = this.models['sword_1handed'] || this.models['sword_2handed'];
+      }
+      else if (name.includes('bow') || name.includes('crossbow')) {
+        source = this.models['bow_withString'];
+      }
+      else if (name.includes('shield') || name.includes('Shield')) {
+        source = this.models['shield_badge'];
+      }
+      else if (name.includes('staff') || name.includes('wand')) {
+        source = this.models['staff'];
+      }
     }
     if (!source) return null;
 
@@ -711,18 +725,19 @@ export default class AssetLoader {
       ? SkeletonUtils.clone(source)
       : source.clone(true);
 
+    const isMob = isMobileClient;
     clone.traverse((child) => {
       if (child.isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
+        child.castShadow = !isMob;
+        child.receiveShadow = !isMob;
         if (child.material) {
           const matName = child.material.name ? child.material.name.toLowerCase() : '';
           const nodeName = child.name.toLowerCase();
           if (matName.includes('leaf') || matName.includes('pine') || matName.includes('foliage') ||
               matName.includes('flower') || matName.includes('grass') ||
               nodeName.includes('leaf') || nodeName.includes('cone') || nodeName.includes('foliage')) {
-            child.material.side = THREE.DoubleSide;
-            child.material.shadowSide = THREE.DoubleSide;
+            child.material.side = isMob ? THREE.FrontSide : THREE.DoubleSide;
+            child.material.shadowSide = isMob ? THREE.FrontSide : THREE.DoubleSide;
           }
         }
       }
@@ -758,11 +773,13 @@ export default class AssetLoader {
     }
 
     let hasHood = false;
-    characterModel.traverse((child) => {
-      if (child.isMesh && child.name.toLowerCase().includes('hood')) {
-        hasHood = true;
-      }
-    });
+    if (hairStyle === 'hood') {
+      characterModel.traverse((child) => {
+        if (child.isMesh && child.name.toLowerCase().includes('hood')) {
+          hasHood = true;
+        }
+      });
+    }
 
     let headBone = null;
     characterModel.traverse((child) => {
@@ -960,11 +977,11 @@ export default class AssetLoader {
 
     if (isAdventurer && !isSkeleton) {
       if (!isHood) {
-        // Hide pre-baked static head/hat/helmet meshes so custom dynamic head + hair renders cleanly
+        // Hide pre-baked static head/hat/helmet/cape meshes so custom dynamic head + hair renders cleanly on basic clothes
         model.traverse((child) => {
           if (child.isMesh) {
             const n = (child.name || '').toLowerCase();
-            if (n.includes('head') || n.includes('bearhat') || n.includes('helmet') || n.includes('hat') || n.includes('mask')) {
+            if (n.includes('head') || n.includes('bearhat') || n.includes('helmet') || n.includes('hat') || n.includes('mask') || n.includes('cape')) {
               child.visible = false;
             }
           }

@@ -76,11 +76,13 @@ async function init() {
 
   const renderer = new THREE.WebGLRenderer({
     antialias: !isTouchDevice, // Save precious mobile GPU bandwidth & memory
-    powerPreference: 'high-performance',
-    precision: isTouchDevice ? 'mediump' : 'highp'
+    powerPreference: isTouchDevice ? 'low-power' : 'high-performance',
+    precision: isTouchDevice ? 'mediump' : 'highp',
+    stencil: false,
+    depth: true
   });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(isTouchDevice ? Math.min(window.devicePixelRatio, 1.25) : Math.min(window.devicePixelRatio, 2.0));
+  renderer.setPixelRatio(isTouchDevice ? 1.0 : Math.min(window.devicePixelRatio, 2.0));
   // Disable heavy shadow map framebuffers on mobile to eliminate iOS WebKit memory exhaustion and infinite reload loops
   renderer.shadowMap.enabled = !isTouchDevice;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -117,12 +119,18 @@ async function init() {
   const questLogEl = document.getElementById('quest-log');
   const invDisplayEl = document.getElementById('inventory-display');
 
-  // --- Subsystem Instantiations ---
+  // --- Subsystem Instantiations (Staggered to prevent mobile UI freeze & WebKit SIGKILL watchdog triggers) ---
   const audioManager = new AudioManager();
   const hud = new HUD();
   const inventory = new Inventory(hud, audioManager);
+  await new Promise((resolve) => setTimeout(resolve, 30));
+
   const world = new World(scene, assetLoader);
+  await new Promise((resolve) => setTimeout(resolve, 30));
+
   const player = new Player(scene, camera, controls, inventory, hud, audioManager, assetLoader, world);
+  await new Promise((resolve) => setTimeout(resolve, 20));
+
   const buildingSystem = new BuildingSystem(scene, inventory, hud, audioManager, assetLoader, controls);
 
   // QuestManager needs inventory, player, hud
@@ -380,7 +388,12 @@ async function init() {
   // --- Menu Modals (Instructions, Lore, Settings) ---
   const openModal = (id) => {
     const m = document.getElementById(id);
-    if (m) m.classList.add('active');
+    if (m) {
+      m.classList.add('active');
+      if (typeof Localization !== 'undefined' && Localization.applyToDOM) {
+        Localization.applyToDOM();
+      }
+    }
   };
   const closeModal = (id) => {
     const m = document.getElementById(id);
