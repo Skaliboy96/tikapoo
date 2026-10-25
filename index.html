@@ -14,20 +14,13 @@
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-  <!-- Canvas container / WebGL rendering context -->
-  <div id="game-container"></div>
-
-  <!-- Red Flash on Damage -->
-  <div id="flash-overlay"></div>
-
-  <!-- Reticle / Crosshair -->
-  <div id="crosshair">+</div>
-
-  <!-- Interaction Tooltip -->
-  <div id="tooltip"></div>
-
-  <!-- Epic Boss Health Bar (Top Center) -->
-  <div id="boss-hud" class="boss-hud-container">
+<!-- Game canvas and global overlays -->
+<div id="game-container"></div>
+<div id="flash-overlay"></div>
+<div id="crosshair">+</div>
+<div id="tooltip"></div>
+<!-- Boss, notification, and player HUD -->
+<div id="boss-hud" class="boss-hud-container">
     <div class="boss-hud-header">
       <span id="boss-hud-name" class="boss-hud-name">Metsän Kauhu – Sarvipeto</span>
       <span id="boss-hud-biome" class="boss-hud-biome">AARNIOMETSÄ</span>
@@ -40,28 +33,19 @@
       <span id="boss-hud-hp-val" class="boss-hud-hp-val">1200 / 1200</span>
     </div>
   </div>
-
-  <!-- Top Center System Notifications -->
-  <div id="notification"></div>
-
-  <!-- Player HUD: Authentic Nordic RPG HUD Layout matching PC & Mobile references -->
-  <div id="hud" class="hud-main-root">
-    <!-- TOP-LEFT: Vitals Cluster (Heart Orb + Stamina, Hunger, Thirst) & Party List -->
-    <div id="hud-vitals-container" class="hud-vitals-container">
+<div id="notification"></div>
+<div id="hud" class="hud-main-root">
+<div id="hud-vitals-container" class="hud-vitals-container">
       <div class="hud-vitals-top-row">
-        <!-- PC Heart Medallion -->
-        <div id="hud-heart-orb" class="hud-heart-orb" title="Terveys / Health">
+<div id="hud-heart-orb" class="hud-heart-orb" title="Terveys / Health">
           <div class="heart-gem-glow"></div>
           <svg class="heart-icon-svg" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
           </svg>
           <div id="heart-hp-text" class="heart-hp-text">100</div>
         </div>
-
-        <!-- Stacked Vitals Bars -->
-        <div class="hud-bars-stack">
-          <!-- 1. Health Bar (Visible in mobile mode or compact) -->
-          <div class="bar-container bar-health-mobile">
+<div class="hud-bars-stack">
+<div class="bar-container bar-health-mobile">
             <div class="bar-label">
               <span data-i18n="hud_health">❤️ TERVEYS</span>
               <span id="health-val">100/100</span>
@@ -70,9 +54,7 @@
               <div id="health-fill" class="bar-fill health"></div>
             </div>
           </div>
-
-          <!-- 2. Stamina Bar -->
-          <div class="bar-container">
+<div class="bar-container">
             <div class="bar-label">
               <span data-i18n="hud_stamina">⚡ KESTÄVYYS</span>
               <span id="stamina-val">100/100</span>
@@ -81,9 +63,7 @@
               <div id="stamina-fill" class="bar-fill stamina"></div>
             </div>
           </div>
-
-          <!-- 3. Hunger Bar -->
-          <div class="bar-container">
+<div class="bar-container">
             <div class="bar-label">
               <span data-i18n="hud_hunger">🍖 NÄLKÄ</span>
               <span id="hunger-val">100/100</span>
@@ -92,9 +72,7 @@
               <div id="hunger-fill" class="bar-fill hunger"></div>
             </div>
           </div>
-
-          <!-- 4. Thirst / Mana Bar -->
-          <div class="bar-container">
+<div class="bar-container">
             <div class="bar-label">
               <span data-i18n="hud_thirst">💧 JANO</span>
               <span id="thirst-val">100/100</span>
@@ -105,9 +83,7 @@
           </div>
         </div>
       </div>
-
-      <!-- Party / Companions Widget (PC View) -->
-      <div id="hud-party-container" class="hud-party-container">
+<div id="hud-party-container" class="hud-party-container">
         <div class="hud-party-header">🐺 RYHMÄ</div>
         <div class="hud-party-row">
           <span class="party-avatar">🐺</span>
@@ -131,15 +107,10 @@
           </div>
         </div>
       </div>
-
-      <!-- Mobile Chat Circle Button -->
-      <button id="mbtn-chat-toggle" class="mbtn-circle-btn" title="Keskustelu &amp; Loki">💬</button>
+<button id="mbtn-chat-toggle" class="mbtn-circle-btn" title="Keskustelu &amp; Loki">💬</button>
     </div>
-
-    <!-- TOP-RIGHT: Compass Minimap & Quest Log -->
-    <div id="hud-top-right-group" class="hud-top-right-group">
-      <!-- Mini-map with Compass Cardinals -->
-      <div id="minimap-container">
+<div id="hud-top-right-group" class="hud-top-right-group">
+<div id="minimap-container">
         <canvas id="minimap" width="150" height="150"></canvas>
         <div class="minimap-cardinal cardinal-n">N</div>
         <div class="minimap-cardinal cardinal-e">E</div>
@@ -147,23 +118,17 @@
         <div class="minimap-cardinal cardinal-w">W</div>
         <button id="hud-fullscreen-btn" class="hud-fs-btn" title="Koko näyttö / Fullscreen">⛶</button>
       </div>
-
-      <!-- Mobile Action Coins beside / below Minimap -->
-      <div id="mobile-top-action-coins" class="mobile-action-coins">
+<div id="mobile-top-action-coins" class="mobile-action-coins">
         <button id="mbtn-backpack" class="mobile-action-coin" title="Reppu">🎒</button>
         <button id="mbtn-quests" class="mobile-action-coin" title="Tehtävät">📜</button>
         <button id="mbtn-build-coin" class="mobile-action-coin build-coin-highlight" title="Rakennus">🔨</button>
       </div>
-
-      <!-- Quest Log directly underneath Minimap -->
-      <div id="quest-log" class="quest-log-box">
+<div id="quest-log" class="quest-log-box">
         <div class="quest-log-header">📋 TEHTÄVÄT</div>
         <div id="quest-log-entries"></div>
       </div>
     </div>
-
-    <!-- BOTTOM-LEFT: Translucent Chat & Log Window (PC) -->
-    <div id="chat-box" class="chat-box">
+<div id="chat-box" class="chat-box">
       <div class="chat-tabs">
         <button id="chat-tab-chat" class="chat-tab active">Keskustelu</button>
         <button id="chat-tab-log" class="chat-tab">Loki</button>
@@ -177,11 +142,8 @@
         <button id="chat-send-btn">Lähetä</button>
       </div>
     </div>
-
-    <!-- BOTTOM-CENTER: Level, Golden XP bar, Hotbar & Quick Menu Buttons -->
-    <div id="hud-bottom-cluster" class="hud-bottom-cluster">
-      <!-- Centered Level, XP, Biome & Rested Meta -->
-      <div class="hud-center-meta">
+<div id="hud-bottom-cluster" class="hud-bottom-cluster">
+<div class="hud-center-meta">
         <div class="hud-level-badge">
           <span id="player-level-badge" data-i18n="hud_level">🏆 Taso 1</span>
           <div class="hud-xp-bar-bg">
@@ -194,16 +156,11 @@
         </div>
         <div id="hud-biome-tag" class="hud-biome-badge">AARNIOMETSÄ</div>
       </div>
-
-      <!-- Hotbar Row (Clean Action Bar in Bottom-Center) -->
-      <div class="hud-hotbar-row">
-        <!-- Hotbar (10 slots) -->
-        <div id="hotbar" class="hotbar-container"></div>
+<div class="hud-hotbar-row">
+<div id="hotbar" class="hotbar-container"></div>
       </div>
     </div>
-
-    <!-- Right Side Menu Action Buttons (Distinct Valheim / RPG sidebar layout) -->
-    <div id="hud-hotbar-actions" class="hud-hotbar-actions">
+<div id="hud-hotbar-actions" class="hud-hotbar-actions">
       <button id="open-backpack-btn" class="hud-btn hud-btn-bp" title="Inventaario [I]">
         <span class="hud-btn-text">INVENTAARIO</span>
         <span class="hud-btn-key">[I]</span>
@@ -230,24 +187,19 @@
       </button>
     </div>
   </div>
-
-  <!-- Inventory Top Right (Hidden by request: accessible via [I] key) -->
-  <div id="inventory-display" style="display: none !important;">
+<!-- Legacy inventory display; the full inventory is opened with I -->
+<div id="inventory-display" style="display: none !important;">
     <div class="inv-header">INVENTORY</div>
     <div id="inventory-items"></div>
     <div id="equipped-tool" class="equipped-slot">Equipped: Bare Hands</div>
   </div>
-
-  <!-- Harvest Progress Bar (appears when holding LMB on node) -->
-  <div id="harvest-progress-container">
+<div id="harvest-progress-container">
     <div id="harvest-label">Harvesting...</div>
     <div class="harvest-bar">
       <div id="harvest-fill"></div>
     </div>
   </div>
-
-  <!-- Shield Block & Parry Guard Bar -->
-  <div id="shield-block-container" class="shield-block-container" style="display: none;">
+<div id="shield-block-container" class="shield-block-container" style="display: none;">
     <div class="shield-block-header">
       <span class="shield-block-icon">🛡️</span>
       <span id="shield-block-text">KILVEN KESTÄVYYS: 75/75</span>
@@ -256,23 +208,14 @@
       <div id="shield-block-bar-fill" class="shield-block-bar-fill" style="width: 100%;"></div>
     </div>
   </div>
-
-  <!-- Damage Numbers Overlay -->
-  <div id="damage-numbers"></div>
-
-  <!-- In-Game Digital Clock HUD -->
-  <div id="game-clock-container">
+<div id="damage-numbers"></div>
+<div id="game-clock-container">
     <div id="game-clock-time">Klo 09:30</div>
     <div id="game-clock-phase">☀️ Keskipäivä</div>
   </div>
-
-
-
-  <!-- FPS Counter (Top Right) -->
-  <div id="fps-counter" class="fps-counter-badge" style="display: none;">60 FPS</div>
-
-  <!-- Crafting Menu Modal -->
-  <div id="crafting-menu">
+<div id="fps-counter" class="fps-counter-badge" style="display: none;">60 FPS</div>
+<!-- Crafting, map, backpack, and building screens -->
+<div id="crafting-menu">
     <div class="crafting-modal">
       <div class="crafting-header">
         <h2 id="crafting-header-title">CRAFTING &amp; SURVIVAL</h2>
@@ -287,9 +230,7 @@
       </div>
     </div>
   </div>
-
-  <!-- ===== MAP SCREEN (M key) ===== -->
-  <div id="map-screen">
+<div id="map-screen">
     <div class="map-modal">
       <div class="map-header">
         <span class="map-title">🗺️ KARTTA</span>
@@ -319,9 +260,7 @@
       </div>
     </div>
   </div>
-
-  <!-- ===== BACKPACK / INVENTORY SCREEN (I key) ===== -->
-  <div id="backpack-screen">
+<div id="backpack-screen">
     <div class="backpack-modal">
       <div class="backpack-header">
         <span class="backpack-title">🎒 TAVARALUETTELO &amp; VARUSTEET [I]</span>
@@ -331,14 +270,10 @@
         </div>
       </div>
       <div class="backpack-body">
-        <!-- Left: Live 3D Character Paperdoll & Equipment -->
-        <div class="backpack-char-panel">
+<div class="backpack-char-panel">
           <div class="backpack-char-title" data-i18n="bp_char_title">🛡️ HAHMO &amp; VARUSTEET</div>
-
-          <!-- Live 3D Paperdoll with surrounding equipment slots -->
-          <div class="bp-paperdoll-wrapper">
-            <!-- Left equipment slots -->
-            <div class="bp-slots-col bp-slots-left">
+<div class="bp-paperdoll-wrapper">
+<div class="bp-slots-col bp-slots-left">
               <div class="bp-slot-box" data-slot="head" title="Kypärä / Päähine (Helmet)">
                 <span class="bp-slot-type-label" data-i18n="bp_slot_helmet">KYPÄRÄ</span>
                 <span class="bp-slot-icon" id="bp-icon-head">🧕</span>
@@ -355,14 +290,10 @@
                 <span class="bp-slot-item-label" id="bp-label-legs">Housut</span>
               </div>
             </div>
-
-            <!-- Center live 3D character viewport -->
-            <div class="bp-paperdoll-viewport">
+<div class="bp-paperdoll-viewport">
               <canvas id="bp-paperdoll-canvas" width="160" height="210"></canvas>
             </div>
-
-            <!-- Right equipment slots -->
-            <div class="bp-slots-col bp-slots-right">
+<div class="bp-slots-col bp-slots-right">
               <div class="bp-slot-box" data-slot="weapon" title="Pääase (Main Weapon)">
                 <span class="bp-slot-type-label" data-i18n="bp_slot_weapon">PÄÄASE</span>
                 <span class="bp-slot-icon" id="bp-icon-weapon">⚔️</span>
@@ -389,9 +320,7 @@
             <div class="bp-stat-row"><span data-i18n="bp_weight">⚖️ Kantopaino:</span><span id="bp-stat-weight">18 / 300 kg</span></div>
           </div>
         </div>
-
-        <!-- Right: items + drop actions + hotbar reorder -->
-        <div class="backpack-items-panel">
+<div class="backpack-items-panel">
           <div class="bp-panel-top-row">
             <div class="bp-section-title" data-i18n="bp_items_title">🎒 INVENTORY (24 SLOTS)</div>
             <div id="bp-item-actions-bar" class="bp-actions-bar" style="display: none;">
@@ -402,9 +331,7 @@
           </div>
 
           <div id="bp-items-grid" class="bp-items-grid"></div>
-
-          <!-- Hotbar / Action Bar Reordering Row -->
-          <div class="bp-hotbar-reorder-section">
+<div class="bp-hotbar-reorder-section">
             <div class="bp-hotbar-reorder-title">
               <span>⚡ ACTION BAR [1-8] (KLIKKAA TAI RAAHAA JÄRJESTÄÄKSESI):</span>
             </div>
@@ -422,9 +349,7 @@
       </div>
     </div>
   </div>
-
-  <!-- ===== NPC DIALOGUE ===== -->
-  <div id="npc-dialogue">
+<div id="npc-dialogue">
     <div class="npc-dialogue-modal">
       <div class="npc-dialogue-header">
         <span class="npc-portrait">👤</span>
@@ -439,11 +364,7 @@
       <div class="npc-dialogue-footer">[E] tai ✕ sulkee</div>
     </div>
   </div>
-
-
-
-  <!-- ===== NORDIC MAIN MENU ===== -->
-  <div id="main-menu" class="main-menu-overlay">
+<div id="main-menu" class="main-menu-overlay">
     <div class="menu-backdrop"></div>
     <div class="menu-container">
       <div class="menu-brand">
@@ -480,9 +401,8 @@
       </div>
     </div>
   </div>
-
-  <!-- ===== NORDIC CHARACTER CREATOR ===== -->
-  <div id="character-creator" class="char-creator-overlay" style="display: none;">
+<!-- Main menu and character creation -->
+<div id="character-creator" class="char-creator-overlay" style="display: none;">
     <div class="char-creator-container">
       <div class="char-creator-header">
         <div class="char-rune-title">ᚺ ᚨ ᚺ ᛗ ᛟ • ᛚ ᚢ ᛟ ᚾ ᛏ ᛁ</div>
@@ -491,8 +411,7 @@
       </div>
 
       <div class="char-creator-content">
-        <!-- 3D Turntable Preview -->
-        <div class="char-preview-panel">
+<div class="char-preview-panel">
           <canvas id="char-preview-canvas" width="360" height="480"></canvas>
           <div class="char-preview-controls">
             <button id="char-btn-rot-left" class="char-tool-btn" title="Käännä vasemmalle">↺</button>
@@ -501,11 +420,8 @@
           </div>
           <div class="char-preview-hint" data-i18n="cc_turntable_hint">🔄 Pyöritä hahmoa pyyhkäisemällä tai hiirellä</div>
         </div>
-
-        <!-- Customization Controls -->
-        <div class="char-options-panel">
-          <!-- Quick Presets -->
-          <div class="char-option-group">
+<div class="char-options-panel">
+<div class="char-option-group">
             <label class="char-group-label">⚔️ Valmiit arkkityypit</label>
             <div class="char-btn-row char-btn-wrap">
               <button class="char-preset-chip" data-char-preset="warrior">🛡️ Viikinkisoturi</button>
@@ -513,24 +429,18 @@
               <button class="char-preset-chip" data-char-preset="shaman">🔮 Tietäjä</button>
             </div>
           </div>
-
-          <!-- Name -->
-          <div class="char-option-group">
+<div class="char-option-group">
             <label class="char-group-label" data-i18n="cc_name">Character Name</label>
             <input id="char-name-input" type="text" class="char-text-input" value="Eerik" maxlength="18" placeholder="Enter name...">
           </div>
-
-          <!-- Gender -->
-          <div class="char-option-group">
+<div class="char-option-group">
             <label class="char-group-label" data-i18n="cc_gender">Gender</label>
             <div class="char-btn-row">
               <button class="char-toggle-btn active" data-char-gender="male" data-i18n="cc_male">🧔 Male</button>
               <button class="char-toggle-btn" data-char-gender="female" data-i18n="cc_female">👩 Female</button>
             </div>
           </div>
-
-          <!-- Hairstyle -->
-          <div class="char-option-group">
+<div class="char-option-group">
             <label class="char-group-label" data-i18n="cc_hair_style">Hairstyle</label>
             <div class="char-btn-row char-btn-wrap">
               <button class="char-toggle-btn active" data-char-hair-style="short" data-i18n="cc_hair_short">✂️ Short Viking</button>
@@ -539,9 +449,7 @@
               <button class="char-toggle-btn" data-char-hair-style="bald" data-i18n="cc_hair_bald">🪓 Shaved / Bald</button>
             </div>
           </div>
-
-          <!-- Hair Color -->
-          <div class="char-option-group">
+<div class="char-option-group">
             <label class="char-group-label" data-i18n="cc_hair_color">Hair Color</label>
             <div class="char-swatch-row">
               <button class="char-swatch-btn" data-char-hair-color="e6c280" style="background:#e6c280" title="Blonde"></button>
@@ -552,9 +460,7 @@
               <button class="char-swatch-btn" data-char-hair-color="f0f0f0" style="background:#f0f0f0" title="Platinum"></button>
             </div>
           </div>
-
-          <!-- Skin Tone -->
-          <div class="char-option-group">
+<div class="char-option-group">
             <label class="char-group-label" data-i18n="cc_skin_color">Skin Tone</label>
             <div class="char-swatch-row">
               <button class="char-swatch-btn active" data-char-skin="f5d0b5" style="background:#f5d0b5" title="Nordic Fair"></button>
@@ -563,9 +469,7 @@
               <button class="char-swatch-btn" data-char-skin="6b4423" style="background:#6b4423" title="Deep"></button>
             </div>
           </div>
-
-          <!-- Starting Basic Clothes Color -->
-          <div class="char-option-group">
+<div class="char-option-group">
             <label class="char-group-label" data-i18n="cc_cloth_color">Clothing Color</label>
             <div class="char-swatch-row">
               <button class="char-swatch-btn active" data-char-cloth="2e5339" style="background:#2e5339" title="Forest Green"></button>
@@ -585,9 +489,8 @@
       </div>
     </div>
   </div>
-
-  <!-- Instructions Modal -->
-  <div id="modal-instructions" class="menu-modal">
+<!-- Help, lore, settings, and pause modals -->
+<div id="modal-instructions" class="menu-modal">
       <div class="modal-box">
         <div class="modal-header">
           <h2 data-i18n="guide_title">📜 Game Controls & Guide</h2>
@@ -638,9 +541,7 @@
         </div>
       </div>
     </div>
-
-    <!-- World Lore Modal -->
-    <div id="modal-lore" class="menu-modal">
+<div id="modal-lore" class="menu-modal">
       <div class="modal-box">
         <div class="modal-header">
           <h2 data-i18n="lore_title">🗺️ Villages &amp; Landmarks of the Realm</h2>
@@ -666,17 +567,14 @@
         </div>
       </div>
     </div>
-
-    <!-- Settings Modal -->
-    <div id="modal-settings" class="menu-modal">
+<div id="modal-settings" class="menu-modal">
       <div class="modal-box modal-box-wide">
         <div class="modal-header">
           <h2 data-i18n="settings_header">⚙️ Grafiikka- ja Peli-Asetukset</h2>
           <button class="modal-close" data-close="modal-settings">✕</button>
         </div>
         <div class="modal-body settings-grid">
-          <!-- Graphics Section -->
-          <div class="settings-section">
+<div class="settings-section">
             <h3 class="settings-section-title" data-i18n="setting_graphics_section">🖥️ Grafiikka &amp; Suorituskyky</h3>
 
             <div class="setting-row">
@@ -746,9 +644,7 @@
               </select>
             </div>
           </div>
-
-          <!-- Gameplay & Audio Section -->
-          <div class="settings-section">
+<div class="settings-section">
             <h3 class="settings-section-title" data-i18n="setting_gameplay_section">🎮 Pelattavuus &amp; Äänet</h3>
 
             <div class="setting-row">
@@ -824,9 +720,7 @@
         </div>
       </div>
     </div>
-
-  <!-- ===== CINEMATIC RED DEATH SCREEN ===== -->
-  <div id="death-screen" class="death-screen-overlay" style="display: none;">
+<div id="death-screen" class="death-screen-overlay" style="display: none;">
     <div class="death-screen-box">
       <div class="death-rune-symbol">☠️</div>
       <h1 class="death-title" data-i18n="death_title">SINÄ KUOLIT</h1>
@@ -838,9 +732,7 @@
       </div>
     </div>
   </div>
-
-  <!-- User Account & Save Profile Modal -->
-  <div id="modal-account" class="menu-modal">
+<div id="modal-account" class="menu-modal">
     <div class="modal-box account-modal-box">
       <div class="modal-header">
         <h2>👤 KÄYTTÄJÄTILI &amp; TALLENNUKSET</h2>
@@ -876,9 +768,7 @@
       </div>
     </div>
   </div>
-
-  <!-- In-game Pause Menu -->
-  <div id="pause-menu" class="pause-menu-overlay">
+<div id="pause-menu" class="pause-menu-overlay">
     <div class="pause-box">
       <h2 data-i18n="pause_title">PELI PYSÄYTETTY</h2>
       <div id="pause-user-badge" class="menu-user-badge" style="justify-content: center;">👤 Vieras</div>
@@ -894,9 +784,8 @@
     </div>
   </div>
   <input type="file" id="savegame-file-input" accept=".json" style="display: none;">
-
-  <!-- ===== DEVELOPER / CREATIVE MODE OVERLAY ===== -->
-  <div id="dev-mode-panel" class="dev-panel-container" style="display: none;">
+<!-- Developer world editor -->
+<div id="dev-mode-panel" class="dev-panel-container" style="display: none;">
     <div class="dev-toolbar">
       <div class="dev-brand">🛠️ DEV MAAILMANEDITORI</div>
       <button id="dev-pause-toggle" class="dev-btn active">⏸️ Simulaatio: PYSÄYTETTY</button>
@@ -915,15 +804,11 @@
       <button id="dev-give-items-btn" class="dev-btn">🎒 Resurssit (999)</button>
       <button id="dev-close-btn" class="dev-btn dev-btn-exit">✕ Poistu [ESC]</button>
     </div>
-
-    <!-- Placement banner -->
-    <div id="dev-placement-banner" class="dev-placement-banner" style="display: none;">
+<div id="dev-placement-banner" class="dev-placement-banner" style="display: none;">
       <span id="dev-placement-text">🛠️ Asetustila: Mänty</span>
       <button id="dev-cancel-placement-btn" class="dev-banner-cancel-btn">✕ Peruuta [ESC]</button>
     </div>
-
-    <!-- Inspector floating card for object under crosshair / clicked -->
-    <div id="dev-inspector" class="dev-inspector-card" style="display: none;">
+<div id="dev-inspector" class="dev-inspector-card" style="display: none;">
       <div class="dev-insp-header">
         <span id="dev-insp-title">Valittu Kohde</span>
         <span id="dev-insp-type" class="dev-tag">Puu</span>
@@ -944,9 +829,7 @@
         </div>
       </div>
     </div>
-
-    <!-- Dev Categorized Palette & Drawer -->
-    <div class="dev-bottom-drawer">
+<div class="dev-bottom-drawer">
       <div class="dev-drawer-tabs">
         <button class="dev-category-tab active" data-category="nature">🌲 Luonto (Nature)</button>
         <button class="dev-category-tab" data-category="buildings">🏰 Isot Rakennukset (Buildings)</button>
@@ -958,9 +841,7 @@
         <button class="dev-category-tab" data-category="creatures">🐺 Olennot (NPC)</button>
         <button class="dev-category-tab" data-category="teleport">📍 Pikasiirtymä</button>
       </div>
-
-      <!-- Nature Palette -->
-      <div class="dev-palette-content active" id="dev-palette-nature">
+<div class="dev-palette-content active" id="dev-palette-nature">
         <button class="dev-palette-btn" data-category="nature" data-type="tree_pine" data-model="Pine_1" data-name="Mänty">🌲 Mänty</button>
         <button class="dev-palette-btn" data-category="nature" data-type="tree_tall" data-model="Pine_3" data-name="Valtava Mänty">🌲 Valtava Mänty</button>
         <button class="dev-palette-btn" data-category="nature" data-type="tree_birch" data-model="BirchTree_1" data-name="Koivu">🌳 Koivu</button>
@@ -972,9 +853,7 @@
         <button class="dev-palette-btn" data-category="nature" data-type="bush_berry" data-model="BushBerries_1" data-name="Marjapensas">🫐 Marjapensas</button>
         <button class="dev-palette-btn" data-category="nature" data-type="chest" data-model="Chest_Wood" data-name="Aarrearkku">🎁 Aarrearkku</button>
       </div>
-
-      <!-- Big Buildings Palette -->
-      <div class="dev-palette-content" id="dev-palette-buildings" style="display: none;">
+<div class="dev-palette-content" id="dev-palette-buildings" style="display: none;">
         <button class="dev-palette-btn" data-category="buildings" data-type="prefab_longhouse" data-name="Viikinkien Pitkätalo">🏰 Pitkätalo (Longhouse)</button>
         <button class="dev-palette-btn" data-category="buildings" data-type="prefab_cottage" data-name="Hirsimökki">🛖 Hirsimökki (Cottage)</button>
         <button class="dev-palette-btn" data-category="buildings" data-type="prefab_tower" data-name="Kivinen Vartiotorni">🗼 Vartiotorni (Tower)</button>
@@ -982,17 +861,13 @@
         <button class="dev-palette-btn" data-category="buildings" data-type="prefab_bridge" data-name="Kivisilta">🌉 Kivisilta (Bridge)</button>
         <button class="dev-palette-btn" data-category="buildings" data-type="prefab_gate" data-name="Linnakkeen Portti">⛩️ Portti (Town Gate)</button>
       </div>
-
-      <!-- Rivers & Water Palette -->
-      <div class="dev-palette-content" id="dev-palette-water" style="display: none;">
+<div class="dev-palette-content" id="dev-palette-water" style="display: none;">
         <button class="dev-palette-btn" data-category="water" data-type="water_river_straight" data-name="Suora Jokiosuus (16m)">🌊 Jokiosuus (16m)</button>
         <button class="dev-palette-btn" data-category="water" data-type="water_river_wide" data-name="Leveä Joki (32m)">🌊 Leveä Joki (32m)</button>
         <button class="dev-palette-btn" data-category="water" data-type="water_pond" data-name="Metsälampi">💧 Metsälampi (Pond)</button>
         <button class="dev-palette-btn" data-category="water" data-type="water_spring" data-name="Lähdeallas">⛲ Lähdeallas (Spring)</button>
       </div>
-
-      <!-- Terrain Sculpting Palette -->
-      <div class="dev-palette-content" id="dev-palette-terrain" style="display: none;">
+<div class="dev-palette-content" id="dev-palette-terrain" style="display: none;">
         <button class="dev-terrain-tool-btn dev-palette-btn active" data-category="terrain" data-type="terrain_raise" data-action="raise" data-name="Nosta Maata (+)">⛰️ Nosta Maata (+)</button>
         <button class="dev-terrain-tool-btn dev-palette-btn" data-category="terrain" data-type="terrain_lower" data-action="lower" data-name="Kaiva Maata / Joki (-)">⛏️ Kaiva Maata / Joki (-)</button>
         <button class="dev-terrain-tool-btn dev-palette-btn" data-category="terrain" data-type="terrain_flatten" data-action="flatten" data-name="Tasaa Maata (=)">📐 Tasaa Maata (=)</button>
@@ -1004,9 +879,7 @@
           <button class="dev-terrain-size-btn dev-speed-btn" data-radius="16">16m</button>
         </div>
       </div>
-
-      <!-- Structures Palette -->
-      <div class="dev-palette-content" id="dev-palette-structures" style="display: none;">
+<div class="dev-palette-content" id="dev-palette-structures" style="display: none;">
         <button class="dev-palette-btn" data-category="structures" data-type="woodenWall" data-name="Hirsiseinä">🪵 Hirsiseinä</button>
         <button class="dev-palette-btn" data-category="structures" data-type="stoneWall" data-name="Kivimuuri">🧱 Kivimuuri</button>
         <button class="dev-palette-btn" data-category="structures" data-type="woodenFloor" data-name="Puulattia">🪚 Puulattia</button>
@@ -1016,9 +889,7 @@
         <button class="dev-palette-btn" data-category="structures" data-type="palisade" data-name="Paaluaita">🛡️ Paaluaita</button>
         <button class="dev-palette-btn" data-category="structures" data-type="woodenStairs" data-name="Puuportaat">🪜 Puuportaat</button>
       </div>
-
-      <!-- Crafting Palette -->
-      <div class="dev-palette-content" id="dev-palette-crafting" style="display: none;">
+<div class="dev-palette-content" id="dev-palette-crafting" style="display: none;">
         <button class="dev-palette-btn" data-category="crafting" data-type="workbench" data-name="Työpöytä">🔨 Työpöytä</button>
         <button class="dev-palette-btn" data-category="crafting" data-type="campfire" data-name="Nuotio">🔥 Nuotio</button>
         <button class="dev-palette-btn" data-category="crafting" data-type="torchPole" data-name="Soihtutolppa">🕯️ Soihtutolppa</button>
@@ -1026,9 +897,7 @@
         <button class="dev-palette-btn" data-category="crafting" data-type="forge" data-name="Sepän Ahjo">⚔️ Sepän Ahjo</button>
         <button class="dev-palette-btn" data-category="crafting" data-type="cauldron" data-name="Keittopata">🍲 Keittopata</button>
       </div>
-
-      <!-- Props Palette -->
-      <div class="dev-palette-content" id="dev-palette-props" style="display: none;">
+<div class="dev-palette-content" id="dev-palette-props" style="display: none;">
         <button class="dev-palette-btn" data-category="props" data-type="barrel" data-name="Tynnyri">🛢️ Tynnyri</button>
         <button class="dev-palette-btn" data-category="props" data-type="table" data-name="Pöytä">🪵 Pöytä</button>
         <button class="dev-palette-btn" data-category="props" data-type="chair" data-name="Tuoli">🪑 Tuoli</button>
@@ -1037,17 +906,13 @@
         <button class="dev-palette-btn" data-category="props" data-type="prop_crate" data-model="Prop_Crate" data-name="Puulaatikko">📦 Laatikko</button>
         <button class="dev-palette-btn" data-category="props" data-type="prop_fence" data-model="Prop_WoodenFence_Single" data-name="Aita">🚧 Puuaita</button>
       </div>
-
-      <!-- Creatures Palette -->
-      <div class="dev-palette-content" id="dev-palette-creatures" style="display: none;">
+<div class="dev-palette-content" id="dev-palette-creatures" style="display: none;">
         <button class="dev-palette-btn" data-category="creatures" data-type="boar" data-name="Villisika">🐗 Villisika</button>
         <button class="dev-palette-btn" data-category="creatures" data-type="skeleton" data-name="Luuranko">👹 Luuranko</button>
         <button class="dev-palette-btn" data-category="creatures" data-type="greydwarf" data-name="Harmaakääpiö">🧌 Harmaakääpiö</button>
         <button class="dev-palette-btn" data-category="creatures" data-type="wolf" data-name="Susi">🐺 Susi</button>
       </div>
-
-      <!-- Teleport Palette -->
-      <div class="dev-palette-content" id="dev-palette-teleport" style="display: none;">
+<div class="dev-palette-content" id="dev-palette-teleport" style="display: none;">
         <button class="dev-tp-btn" data-x="0" data-z="0">🏛️ Keskuskylä (Spawn)</button>
         <button class="dev-tp-btn" data-x="50" data-z="-45">⚓ Satama &amp; Laituri</button>
         <button class="dev-tp-btn" data-x="-95" data-z="-95">🌲 Mustametsä</button>
@@ -1060,9 +925,7 @@
       </div>
     </div>
   </div>
-
-  <!-- Dev JSON Export Modal -->
-  <div id="dev-export-modal" class="menu-modal" style="display: none;">
+<div id="dev-export-modal" class="menu-modal" style="display: none;">
     <div class="modal-box" style="max-width: 520px;">
       <div class="modal-header">
         <h2>📋 Paikalliset Maailmanmuokkaukset (JSON)</h2>
@@ -1080,9 +943,7 @@
       </div>
     </div>
   </div>
-
-  <!-- Dev Password Prompt Modal -->
-  <div id="dev-password-modal" class="menu-modal" style="display: none;">
+<div id="dev-password-modal" class="menu-modal" style="display: none;">
     <div class="modal-box" style="max-width: 380px;">
       <div class="modal-header">
         <h2>🛠️ Dev Mode</h2>
@@ -1096,9 +957,8 @@
       </div>
     </div>
   </div>
-
-  <!-- Loading Screen -->
-  <div id="loading-screen">
+<!-- Initial loading screen -->
+<div id="loading-screen">
     <div class="loading-content">
       <h2>LOADING WORLD...</h2>
       <div class="loading-bar-bg">
@@ -1107,8 +967,6 @@
       <div id="loading-text">Initialising...</div>
     </div>
   </div>
-
-  <!-- Game Bootstrap -->
-  <script type="module" src="/src/main.js"></script>
+<script type="module" src="/src/main.js"></script>
 </body>
 </html>

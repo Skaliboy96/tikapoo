@@ -101,7 +101,10 @@ export default class SaveSystem {
         x: Math.round(st.position.x * 100) / 100,
         y: Math.round(st.position.y * 100) / 100,
         z: Math.round(st.position.z * 100) / 100,
-        rotationY: st.mesh ? Math.round(st.mesh.rotation.y * 1000) / 1000 : 0
+        rotationY: st.baseRotationY !== undefined
+          ? Math.round(st.baseRotationY * 1000) / 1000
+          : (st.mesh ? Math.round(st.mesh.rotation.y * 1000) / 1000 : 0),
+        isOpen: Boolean(st.isOpen)
       })) : [],
       quests: {
         currentQuestIndex: this.questManager?.currentQuestIndex || 0
@@ -284,7 +287,7 @@ export default class SaveSystem {
       // Re-place structures from save
       for (const st of data.structures) {
         if (this.buildingSystem.placeDirect) {
-          this.buildingSystem.placeDirect(st.type, { x: st.x, y: st.y, z: st.z }, st.rotationY || 0);
+          this.buildingSystem.placeDirect(st.type, { x: st.x, y: st.y, z: st.z }, st.rotationY || 0, null, Boolean(st.isOpen));
         }
       }
     }

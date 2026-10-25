@@ -225,6 +225,7 @@ export default class MapScreen {
       { color: '#2d6a30', label: isFi ? 'Puu' : 'Tree' },
       { color: '#7f8c8d', label: isFi ? 'Kivi' : 'Stone' },
       { color: '#8e244d', label: isFi ? 'Marjapensas' : 'Berry Bush' },
+      { color: '#f5c542', label: isFi ? 'Rakennus' : 'Building' },
     ];
     this.legendEl.innerHTML = items.map(i =>
       `<div class="map-legend-row"><span class="map-legend-dot" style="background:${i.color}"></span>${i.label}</div>`
@@ -432,6 +433,36 @@ export default class MapScreen {
       ctx.textAlign = 'center';
       ctx.fillText(lm.name, p.x, p.y);
     });
+
+    // Named asset buildings generated in explored remote chunks.
+    if (this.world && this.world.remoteBuildings) {
+      this.world.remoteBuildings.forEach(building => {
+        if (!explorationTracker.isExplored(building.x, building.z)) return;
+        const p = toMap(building.x, building.z);
+        if (p.x < -80 || p.x > W + 80 || p.y < -80 || p.y > H + 80) return;
+
+        ctx.save();
+        ctx.fillStyle = '#f5c542';
+        ctx.strokeStyle = '#fff3b0';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, Math.max(4, 5 * this.zoom), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        const label = `🏠 ${building.name}`;
+        const tagW = Math.max(92, Math.min(180, ctx.measureText(label).width + 18));
+        ctx.fillStyle = 'rgba(8, 14, 22, 0.9)';
+        ctx.fillRect(p.x - tagW / 2, p.y - 25, tagW, 18);
+        ctx.strokeStyle = '#f5c542';
+        ctx.strokeRect(p.x - tagW / 2, p.y - 25, tagW, 18);
+        ctx.fillStyle = '#fff3b0';
+        ctx.font = 'bold 9px Cinzel, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, p.x, p.y - 13);
+        ctx.restore();
+      });
+    }
 
     // 5. Boss Markers (Legendary Boss Arenas with Sequential Progression)
     if (this.bossManager && this.bossManager.getBossMarkers) {

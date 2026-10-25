@@ -233,10 +233,12 @@ export default class SkillTree {
 
   _setupListeners() {
     window.addEventListener('keydown', (e) => {
-      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
-      if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+      const mainMenu = document.getElementById('main-menu');
+      if (mainMenu && getComputedStyle(mainMenu).display !== 'none') return;
       // Toggle Skill Tree with [O]
       if (e.code === 'KeyO') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
         if (this.isOpen) {
           this.close();
         } else {
@@ -246,17 +248,31 @@ export default class SkillTree {
 
       // Close with ESC
       if (e.code === 'Escape' && this.isOpen) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
         this.close();
+        return;
       }
 
+      const isTyping = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')
+        || document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
+      if (isTyping) return;
+
       // Trigger Skills 1-4 when not typing in an input
-      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
       if (this.isOpen) return;
 
-      if (e.code === 'Digit1') this.castSlot(0);
-      else if (e.code === 'Digit2') this.castSlot(1);
-      else if (e.code === 'Digit3') this.castSlot(2);
-      else if (e.code === 'Digit4') this.castSlot(3);
+      const slotByCode = {
+        Digit1: 0,
+        Digit2: 1,
+        Digit3: 2,
+        Digit4: 3
+      };
+      const slotIdx = slotByCode[e.code];
+      if (slotIdx !== undefined && this.activeSlots[slotIdx]) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        this.castSlot(slotIdx);
+      }
     });
   }
 

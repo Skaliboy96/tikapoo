@@ -230,7 +230,9 @@ export default class BossManager {
             }
             if (child.isMesh && child.material) {
               child.material = child.material.clone();
-              child.material.roughness = 0.6;
+              if (child.material.isMeshStandardMaterial || child.material.isMeshPhysicalMaterial) {
+                child.material.roughness = 0.6;
+              }
               flashMaterials.push(child.material);
             }
           });
@@ -320,7 +322,9 @@ export default class BossManager {
             if (child.isMesh && child.material) {
               child.material = child.material.clone();
               child.material.color.setHex(0x133824); // Dark swamp moss green
-              child.material.roughness = 0.5;
+              if (child.material.isMeshStandardMaterial || child.material.isMeshPhysicalMaterial) {
+                child.material.roughness = 0.5;
+              }
               flashMaterials.push(child.material);
             }
           });
@@ -434,7 +438,9 @@ export default class BossManager {
             }
             if (child.isMesh && child.material) {
               child.material = child.material.clone();
-              child.material.roughness = 0.6;
+              if (child.material.isMeshStandardMaterial || child.material.isMeshPhysicalMaterial) {
+                child.material.roughness = 0.6;
+              }
               flashMaterials.push(child.material);
             }
           });

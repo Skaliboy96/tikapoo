@@ -4,7 +4,7 @@ import Localization from './Localization.js';
  * Hotbar & Action Bar – Displays both:
  * 1. Special Skills Bar (Pikanäppäimet [1] - [4] erikoisliikkeille)
  * 2. Equipment & Tools Action Bar (Aseet, Kirves, Hakku, Soihtu, Vasara, Ruoka)
- * With crystal clear icons for Axe (🪓) and Pickaxe (⛏️).
+ * With crystal clear fantasy icons.
  */
 export default class Hotbar {
   constructor(inventory, player, buildingSystem, combat, hud, audioManager, skillTree = null) {
@@ -83,11 +83,12 @@ export default class Hotbar {
       const hasItem = !isEmpty;
       const itemClass = hasItem ? 'has-item' : 'empty-item';
       const countLabel = (slot.type === 'consume' || slot.count > 1) && slot.count > 0 ? `<span class="hotbar-count">${slot.count}</span>` : '';
+      const renderedIcon = hasItem ? getIcon(slot.toolId || slot.itemId || slot.id || slot.icon) : '—';
 
       toolsHtml += `
         <div class="hotbar-slot ${isActive ? 'active' : ''} ${itemClass}" data-slot="${index}" title="${hasItem ? slot.name : ''}">
           ${slot.key ? `<span class="hotbar-key-badge">[${slot.key}]</span>` : ''}
-          <span class="hotbar-icon">${hasItem ? slot.icon : '—'}</span>
+          <span class="hotbar-icon">${renderedIcon}</span>
           <span class="hotbar-name">${hasItem ? slot.name : Localization.t('hotbar_empty', 'Empty')}</span>
           ${countLabel}
         </div>
@@ -147,17 +148,16 @@ export default class Hotbar {
   _setupListeners() {
     let lastWheelTime = 0;
 
-    // Dedicated keydown for quickly toggling fists [X] or [0]
     window.addEventListener('keydown', (e) => {
+      if (e.defaultPrevented) return;
       const mainMenu = document.getElementById('main-menu');
-      if (mainMenu && mainMenu.style.display !== 'none') return;
+      if (mainMenu && getComputedStyle(mainMenu).display !== 'none') return;
       if (this.skillTree && this.skillTree.isOpen) return;
       if (document.getElementById('crafting-menu')?.classList.contains('active')) return;
       if (document.getElementById('backpack-screen')?.classList.contains('active')) return;
       if (document.getElementById('map-screen')?.classList.contains('active')) return;
       if (document.getElementById('pause-menu')?.classList.contains('active')) return;
 
-      // Dedicated keyboard shortcuts for hotbar slots
       if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
 
       if (e.code === 'KeyX') {
@@ -218,10 +218,9 @@ export default class Hotbar {
       }
     });
 
-    // Mouse wheel scrolling across tools bar (throttled to prevent rapid event spam)
     window.addEventListener('wheel', (e) => {
       const mainMenu = document.getElementById('main-menu');
-      if (mainMenu && mainMenu.style.display !== 'none') return;
+      if (mainMenu && getComputedStyle(mainMenu).display !== 'none') return;
       if (this.skillTree && this.skillTree.isOpen) return;
       if (document.getElementById('crafting-menu')?.classList.contains('active')) return;
       if (document.getElementById('backpack-screen')?.classList.contains('active')) return;
@@ -230,7 +229,7 @@ export default class Hotbar {
       if (document.getElementById('modal-instructions')?.classList.contains('active')) return;
       if (document.getElementById('dev-mode-panel')?.style.display !== 'none') return;
       if (document.getElementById('building-selector-modal')?.style.display !== 'none') return;
-      if (e.ctrlKey || e.shiftKey || e.altKey) return; // Ctrl/Shift+Wheel is reserved for camera zoom
+      if (e.ctrlKey || e.shiftKey || e.altKey) return;
 
       const now = performance.now();
       if (now - lastWheelTime < 140) return;
@@ -295,18 +294,17 @@ export default class Hotbar {
         if (this.inventory && slot.itemId && this.inventory.has(slot.itemId, 1)) return idx;
       }
     }
-    return 0; // Hands (fists) is always available fallback
+    return 0;
   }
 
   selectSlot(index, activate = false) {
     if (index < 0 || index >= this.slots.length) return;
     const previousSlot = this.activeSlot;
 
-    if (previousSlot === index && !activate && index !== 8 && index !== 9) return; // Already in this slot
+    if (previousSlot === index && !activate && index !== 8 && index !== 9) return;
     this.activeSlot = index;
     const slot = this.slots[index];
 
-    // Update active highlight class in DOM without destroying HTML tree
     if (this.container) {
       const slotEls = this.container.querySelectorAll('.hotbar-slot');
       slotEls.forEach((el, idx) => {
@@ -334,7 +332,6 @@ export default class Hotbar {
         this.buildingSystem.setHammerActive(false);
       }
 
-      // Slot 0 is bare fists / hands
       if (slot.id === 'fists' || slot.toolId === 'hands') {
         if (this.inventory) this.inventory.equip('hands');
         if (this.combat) this.combat.equipTool('hands');
@@ -353,17 +350,11 @@ export default class Hotbar {
         return;
       }
 
-      if (this.inventory) {
-        this.inventory.equip(slot.toolId);
-      }
-      if (this.combat) {
-        this.combat.equipTool(slot.toolId);
-      }
-      if (this.player && this.player.updateHeldWeapon) {
-        this.player.updateHeldWeapon();
-      }
+      if (this.inventory) this.inventory.equip(slot.toolId);
+      if (this.combat) this.combat.equipTool(slot.toolId);
+      if (this.player && this.player.updateHeldWeapon) this.player.updateHeldWeapon();
       if (this.hud && previousSlot !== index) {
-        this.hud.showNotification(`${Localization.t('notif_equipped_item', '⚔️ Varustettu:')} ${slot.icon} ${slot.name}`, 1500);
+        this.hud.showNotification(`${Localization.t('notif_equipped_item', 'Varustettu:')} ${slot.name}`, 1500);
       }
     } else if (slot.type === 'build') {
       const hasHammer = this.inventory && this.inventory.tools && this.inventory.tools.hammer;
@@ -376,12 +367,8 @@ export default class Hotbar {
 
       if (this.inventory) this.inventory.equip('hammer');
       if (this.combat) this.combat.equipTool('hammer');
-      if (this.player && this.player.updateHeldWeapon) {
-        this.player.updateHeldWeapon();
-      }
-      if (this.buildingSystem) {
-        this.buildingSystem.setHammerActive(true);
-      }
+      if (this.player && this.player.updateHeldWeapon) this.player.updateHeldWeapon();
+      if (this.buildingSystem) this.buildingSystem.setHammerActive(true);
       if (this.hud && previousSlot !== index) {
         this.hud.showNotification(Localization.t('notif_hammer_active', '🔨 Rakennusvasara aktivoitu! [Q/E] Selaa paloja, [B] Valikko'), 2000);
       }
@@ -422,7 +409,7 @@ export default class Hotbar {
         }
       });
     } else {
-      // 0. Fists (Always available bare fists)
+      // 0. Fists
       this.slots[0].type = 'tool';
       this.slots[0].toolId = 'hands';
       this.slots[0].name = Localization.t('slot_hands', 'Fists');
@@ -434,51 +421,17 @@ export default class Hotbar {
       let bestWeaponName = '';
       let bestWeaponIcon = '🗡️';
 
-      if (t.dragonSlayer) {
-        bestWeaponId = 'dragonSlayer';
-        bestWeaponName = Localization.t('tool_dragonSlayer', 'Dragonslayer');
-        bestWeaponIcon = '🐉';
-      } else if (t.runeblade) {
-        bestWeaponId = 'runeblade';
-        bestWeaponName = Localization.t('tool_runeblade', 'Runic Blade');
-        bestWeaponIcon = '💠';
-      } else if (t.blackMetalSword) {
-        bestWeaponId = 'blackMetalSword';
-        bestWeaponName = Localization.t('tool_blackMetalSword', 'Blackmetal Blade');
-        bestWeaponIcon = '🌌';
-      } else if (t.titanHammer) {
-        bestWeaponId = 'titanHammer';
-        bestWeaponName = Localization.t('tool_titanHammer', 'Titan War Hammer');
-        bestWeaponIcon = '🔨';
-      } else if (t.silverSword) {
-        bestWeaponId = 'silverSword';
-        bestWeaponName = Localization.t('tool_silverSword', 'Silver Sword');
-        bestWeaponIcon = '❄️';
-      } else if (t.steelSword) {
-        bestWeaponId = 'steelSword';
-        bestWeaponName = Localization.t('tool_steelSword', 'Steel Sword');
-        bestWeaponIcon = '🛡️';
-      } else if (t.scaleSword) {
-        bestWeaponId = 'scaleSword';
-        bestWeaponName = Localization.t('tool_scaleSword', 'Scale Sword');
-        bestWeaponIcon = '🗡️';
-      } else if (t.ironSword) {
-        bestWeaponId = 'ironSword';
-        bestWeaponName = Localization.t('tool_ironSword', 'Iron Sword');
-        bestWeaponIcon = '⚔️';
-      } else if (t.hornSpear) {
-        bestWeaponId = 'hornSpear';
-        bestWeaponName = Localization.t('tool_hornSpear', 'Horn Spear');
-        bestWeaponIcon = '🔱';
-      } else if (t.bronzeSword) {
-        bestWeaponId = 'bronzeSword';
-        bestWeaponName = Localization.t('tool_bronzeSword', 'Bronze Sword');
-        bestWeaponIcon = '⚔️';
-      } else if (t.stoneSpear) {
-        bestWeaponId = 'stoneSpear';
-        bestWeaponName = Localization.t('tool_stoneSpear', 'Stone Spear');
-        bestWeaponIcon = '🗡️';
-      }
+      if (t.dragonSlayer) { bestWeaponId = 'dragonSlayer'; bestWeaponName = Localization.t('tool_dragonSlayer', 'Dragonslayer'); }
+      else if (t.runeblade) { bestWeaponId = 'runeblade'; bestWeaponName = Localization.t('tool_runeblade', 'Runic Blade'); }
+      else if (t.blackMetalSword) { bestWeaponId = 'blackMetalSword'; bestWeaponName = Localization.t('tool_blackMetalSword', 'Blackmetal Blade'); }
+      else if (t.titanHammer) { bestWeaponId = 'titanHammer'; bestWeaponName = Localization.t('tool_titanHammer', 'Titan War Hammer'); }
+      else if (t.silverSword) { bestWeaponId = 'silverSword'; bestWeaponName = Localization.t('tool_silverSword', 'Silver Sword'); }
+      else if (t.steelSword) { bestWeaponId = 'steelSword'; bestWeaponName = Localization.t('tool_steelSword', 'Steel Sword'); }
+      else if (t.scaleSword) { bestWeaponId = 'scaleSword'; bestWeaponName = Localization.t('tool_scaleSword', 'Scale Sword'); }
+      else if (t.ironSword) { bestWeaponId = 'ironSword'; bestWeaponName = Localization.t('tool_ironSword', 'Iron Sword'); }
+      else if (t.hornSpear) { bestWeaponId = 'hornSpear'; bestWeaponName = Localization.t('tool_hornSpear', 'Horn Spear'); }
+      else if (t.bronzeSword) { bestWeaponId = 'bronzeSword'; bestWeaponName = Localization.t('tool_bronzeSword', 'Bronze Sword'); }
+      else if (t.stoneSpear) { bestWeaponId = 'stoneSpear'; bestWeaponName = Localization.t('tool_stoneSpear', 'Stone Spear'); }
 
       this.highestWeaponId = bestWeaponId;
       if (bestWeaponId) {
@@ -495,35 +448,25 @@ export default class Hotbar {
         this.slots[1].count = 0;
       }
 
-      // 2. Ranged / Magic Weapon Slot (Bow, Staff)
+      // 2. Ranged / Magic
       let rangedId = null;
       let rangedName = '';
-      let rangedIcon = '🏹';
-      if (t.huntingBow) {
-        rangedId = 'huntingBow';
-        rangedName = Localization.t('tool_huntingBow', 'Hunting Bow');
-        rangedIcon = '🏹';
-      } else if (t.runicStaff) {
-        rangedId = 'runicStaff';
-        rangedName = Localization.t('tool_runicStaff', 'Runic Staff');
-        rangedIcon = '🔮';
-      }
+      if (t.huntingBow) { rangedId = 'huntingBow'; rangedName = Localization.t('tool_huntingBow', 'Hunting Bow'); }
+      else if (t.runicStaff) { rangedId = 'runicStaff'; rangedName = Localization.t('tool_runicStaff', 'Runic Staff'); }
 
       if (rangedId) {
         this.slots[2].type = 'tool';
         this.slots[2].toolId = rangedId;
         this.slots[2].name = rangedName;
-        this.slots[2].icon = rangedIcon;
         this.slots[2].count = 1;
       } else {
         this.slots[2].type = 'empty';
         this.slots[2].toolId = null;
         this.slots[2].name = Localization.t('hotbar_empty', 'Empty');
-        this.slots[2].icon = '—';
         this.slots[2].count = 0;
       }
 
-      // 3. Axe Slot
+      // 3. Axe
       let axeId = null;
       let axeName = '';
       if (t.blackMetalAxe) { axeId = 'blackMetalAxe'; axeName = Localization.t('tool_blackMetalAxe', 'Blackmetal Axe'); }
@@ -535,17 +478,15 @@ export default class Hotbar {
         this.slots[3].type = 'tool';
         this.slots[3].toolId = axeId;
         this.slots[3].name = axeName;
-        this.slots[3].icon = '🪓';
         this.slots[3].count = 1;
       } else {
         this.slots[3].type = 'empty';
         this.slots[3].toolId = null;
         this.slots[3].name = Localization.t('hotbar_empty', 'Empty');
-        this.slots[3].icon = '—';
         this.slots[3].count = 0;
       }
 
-      // 4. Pickaxe Slot
+      // 4. Pickaxe
       let pickId = null;
       let pickName = '';
       if (t.silverPickaxe) { pickId = 'silverPickaxe'; pickName = Localization.t('tool_pickaxe', 'Mountain Pickaxe'); }
@@ -558,62 +499,54 @@ export default class Hotbar {
         this.slots[4].type = 'tool';
         this.slots[4].toolId = pickId;
         this.slots[4].name = pickName;
-        this.slots[4].icon = '⛏️';
         this.slots[4].count = 1;
       } else {
         this.slots[4].type = 'empty';
         this.slots[4].toolId = null;
         this.slots[4].name = Localization.t('hotbar_empty', 'Empty');
-        this.slots[4].icon = '—';
         this.slots[4].count = 0;
       }
 
-      // 5. Torch Slot
+      // 5. Torch
       if (t.torch) {
         this.slots[5].type = 'tool';
         this.slots[5].toolId = 'torch';
         this.slots[5].name = Localization.t('slot_torch', 'Torch');
-        this.slots[5].icon = '🔥';
         this.slots[5].count = 1;
       } else {
         this.slots[5].type = 'empty';
         this.slots[5].toolId = null;
         this.slots[5].name = Localization.t('hotbar_empty', 'Empty');
-        this.slots[5].icon = '—';
         this.slots[5].count = 0;
       }
 
-      // 6. Building Hammer
+      // 6. Hammer
       if (t.hammer) {
         this.slots[6].type = 'build';
         this.slots[6].toolId = 'hammer';
         this.slots[6].name = Localization.t('slot_hammer', 'Hammer');
-        this.slots[6].icon = '🔨';
         this.slots[6].count = 1;
       } else {
         this.slots[6].type = 'empty';
         this.slots[6].toolId = null;
         this.slots[6].name = Localization.t('hotbar_empty', 'Empty');
-        this.slots[6].icon = '—';
         this.slots[6].count = 0;
       }
 
-      // 7. Fishing Rod
+      // 7. Rod
       if (t.fishingRod) {
         this.slots[7].type = 'tool';
         this.slots[7].toolId = 'fishingRod';
         this.slots[7].name = Localization.t('slot_rod', 'Fishing Rod');
-        this.slots[7].icon = '🎣';
         this.slots[7].count = 1;
       } else {
         this.slots[7].type = 'empty';
         this.slots[7].toolId = null;
         this.slots[7].name = Localization.t('hotbar_empty', 'Empty');
-        this.slots[7].icon = '—';
         this.slots[7].count = 0;
       }
 
-      // 8. Food (Cooked Meat, Bread, Apple, Berries)
+      // 8. Food
       const berryCount = (this.inventory && this.inventory.items && this.inventory.items.berry) || 0;
       const appleCount = (this.inventory && this.inventory.items && this.inventory.items.apple) || 0;
       const cookedMeatCount = (this.inventory && this.inventory.items && this.inventory.items.cookedMeat) || 0;
@@ -622,36 +555,31 @@ export default class Hotbar {
       if (cookedMeatCount > 0) {
         this.slots[8].type = 'consume';
         this.slots[8].itemId = 'cookedMeat';
-        this.slots[8].icon = '🍖';
         this.slots[8].name = Localization.t('item_cookedMeat', 'Cooked Meat');
         this.slots[8].count = cookedMeatCount;
       } else if (breadCount > 0) {
         this.slots[8].type = 'consume';
         this.slots[8].itemId = 'bread';
-        this.slots[8].icon = '🍞';
         this.slots[8].name = Localization.t('item_bread', 'Bread');
         this.slots[8].count = breadCount;
       } else if (appleCount > 0) {
         this.slots[8].type = 'consume';
         this.slots[8].itemId = 'apple';
-        this.slots[8].icon = '🍎';
         this.slots[8].name = Localization.t('item_apple', 'Apple');
         this.slots[8].count = appleCount;
       } else if (berryCount > 0) {
         this.slots[8].type = 'consume';
         this.slots[8].itemId = 'berry';
-        this.slots[8].icon = '🫐';
         this.slots[8].name = Localization.t('item_berry', 'Berries');
         this.slots[8].count = berryCount;
       } else {
         this.slots[8].type = 'empty';
         this.slots[8].itemId = null;
         this.slots[8].name = Localization.t('hotbar_empty', 'Empty');
-        this.slots[8].icon = '—';
         this.slots[8].count = 0;
       }
 
-      // 9. Medicine / Potions / Healing
+      // 9. Medicine
       const bandageCount = (this.inventory && this.inventory.items && this.inventory.items.bandage) || 0;
       const potionHealthCount = (this.inventory && this.inventory.items && (this.inventory.items.potion_health || this.inventory.items.potion)) || 0;
       const potionStaminaCount = (this.inventory && this.inventory.items && this.inventory.items.potion_stamina) || 0;
@@ -659,31 +587,26 @@ export default class Hotbar {
       if (bandageCount > 0) {
         this.slots[9].type = 'consume';
         this.slots[9].itemId = 'bandage';
-        this.slots[9].icon = '🩹';
         this.slots[9].name = Localization.t('slot_bandage', 'Bandage');
         this.slots[9].count = bandageCount;
       } else if (potionHealthCount > 0) {
         this.slots[9].type = 'consume';
         this.slots[9].itemId = 'potion_health';
-        this.slots[9].icon = '🧪';
         this.slots[9].name = Localization.t('item_potion', 'Mead of Health');
         this.slots[9].count = potionHealthCount;
       } else if (potionStaminaCount > 0) {
         this.slots[9].type = 'consume';
         this.slots[9].itemId = 'potion_stamina';
-        this.slots[9].icon = '⚡';
         this.slots[9].name = 'Kestävyysrohto';
         this.slots[9].count = potionStaminaCount;
       } else {
         this.slots[9].type = 'empty';
         this.slots[9].itemId = null;
         this.slots[9].name = Localization.t('hotbar_empty', 'Empty');
-        this.slots[9].icon = '—';
         this.slots[9].count = 0;
       }
     }
 
-    // Targeted in-place DOM updates: ZERO layout thrashing, ZERO memory leaks!
     if (!this.container) return;
     const slotEls = this.container.querySelectorAll('.hotbar-slot');
     slotEls.forEach((slotEl, index) => {
@@ -705,8 +628,10 @@ export default class Hotbar {
       }
 
       const iconEl = slotEl.querySelector('.hotbar-icon');
-      const currentIcon = hasItem ? slot.icon : '—';
-      if (iconEl && iconEl.textContent !== currentIcon) iconEl.textContent = currentIcon;
+      const currentIconHtml = hasItem ? getIcon(slot.toolId || slot.itemId || slot.id || slot.icon) : '—';
+      if (iconEl && iconEl.innerHTML !== currentIconHtml) {
+        iconEl.innerHTML = currentIconHtml;
+      }
 
       const nameEl = slotEl.querySelector('.hotbar-name');
       const currentName = hasItem ? slot.name : Localization.t('hotbar_empty', 'Empty');
@@ -724,15 +649,8 @@ export default class Hotbar {
       } else if (countEl) {
         countEl.remove();
       }
-
-      // Remove craft hint if present
-      const hintEl = slotEl.querySelector('.hotbar-craft-hint');
-      if (hintEl) {
-        hintEl.remove();
-      }
     });
 
-    // Also update skill hotbar slots in-place
     const st = this.skillTree;
     const skillEls = this.container.querySelectorAll('.skill-hotbar-slot');
     skillEls.forEach((el, i) => {
@@ -760,7 +678,6 @@ export default class Hotbar {
     const a = this.slots[indexA];
     const b = this.slots[indexB];
 
-    // Swap content but preserve original key shortcuts
     const tempKeyA = a.key;
     const tempKeyB = b.key;
     this.slots[indexA] = { ...b, key: tempKeyA };
@@ -833,4 +750,75 @@ export default class Hotbar {
       }
     } catch (e) {}
   }
+}
+
+// ==========================================
+// UUDET PIKSELIKUVAKKEET (/assets/kuvakkeet)
+// ==========================================
+const ICON_BASE_PATH = '/assets/kuvakkeet';
+
+export const ITEM_ICONS = {
+  // 1. Nyrkit & lähitaisteluaseet
+  hands: `${ICON_BASE_PATH}/tile095.png`,            // Nyrkki
+  fists: `${ICON_BASE_PATH}/tile095.png`,            // Nyrkki
+  sword: `${ICON_BASE_PATH}/tile080.png`,            // Perusmiekka
+  stoneSpear: `${ICON_BASE_PATH}/tile086.png`,       // Keihäs / pistomiekka
+  bronzeSword: `${ICON_BASE_PATH}/tile081.png`,      // Pronssimiekka
+  hornSpear: `${ICON_BASE_PATH}/tile087.png`,        // Sarvikeihäs
+  ironSword: `${ICON_BASE_PATH}/tile082.png`,        // Rautamiekka
+  scaleSword: `${ICON_BASE_PATH}/tile083.png`,       // Suomumiekka
+  steelSword: `${ICON_BASE_PATH}/tile084.png`,       // Teräsmiekka
+  silverSword: `${ICON_BASE_PATH}/tile085.png`,      // Hopeamiekka
+  blackMetalSword: `${ICON_BASE_PATH}/tile088.png`,  // Mustametallimiekka
+  runeblade: `${ICON_BASE_PATH}/tile089.png`,        // Riimumiekka
+  dragonSlayer: `${ICON_BASE_PATH}/tile090.png`,     // Lohikäärmeen surmaaja
+  titanHammer: `${ICON_BASE_PATH}/tile093.png`,      // Titaanivasara / sotavasara
+
+  // 2. Kirveet
+  axe: `${ICON_BASE_PATH}/tile161.png`,              // Peruskirves
+  stoneAxe: `${ICON_BASE_PATH}/tile161.png`,         // Kivikirves
+  bronzeAxe: `${ICON_BASE_PATH}/tile161.png`,        // Pronssikirves
+  ironAxe: `${ICON_BASE_PATH}/tile091.png`,          // Rautataistelukirves
+  blackMetalAxe: `${ICON_BASE_PATH}/tile092.png`,     // Mustametallikirves
+
+  // 3. Hakut
+  pickaxe: `${ICON_BASE_PATH}/tile162.png`,          // Perushakku
+  antlerPickaxe: `${ICON_BASE_PATH}/tile162.png`,    // Sarvihakku
+  bronzePickaxe: `${ICON_BASE_PATH}/tile163.png`,    // Pronssihakku
+  ironPickaxe: `${ICON_BASE_PATH}/tile163.png`,      // Rautahakku
+  silverPickaxe: `${ICON_BASE_PATH}/tile163.png`,    // Vuoristohakku
+
+  // 4. Työkalut & kaukoaseet
+  hammer: `${ICON_BASE_PATH}/tile165.png`,           // Rakennusvasara
+  torch: `${ICON_BASE_PATH}/tile169.png`,            // Soihtu
+  huntingBow: `${ICON_BASE_PATH}/tile099.png`,       // Metsästysjousi
+  bow: `${ICON_BASE_PATH}/tile099.png`,              // Jousi
+  runicStaff: `${ICON_BASE_PATH}/tile104.png`,       // Riimusauva / sauva
+  fishingRod: `${ICON_BASE_PATH}/tile256.png`,       // Onkivapa
+  rod: `${ICON_BASE_PATH}/tile256.png`,              // Onki
+
+  // 5. Rakennusmateriaalit & resurssit
+  wood: `${ICON_BASE_PATH}/tile265.png`,             // Hirsipuu / puu
+  stone: `${ICON_BASE_PATH}/tile266.png`,            // Kivi
+  iron: `${ICON_BASE_PATH}/tile268.png`,             // Rauta / metalliharkko
+
+  // 6. Ruoat & ravinto
+  cookedMeat: `${ICON_BASE_PATH}/tile239.png`,       // Kypsennetty liha / paisti
+  meat: `${ICON_BASE_PATH}/tile240.png`,             // Raaka liha
+  bread: `${ICON_BASE_PATH}/tile236.png`,            // Leipä
+  apple: `${ICON_BASE_PATH}/tile224.png`,            // Omena
+  berry: `${ICON_BASE_PATH}/tile228.png`,            // Marjat
+
+  // 7. Ensiapu & taikajuomat
+  bandage: `${ICON_BASE_PATH}/tile159.png`,          // Ensiapuside / sideharso
+  potion_health: `${ICON_BASE_PATH}/tile148.png`,    // Terveysjuoma (punainen)
+  potion_stamina: `${ICON_BASE_PATH}/tile149.png`    // Kestävyysjuoma (vihreä)
+};
+
+export function getIcon(id) {
+  const iconPath = ITEM_ICONS[id];
+  if (iconPath) {
+    return `<img src="${iconPath}" class="hotbar-icon-img" alt="${id}" draggable="false" />`;
+  }
+  return id || '—';
 }

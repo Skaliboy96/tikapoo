@@ -383,8 +383,10 @@ export default class BackpackScreen {
         const mat = c.material;
         if (!c.name.includes('Eye') && !c.name.includes('Hair') && !c.name.includes('Skin')) {
           if (mat.color) mat.color.setHex(tint.color);
-          mat.metalness = tint.metalness;
-          mat.roughness = tint.roughness;
+          if (mat.isMeshStandardMaterial || mat.isMeshPhysicalMaterial) {
+            mat.metalness = tint.metalness;
+            mat.roughness = tint.roughness;
+          }
         }
       }
     });

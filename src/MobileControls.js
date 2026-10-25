@@ -1,13 +1,7 @@
 import * as THREE from 'three';
 
 /**
- * MobileControls – Ergonomic touch controls and optimizations for Android & iOS:
- * 1. Virtual Joystick (Bottom-Left) for smooth 360-degree analog movement & auto-sprint
- * 2. Right Action Cluster (Attack ⚔️ with hold-to-mine, Jump 🦘, Interact ✋, View 🎥)
- * 3. Touch Camera Orbit on right screen half with smooth pitch/yaw and 2-finger pinch zoom
- * 4. Top Quick Menu bar (Backpack [I], Crafting [C], Map [M], Skills [O], Menu [Esc])
- * 5. Touch-friendly Hotbar & Abilities tap selection
- * 6. Mobile browser optimizations: touch-action, iOS AudioContext unlock, prevent scroll bounce
+ * MobileControls – Ergonomic touch controls and optimizations for Android, iOS & Tablets
  */
 export default class MobileControls {
   constructor(options) {
@@ -31,12 +25,11 @@ export default class MobileControls {
     this.world = options.world;
     this.renderer = options.renderer;
 
-    // Detect touch / mobile device
+    // Varma kosketusnäytön tunnistus (toimii myös iPadilla ja Android-tableteilla)
     this.isTouchDevice = (
       'ontouchstart' in window ||
-      navigator.maxTouchPoints > 0 ||
-      /Android|iPhone|iPad|iPod|Windows Phone|webOS|BlackBerry/i.test(navigator.userAgent) ||
-      window.innerWidth <= 900
+      (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) ||
+      /Android|iPhone|iPad|iPod|Windows Phone|webOS|BlackBerry/i.test(navigator.userAgent)
     );
 
     // Joystick state
@@ -44,18 +37,18 @@ export default class MobileControls {
     this.joystickTouchId = null;
     this.joystickOrigin = { x: 0, y: 0 };
     this.joystickVector = { x: 0, y: 0 };
-    this.joystickMaxRadius = 52; // max stick travel in px
+    this.joystickMaxRadius = 52;
 
     // Camera look touch state
     this.cameraTouchId = null;
     this.cameraLastPos = { x: 0, y: 0 };
-    this.cameraSensitivity = 0.0075;
+    this.cameraSensitivity = 0.0055; // Hieman pehmennetty vakautta varten
 
     // Pinch zoom state
     this.isPinching = false;
     this.pinchDist = 0;
 
-    // Attack button hold timer for continuous chopping / mining
+    // Attack button hold timer
     this.isHoldingAttack = false;
     this.attackHoldInterval = null;
 
@@ -81,9 +74,10 @@ export default class MobileControls {
     }
     document.body.classList.add('mobile-mode');
 
-    // Adapt pixel ratio for rock-solid 60fps on mobile GPUs & prevent WebKit canvas buffer crashes
     if (this.renderer) {
-      this.renderer.setPixelRatio(1.0);
+      // Käytä tabletilla 1.25 tai 1.0 suorituskyvyn takaamiseksi
+      const pr = Math.min(window.devicePixelRatio || 1, 1.25);
+      this.renderer.setPixelRatio(pr);
     }
   }
 
@@ -117,6 +111,7 @@ export default class MobileControls {
       document.querySelector('#skill-tree-modal.active') ||
       document.querySelector('#npc-dialogue.active') ||
       document.querySelector('#char-creator-modal.active') ||
+      document.querySelector('#build-menu-modal.active') ||
       (this.pauseMenu && this.pauseMenu.classList.contains('active'))
     );
 
@@ -124,7 +119,6 @@ export default class MobileControls {
       this.container.style.display = anyModalOpen ? 'none' : 'block';
     }
 
-    // Reset touch state and stick position
     this.joystickActive = false;
     this.joystickTouchId = null;
     this.cameraTouchId = null;
@@ -172,7 +166,6 @@ export default class MobileControls {
     const style = document.createElement('style');
     style.id = 'mobile-controls-styles';
     style.textContent = `
-      /* Mobile Controls Root */
       #mobile-controls-root {
         position: fixed;
         inset: 0;
@@ -184,7 +177,6 @@ export default class MobileControls {
         touch-action: none;
       }
 
-      /* Joystick Area (Bottom-Left) */
       .mobile-joystick-container {
         position: absolute;
         bottom: max(16px, env(safe-area-inset-bottom, 16px));
@@ -193,16 +185,16 @@ export default class MobileControls {
         height: 140px;
         pointer-events: auto;
         touch-action: none;
-        z-index: 105;
+        z-index: 106;
       }
 
       .mobile-joystick-base {
         position: absolute;
         inset: 0;
-        background: radial-gradient(circle, rgba(20, 30, 45, 0.6) 0%, rgba(10, 15, 25, 0.8) 100%);
-        border: 2px solid rgba(212, 175, 55, 0.4);
+        background: radial-gradient(circle, rgba(20, 30, 45, 0.65) 0%, rgba(10, 15, 25, 0.85) 100%);
+        border: 2px solid rgba(212, 175, 55, 0.45);
         border-radius: 50%;
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.7), inset 0 0 12px rgba(212, 175, 55, 0.2);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.7);
         backdrop-filter: blur(8px);
         display: flex;
         align-items: center;
@@ -225,12 +217,12 @@ export default class MobileControls {
         background: radial-gradient(circle at 35% 35%, #ffd54f 0%, #b8860b 80%, #795548 100%);
         border: 2px solid #ffffff;
         border-radius: 50%;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.8), 0 0 10px rgba(241, 196, 15, 0.5);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.8);
         top: calc(50% - 26px);
         left: calc(50% - 26px);
         transform: translate3d(0, 0, 0);
         pointer-events: none;
-        transition: transform 0.05s ease-out;
+        transition: transform 0.04s ease-out;
       }
 
       .mobile-sprint-badge {
@@ -238,44 +230,26 @@ export default class MobileControls {
         top: -24px;
         left: 50%;
         transform: translateX(-50%);
-        background: rgba(230, 126, 34, 0.9);
+        background: rgba(230, 126, 34, 0.95);
         color: #fff;
         font-size: 10px;
         font-weight: 800;
         padding: 2px 8px;
         border-radius: 10px;
-        letter-spacing: 0.5px;
         opacity: 0;
         transition: opacity 0.15s ease;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.5);
       }
-      .mobile-sprint-badge.active {
-        opacity: 1;
-      }
+      .mobile-sprint-badge.active { opacity: 1; }
 
-      /* Right Action Buttons Cluster (Bottom-Right) - Sleek Semi-Transparent */
       .mobile-actions-container {
         position: absolute;
-        bottom: max(16px, env(safe-area-inset-bottom, 16px));
-        right: max(16px, env(safe-area-inset-right, 16px));
-        width: 230px;
-        height: 200px;
+        bottom: max(14px, env(safe-area-inset-bottom, 14px));
+        right: max(14px, env(safe-area-inset-right, 14px));
+        width: 250px;
+        height: 220px;
         pointer-events: none;
-        z-index: 105;
+        z-index: 106;
       }
-
-      .mobile-joystick-arrow {
-        position: absolute;
-        font-size: 11px;
-        font-weight: 900;
-        color: rgba(212, 175, 55, 0.65);
-        pointer-events: none;
-        text-shadow: 0 1px 3px rgba(0,0,0,0.9);
-      }
-      .mobile-joystick-arrow.arrow-up { top: 5px; left: 50%; transform: translateX(-50%); }
-      .mobile-joystick-arrow.arrow-down { bottom: 5px; left: 50%; transform: translateX(-50%); }
-      .mobile-joystick-arrow.arrow-left { left: 6px; top: 50%; transform: translateY(-50%); }
-      .mobile-joystick-arrow.arrow-right { right: 6px; top: 50%; transform: translateY(-50%); }
 
       .touch-action-btn {
         position: absolute;
@@ -289,157 +263,98 @@ export default class MobileControls {
         user-select: none;
         -webkit-user-select: none;
         cursor: pointer;
-        transition: transform 0.08s ease, filter 0.08s ease;
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
         backdrop-filter: blur(4px);
-        opacity: 0.92;
+      }
+      .touch-action-btn * {
+        pointer-events: none !important; /* Estää klikkausten katoamisen lapsi-elementteihin */
       }
       .touch-action-btn:active, .touch-action-btn.active {
-        transform: scale(0.90);
-        filter: brightness(1.3);
-        opacity: 1;
+        transform: scale(0.92);
+        filter: brightness(1.25);
       }
 
-      /* Main Attack Button */
       #btn-mobile-attack {
         bottom: 4px;
         right: 4px;
-        width: 68px;
-        height: 68px;
-        background: radial-gradient(circle at 35% 35%, rgba(231, 76, 60, 0.95) 0%, rgba(192, 57, 43, 0.9) 75%, rgba(127, 29, 29, 0.9) 100%);
+        width: 72px;
+        height: 72px;
+        background: radial-gradient(circle at 35% 35%, rgba(231, 76, 60, 0.95) 0%, rgba(192, 57, 43, 0.9) 100%);
         border: 2.5px solid #ff7675;
       }
-      #btn-mobile-attack .btn-icon {
-        font-size: 30px;
-        line-height: 30px;
-      }
-      #btn-mobile-attack .btn-sub {
-        font-size: 8px;
-        font-weight: 800;
-        color: #fff;
-        text-transform: uppercase;
-        margin-top: 1px;
-      }
+      #btn-mobile-attack .btn-icon { font-size: 32px; line-height: 32px; }
+      #btn-mobile-attack .btn-sub { font-size: 8px; font-weight: 800; color: #fff; margin-top: 1px; }
 
-      /* Shield Block & Timed Parry Button */
       #btn-mobile-block {
-        bottom: 8px;
-        right: 82px;
+        bottom: 10px;
+        right: 86px;
         width: 50px;
         height: 50px;
-        background: radial-gradient(circle at 35% 35%, rgba(243, 156, 18, 0.95) 0%, rgba(211, 84, 0, 0.9) 75%, rgba(120, 50, 10, 0.9) 100%);
+        background: radial-gradient(circle at 35% 35%, rgba(243, 156, 18, 0.95) 0%, rgba(211, 84, 0, 0.9) 100%);
         border: 2px solid #f1c40f;
       }
-      #btn-mobile-block .btn-icon {
-        font-size: 22px;
-        line-height: 22px;
-      }
-      #btn-mobile-block .btn-sub {
-        font-size: 7.5px;
-        font-weight: 800;
-        color: #fff;
-        text-transform: uppercase;
-        margin-top: 1px;
-      }
+      #btn-mobile-block .btn-icon { font-size: 22px; }
+      #btn-mobile-block .btn-sub { font-size: 7.5px; font-weight: 800; color: #fff; }
 
-      /* Interact Button */
       #btn-mobile-interact {
-        bottom: 8px;
-        right: 142px;
+        bottom: 10px;
+        right: 146px;
         width: 48px;
         height: 48px;
-        background: radial-gradient(circle at 35% 35%, rgba(46, 204, 113, 0.92) 0%, rgba(39, 174, 96, 0.88) 75%, rgba(20, 90, 50, 0.88) 100%);
+        background: radial-gradient(circle at 35% 35%, rgba(46, 204, 113, 0.92) 0%, rgba(39, 174, 96, 0.88) 100%);
         border: 1.5px solid #55efc4;
       }
-      #btn-mobile-interact .btn-icon {
-        font-size: 20px;
-        line-height: 20px;
-      }
-      #btn-mobile-interact .btn-sub {
-        font-size: 7.5px;
-        font-weight: 800;
-        color: #fff;
-      }
+      #btn-mobile-interact .btn-icon { font-size: 20px; }
+      #btn-mobile-interact .btn-sub { font-size: 7.5px; font-weight: 800; color: #fff; }
 
-      /* Jump Button */
       #btn-mobile-jump {
-        bottom: 84px;
+        bottom: 86px;
         right: 8px;
-        width: 52px;
-        height: 52px;
-        background: radial-gradient(circle at 35% 35%, rgba(52, 152, 219, 0.92) 0%, rgba(41, 128, 185, 0.88) 75%, rgba(27, 79, 114, 0.88) 100%);
+        width: 54px;
+        height: 54px;
+        background: radial-gradient(circle at 35% 35%, rgba(52, 152, 219, 0.92) 0%, rgba(41, 128, 185, 0.88) 100%);
         border: 2px solid #74b9ff;
       }
-      #btn-mobile-jump .btn-icon {
-        font-size: 22px;
-        line-height: 22px;
-      }
-      #btn-mobile-jump .btn-sub {
-        font-size: 7.5px;
-        font-weight: 700;
-        color: #fff;
-      }
+      #btn-mobile-jump .btn-icon { font-size: 24px; }
+      #btn-mobile-jump .btn-sub { font-size: 7.5px; font-weight: 700; color: #fff; }
 
-      /* Sprint Toggle Button */
-      #btn-mobile-sprint-toggle {
-        bottom: 144px;
-        right: 36px;
-        width: 44px;
-        height: 44px;
-        background: radial-gradient(circle at 35% 35%, rgba(230, 126, 34, 0.92) 0%, rgba(211, 84, 0, 0.88) 75%, rgba(120, 50, 10, 0.88) 100%);
-        border: 1.5px solid #f39c12;
-      }
-      #btn-mobile-sprint-toggle.active {
-        box-shadow: 0 0 14px rgba(243, 156, 18, 0.9);
-        border-color: #ffd32a;
-      }
-      #btn-mobile-sprint-toggle .btn-icon {
-        font-size: 19px;
-        line-height: 19px;
-      }
-
-      /* Dedicated Mobile Building Mode Button */
       #btn-mobile-build {
-        bottom: 136px;
-        right: 98px;
-        width: 48px;
-        height: 48px;
-        background: radial-gradient(circle at 35% 35%, rgba(212, 175, 55, 0.95) 0%, rgba(184, 134, 11, 0.9) 75%, rgba(100, 70, 10, 0.9) 100%);
+        bottom: 148px;
+        right: 18px;
+        width: 50px;
+        height: 50px;
+        background: radial-gradient(circle at 35% 35%, rgba(212, 175, 55, 0.95) 0%, rgba(184, 134, 11, 0.9) 100%);
         border: 2px solid #ffd700;
-        box-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
       }
-      #btn-mobile-build .btn-icon {
-        font-size: 22px;
-        line-height: 22px;
-      }
-      #btn-mobile-build .btn-sub {
-        font-size: 7px;
-        font-weight: 800;
-        color: #fff;
-        letter-spacing: 0.5px;
-      }
+      #btn-mobile-build .btn-icon { font-size: 22px; }
+      #btn-mobile-build .btn-sub { font-size: 7px; font-weight: 800; color: #fff; }
 
-      /* Perspective Toggle (1st / 3rd Person) */
       #btn-mobile-camera {
-        bottom: 78px;
-        right: 74px;
+        bottom: 80px;
+        right: 76px;
         width: 44px;
         height: 44px;
-        background: radial-gradient(circle at 35% 35%, rgba(155, 89, 182, 0.92) 0%, rgba(142, 68, 173, 0.88) 75%, rgba(74, 35, 90, 0.88) 100%);
+        background: radial-gradient(circle at 35% 35%, rgba(155, 89, 182, 0.92) 0%, rgba(142, 68, 173, 0.88) 100%);
         border: 1.5px solid #d2b4de;
       }
-      #btn-mobile-camera .btn-icon {
-        font-size: 19px;
-        line-height: 19px;
-      }
+      #btn-mobile-camera .btn-icon { font-size: 19px; }
 
-      /* Top Mobile Quick Navigation Bar */
+      #btn-mobile-sprint-toggle {
+        bottom: 142px;
+        right: 80px;
+        width: 44px;
+        height: 44px;
+        background: radial-gradient(circle at 35% 35%, rgba(230, 126, 34, 0.92) 0%, rgba(211, 84, 0, 0.88) 100%);
+        border: 1.5px solid #f39c12;
+      }
+      #btn-mobile-sprint-toggle .btn-icon { font-size: 19px; }
+
       .mobile-top-bar {
         position: absolute;
         top: max(8px, env(safe-area-inset-top, 8px));
         right: max(8px, env(safe-area-inset-right, 8px));
         display: flex;
-        gap: 5px;
+        gap: 6px;
         pointer-events: auto !important;
         z-index: 108;
       }
@@ -449,135 +364,50 @@ export default class MobileControls {
         color: #f1c40f;
         border: 1px solid rgba(212, 175, 55, 0.5);
         border-radius: 14px;
-        padding: 5px 9px;
+        padding: 6px 10px;
         font-size: 11px;
         font-weight: 700;
         display: flex;
         align-items: center;
         gap: 4px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
         backdrop-filter: blur(6px);
         cursor: pointer;
-        touch-action: manipulation !important;
-        user-select: none;
-        -webkit-user-select: none;
+        touch-action: manipulation;
       }
-      .mobile-pill-btn:active {
-        transform: scale(0.92);
-        background: rgba(30, 40, 60, 0.95);
-        border-color: #f39c12;
-      }
+      .mobile-pill-btn * { pointer-events: none !important; }
 
-      /* Screen Adaptation for Mobile */
-      body.mobile-mode #hud {
-        position: fixed !important;
-        inset: 0 !important;
-        width: 100vw !important;
-        height: 100vh !important;
-        background: none !important;
-        border: none !important;
-        box-shadow: none !important;
-        pointer-events: none !important;
-        padding: 0 !important;
-        margin: 0 !important;
-      }
-
+      /* Siistitty responsiivinen HUD mobiilille ja tableteille */
       body.mobile-mode #hud-vitals-container {
         position: fixed !important;
         top: max(8px, env(safe-area-inset-top, 8px)) !important;
         left: max(8px, env(safe-area-inset-left, 8px)) !important;
-        width: 135px !important;
-        max-width: 145px !important;
+        width: clamp(130px, 20vw, 170px) !important;
         height: auto !important;
         pointer-events: auto !important;
         background: rgba(10, 14, 20, 0.85);
         border: 1px solid rgba(255, 215, 0, 0.25);
         border-radius: 8px;
         padding: 6px 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-      }
-
-      body.mobile-mode #hud .bar-label span:last-child {
-        display: none; /* Hide numerical 100/100 to save screen real estate */
-      }
-      body.mobile-mode #hud .bar-label {
-        font-size: 8px;
-      }
-      body.mobile-mode #hud .bar {
-        height: 4px;
-        border-radius: 2px;
-      }
-      body.mobile-mode #hud .hud-top-meta {
-        padding-bottom: 2px;
-      }
-      body.mobile-mode #hud .hud-level-badge {
-        font-size: 8px;
-      }
-      body.mobile-mode #hud .hud-xp-bar-bg {
-        width: 35px;
-        height: 3px;
-      }
-      body.mobile-mode #hud .hud-xp-val {
-        display: none;
-      }
-      body.mobile-mode #hud .hud-biome-badge {
-        font-size: 8px;
-        padding: 0 3px;
-      }
-
-      body.mobile-mode .hud-buttons-row,
-      body.mobile-mode .hud-controls-hint {
-        display: none !important;
-      }
-
-      body.mobile-mode #hotbar {
-        bottom: 8px;
-        transform: translateX(-50%) scale(0.75);
-        transform-origin: bottom center;
+        z-index: 104;
       }
 
       body.mobile-mode #minimap-container {
-        top: 42px;
-        right: 8px;
-        width: 90px;
-        height: 90px;
-        padding: 2px;
-        transform: none;
-        border-radius: 50%;
-        background: rgba(10, 14, 20, 0.85);
-      }
-      body.mobile-mode #minimap {
+        top: 48px !important;
+        right: 8px !important;
         width: 86px !important;
         height: 86px !important;
-        border-radius: 50%;
       }
 
       body.mobile-mode #game-clock-container {
-        top: 138px;
-        right: 8px;
-        transform: none;
-        padding: 2px 6px;
-        font-size: 9px;
-        border-radius: 4px;
-        background: rgba(10, 14, 20, 0.85);
+        top: 142px !important;
+        right: 8px !important;
+        font-size: 10px !important;
       }
 
-      body.mobile-mode #quest-log {
-        display: none; /* Accessible via map button [M] */
-      }
-
-      body.mobile-mode #tooltip {
-        bottom: 140px;
-        font-size: 12px;
-        padding: 6px 14px;
-      }
-
-      /* Prevent browser gestures */
-      html, body {
-        overflow: hidden;
-        overscroll-behavior: none;
-        touch-action: none;
-        -webkit-touch-callout: none;
+      body.mobile-mode #hotbar {
+        bottom: 10px !important;
+        transform: translateX(-50%) scale(0.85) !important;
+        z-index: 104 !important;
       }
     `;
     document.head.appendChild(style);
@@ -588,67 +418,46 @@ export default class MobileControls {
     root.id = 'mobile-controls-root';
 
     root.innerHTML = `
-      <!-- Top Quick Navigation Bar -->
       <div class="mobile-top-bar">
         <button id="mbtn-backpack" class="mobile-pill-btn">🎒 <span>Reppu</span></button>
         <button id="mbtn-craft" class="mobile-pill-btn">⚒️ <span>Paja</span></button>
         <button id="mbtn-map" class="mobile-pill-btn">🗺️ <span>Kartta</span></button>
         <button id="mbtn-skills" class="mobile-pill-btn">⭐ <span>Taidot</span></button>
-        <button id="mbtn-fullscreen" class="mobile-pill-btn" title="Koko näyttö / Fullscreen">⛶</button>
         <button id="mbtn-menu" class="mobile-pill-btn">⚙️ <span>Valikko</span></button>
       </div>
 
-      <!-- Virtual Analog Joystick (Bottom-Left) -->
       <div id="mobile-joystick-zone" class="mobile-joystick-container">
         <div class="mobile-joystick-base">
           <div class="mobile-joystick-ring"></div>
-          <div class="mobile-joystick-arrow arrow-up">▲</div>
-          <div class="mobile-joystick-arrow arrow-down">▼</div>
-          <div class="mobile-joystick-arrow arrow-left">◀</div>
-          <div class="mobile-joystick-arrow arrow-right">▶</div>
           <div id="mobile-joystick-stick" class="mobile-joystick-stick"></div>
           <div id="mobile-sprint-badge" class="mobile-sprint-badge">⚡ JUOKSU</div>
         </div>
       </div>
 
-      <!-- Action Cluster (Bottom-Right) -->
       <div class="mobile-actions-container">
-        <!-- Attack / Mine / Action Button (Primary) -->
         <div id="btn-mobile-attack" class="touch-action-btn">
           <span class="btn-icon">⚔️</span>
           <span class="btn-sub">ISKU</span>
         </div>
-
-        <!-- Shield Block & Parry Button -->
-        <div id="btn-mobile-block" class="touch-action-btn" title="Torju / Parry">
+        <div id="btn-mobile-block" class="touch-action-btn">
           <span class="btn-icon">🛡️</span>
           <span class="btn-sub">TORJU</span>
         </div>
-
-        <!-- Jump / Climb Button -->
         <div id="btn-mobile-jump" class="touch-action-btn">
           <span class="btn-icon">🦘</span>
           <span class="btn-sub">HYPPY</span>
         </div>
-
-        <!-- Interact Button [E] -->
         <div id="btn-mobile-interact" class="touch-action-btn">
           <span class="btn-icon">✋</span>
           <span id="btn-interact-sub" class="btn-sub">KÄYTÄ</span>
         </div>
-
-        <!-- Dedicated Building Mode Button -->
-        <div id="btn-mobile-build" class="touch-action-btn" title="Rakennustila">
+        <div id="btn-mobile-build" class="touch-action-btn">
           <span class="btn-icon">🔨</span>
           <span class="btn-sub">RAKENNA</span>
         </div>
-
-        <!-- Sprint Lock Toggle Button -->
-        <div id="btn-mobile-sprint-toggle" class="touch-action-btn" title="Juoksu Toggle">
+        <div id="btn-mobile-sprint-toggle" class="touch-action-btn">
           <span class="btn-icon">🏃</span>
         </div>
-
-        <!-- Camera Perspective Toggle [V] -->
         <div id="btn-mobile-camera" class="touch-action-btn">
           <span class="btn-icon">🎥</span>
         </div>
@@ -660,41 +469,25 @@ export default class MobileControls {
   }
 
   _setupGlobalTouchPolicy() {
-    // Prevent iOS rubber-banding and pull-to-refresh while allowing natural touch scrolling in all menus
     document.addEventListener('touchmove', (e) => {
-      // Allow scroll inside all active modals, dialogues, quests, recipes, achievements, and panels
       if (e.target.closest(
         '.modal, .menu-modal, .crafting-modal, #crafting-menu, ' +
         '#backpack-screen, .backpack-modal, #map-screen, .map-modal, ' +
-        '#npc-dialogue, .npc-dialogue-modal, #skill-tree-modal, .skill-tree-box, ' +
-        '#char-creator-modal, .char-creator-container, #pause-menu, ' +
-        '#build-menu-modal, .build-modal-overlay, .build-modal-box, .build-modal-cards-grid, ' +
-        '#quest-log, .quest-log-box, #settings-modal, .settings-modal, .settings-box, ' +
-        '#death-screen, .death-box, #modal-account, .account-modal, ' +
-        '.st-quests-container, .st-achievements-container, .skill-tree-columns, ' +
-        '.recipe-grid, .crafting-list, .backpack-grid, .instructions-body, .modal-body, ' +
-        '.npc-quests-list, #npc-dialogue-box, .guide-content, .backpack-items-panel, [data-scrollable], .scrollable, select, input, textarea'
+        '#npc-dialogue, #skill-tree-modal, #char-creator-modal, #pause-menu, ' +
+        '#build-menu-modal, [data-scrollable], .scrollable, select, input, textarea'
       )) {
         return;
       }
       e.preventDefault();
     }, { passive: false });
 
-    // iOS Web Audio unlock on first touch
     const unlockAudio = () => {
-      if (this.audioManager) {
-        this.audioManager.ensureContext();
-      }
+      if (this.audioManager) this.audioManager.ensureContext();
       window.removeEventListener('touchstart', unlockAudio);
       window.removeEventListener('touchend', unlockAudio);
     };
     window.addEventListener('touchstart', unlockAudio, { passive: true });
     window.addEventListener('touchend', unlockAudio, { passive: true });
-
-    // Keep controls.isLocked true on mobile during active gameplay
-    if (this.isTouchDevice && this.controls) {
-      this.controls.isLocked = true;
-    }
   }
 
   _setupEventListeners() {
@@ -737,28 +530,23 @@ export default class MobileControls {
 
       jStick.style.transform = `translate3d(${nx}px, ${ny}px, 0)`;
 
-      // Normalize vector (-1 to 1)
       const normDist = clampedDist / this.joystickMaxRadius;
       const dirX = Math.cos(angle) * normDist;
       const dirY = Math.sin(angle) * normDist;
 
-      // Smooth 360-degree analog movement in Player
       if (this.player && this.player.analogMove) {
         this.player.analogMove.set(dirX, dirY);
       }
 
-      // Update player movement keys fallback
       this.player.keys.forward = dirY < -0.22;
       this.player.keys.back    = dirY > 0.22;
       this.player.keys.left    = dirX < -0.22;
       this.player.keys.right   = dirX > 0.22;
 
-      // Auto-sprint when thumb is pushed > 70%
       const isSprint = normDist > 0.70;
       this.player.keys.sprint = isSprint;
       if (sprintBadge) {
-        if (isSprint) sprintBadge.classList.add('active');
-        else sprintBadge.classList.remove('active');
+        sprintBadge.classList.toggle('active', isSprint);
       }
     };
 
@@ -793,45 +581,38 @@ export default class MobileControls {
       window.addEventListener('touchcancel', handleJoystickEnd, { passive: true });
     }
 
-    // 2. Right Action Buttons
+    // 2. Action Painikkeet
     const btnAttack = document.getElementById('btn-mobile-attack');
     const btnJump = document.getElementById('btn-mobile-jump');
     const btnInteract = document.getElementById('btn-mobile-interact');
     const btnCam = document.getElementById('btn-mobile-camera');
+    const btnBlock = document.getElementById('btn-mobile-block');
+    const btnBuild = document.getElementById('btn-mobile-build');
+    const btnSprint = document.getElementById('btn-mobile-sprint-toggle');
 
-    // Attack / Mine button with tap & hold support
+    // Attack
     if (btnAttack) {
       const startAttack = (e) => {
-        e.preventDefault();
+        if (e.cancelable) e.preventDefault();
         e.stopPropagation();
         btnAttack.classList.add('active');
         this.isHoldingAttack = true;
-
-        if (this.resourceNode) {
-          this.resourceNode.isMouseDown = true;
-        }
-
-        // Perform first attack instantly
+        if (this.resourceNode) this.resourceNode.isMouseDown = true;
         this.performActionTrigger();
 
-        // Continue holding for chopping/mining
         if (this.attackHoldInterval) clearInterval(this.attackHoldInterval);
         this.attackHoldInterval = setInterval(() => {
           if (this.isHoldingAttack) {
-            if (this.resourceNode) {
-              this.resourceNode.isMouseDown = true;
-            }
+            if (this.resourceNode) this.resourceNode.isMouseDown = true;
             this.performActionTrigger();
           }
-        }, 180);
+        }, 200);
       };
 
-      const stopAttack = (e) => {
+      const stopAttack = () => {
         btnAttack.classList.remove('active');
         this.isHoldingAttack = false;
-        if (this.resourceNode) {
-          this.resourceNode.isMouseDown = false;
-        }
+        if (this.resourceNode) this.resourceNode.isMouseDown = false;
         if (this.attackHoldInterval) {
           clearInterval(this.attackHoldInterval);
           this.attackHoldInterval = null;
@@ -843,199 +624,122 @@ export default class MobileControls {
       btnAttack.addEventListener('touchcancel', stopAttack, { passive: true });
     }
 
-    // Shield Block & Timed Parry button (Hold to block, tap right before incoming hit to parry)
-    const btnBlock = document.getElementById('btn-mobile-block');
+    // Block
     if (btnBlock) {
       const handleBlockStart = (e) => {
         if (e.cancelable) e.preventDefault();
         e.stopPropagation();
         btnBlock.classList.add('active');
-        if (this.player) {
-          this.player.startBlock();
-        }
+        if (this.player) this.player.startBlock();
       };
-
-      const handleBlockEnd = (e) => {
+      const handleBlockEnd = () => {
         btnBlock.classList.remove('active');
-        if (this.player) {
-          this.player.stopBlock();
-        }
+        if (this.player) this.player.stopBlock();
       };
-
       btnBlock.addEventListener('touchstart', handleBlockStart, { passive: false });
       btnBlock.addEventListener('touchend', handleBlockEnd, { passive: true });
       btnBlock.addEventListener('touchcancel', handleBlockEnd, { passive: true });
-      btnBlock.addEventListener('pointerdown', handleBlockStart);
-      btnBlock.addEventListener('pointerup', handleBlockEnd);
-      btnBlock.addEventListener('pointercancel', handleBlockEnd);
     }
 
-    // Jump button (Jump immediately on touch/pointer down)
+    // Jump
     if (btnJump) {
       const handleJumpStart = (e) => {
         if (e.cancelable) e.preventDefault();
         e.stopPropagation();
         btnJump.classList.add('active');
-        this.player.keys.jump = true;
+        if (this.player && this.player.keys) this.player.keys.jump = true;
       };
       const handleJumpEnd = () => {
         btnJump.classList.remove('active');
-        this.player.keys.jump = false;
+        if (this.player && this.player.keys) this.player.keys.jump = false;
       };
-
       btnJump.addEventListener('touchstart', handleJumpStart, { passive: false });
       btnJump.addEventListener('touchend', handleJumpEnd, { passive: true });
       btnJump.addEventListener('touchcancel', handleJumpEnd, { passive: true });
-      btnJump.addEventListener('pointerdown', handleJumpStart);
-      btnJump.addEventListener('pointerup', handleJumpEnd);
-      btnJump.addEventListener('pointercancel', handleJumpEnd);
     }
 
-    // Interact button (Instant response on tap)
+    // Interact
     if (btnInteract) {
-      let lastInteractTap = 0;
       const handleInteract = (e) => {
-        const now = performance.now();
-        if (now - lastInteractTap < 220) return;
-        lastInteractTap = now;
         if (e.cancelable) e.preventDefault();
         e.stopPropagation();
         btnInteract.classList.add('active');
         this.performInteractTrigger();
         setTimeout(() => btnInteract.classList.remove('active'), 180);
       };
-
       btnInteract.addEventListener('touchstart', handleInteract, { passive: false });
-      btnInteract.addEventListener('pointerdown', handleInteract);
     }
 
-    // Camera perspective toggle (1st/3rd person)
+    // Camera toggle
     if (btnCam) {
-      let lastCamTap = 0;
       const handleCamToggle = (e) => {
-        const now = performance.now();
-        if (now - lastCamTap < 250) return;
-        lastCamTap = now;
         if (e.cancelable) e.preventDefault();
         e.stopPropagation();
-        btnCam.classList.add('active');
         if (this.player) {
           this.player.isThirdPerson = !this.player.isThirdPerson;
-          if (this.hud) {
-            this.hud.showNotification(
-              this.player.isThirdPerson ? '🎥 Kolmannen persoonan kuvakulma (Valheim)' : '🎥 Ensimmäisen persoonan kuvakulma',
-              2000
-            );
-          }
         }
-        setTimeout(() => btnCam.classList.remove('active'), 180);
       };
-
       btnCam.addEventListener('touchstart', handleCamToggle, { passive: false });
-      btnCam.addEventListener('pointerdown', handleCamToggle);
-      btnCam.addEventListener('touchend', () => {
-        btnCam.classList.remove('active');
-      }, { passive: true });
     }
 
-    // Dedicated Building Mode Button ([B] on mobile)
-    const triggerBuilding = (e) => {
-      if (e && e.cancelable) e.preventDefault();
-      if (e) e.stopPropagation();
-      if (this.buildingSystem) {
-        if (this.inventory && this.inventory.tools && this.inventory.tools.hammer) {
-          if (this.inventory.hotbar) {
-            this.inventory.hotbar.selectSlot(6, true);
-          } else {
+    // Dedicated Building Mode Button (KORJATTU Avaus ilman estoja)
+    if (btnBuild) {
+      const handleBuild = (e) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+        btnBuild.classList.add('active');
+        setTimeout(() => btnBuild.classList.remove('active'), 180);
+
+        if (this.buildingSystem) {
+          // Varustetaan vasara jos löytyy, tai asetetaan tila suoraan
+          if (this.inventory) {
+            if (this.inventory.hotbar) {
+              this.inventory.hotbar.selectSlot(6, true);
+            }
+          }
+          if (typeof this.buildingSystem.setHammerActive === 'function') {
             this.buildingSystem.setHammerActive(true);
           }
+          if (typeof this.buildingSystem.toggleBuildMenu === 'function') {
+            this.buildingSystem.toggleBuildMenu();
+          }
         }
-        this.buildingSystem.toggleBuildMenu();
-      }
-    };
-
-    const btnMobBuild = document.getElementById('btn-mobile-build');
-    if (btnMobBuild) {
-      btnMobBuild.addEventListener('touchstart', triggerBuilding, { passive: false });
-      btnMobBuild.addEventListener('pointerdown', triggerBuilding);
+      };
+      btnBuild.addEventListener('touchstart', handleBuild, { passive: false });
     }
 
-    const mbtnBuildCoin = document.getElementById('mbtn-build-coin');
-    if (mbtnBuildCoin) {
-      mbtnBuildCoin.addEventListener('touchstart', triggerBuilding, { passive: false });
-      mbtnBuildCoin.addEventListener('pointerdown', triggerBuilding);
-    }
-
-    // Sprint Toggle Button
-    const btnSprintToggle = document.getElementById('btn-mobile-sprint-toggle');
-    if (btnSprintToggle) {
-      const toggleSprint = (e) => {
-        if (e && e.cancelable) e.preventDefault();
-        if (e) e.stopPropagation();
+    // Sprint toggle
+    if (btnSprint) {
+      const handleSprint = (e) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
         this.isSprintLocked = !this.isSprintLocked;
-        btnSprintToggle.classList.toggle('active', this.isSprintLocked);
+        btnSprint.classList.toggle('active', this.isSprintLocked);
         if (this.player && this.player.keys) {
           this.player.keys.sprint = this.isSprintLocked;
         }
-        if (this.hud) {
-          this.hud.showNotification(
-            this.isSprintLocked ? '⚡ Juoksulukitus päällä (Sprint ON)' : '🚶 Juoksulukitus pois (Sprint OFF)',
-            1400
-          );
-        }
       };
-      btnSprintToggle.addEventListener('touchstart', toggleSprint, { passive: false });
-      btnSprintToggle.addEventListener('pointerdown', toggleSprint);
+      btnSprint.addEventListener('touchstart', handleSprint, { passive: false });
     }
 
-    // Mobile Quest Tracker Toggle Coin
-    const mbtnQuests = document.getElementById('mbtn-quests');
-    if (mbtnQuests) {
-      const toggleQuests = (e) => {
-        if (e && e.cancelable) e.preventDefault();
-        if (e) e.stopPropagation();
-        const qLog = document.getElementById('quest-log');
-        if (qLog) {
-          qLog.classList.toggle('mobile-visible');
-        }
-      };
-      mbtnQuests.addEventListener('touchstart', toggleQuests, { passive: false });
-      mbtnQuests.addEventListener('pointerdown', toggleQuests);
-    }
-
-    // Mobile Chat Toggle Button
-    const mbtnChat = document.getElementById('mbtn-chat-toggle');
-    if (mbtnChat) {
-      const toggleChat = (e) => {
-        if (e && e.cancelable) e.preventDefault();
-        if (e) e.stopPropagation();
-        const chatBox = document.getElementById('chat-box');
-        if (chatBox) {
-          chatBox.classList.toggle('mobile-visible');
-          if (chatBox.classList.contains('mobile-visible')) {
-            const chatIn = document.getElementById('chat-input');
-            if (chatIn) chatIn.focus();
-          }
-        }
-      };
-      mbtnChat.addEventListener('touchstart', toggleChat, { passive: false });
-      mbtnChat.addEventListener('pointerdown', toggleChat);
-    }
-
-    // 3. Top Quick Menu Pills
+    // 3. Yläpalkin napit
     this._setupQuickMenuButtons();
 
-    // 4. Touch Camera Look / Orbit on the right half of the screen (smooth multitouch, independent of joystick)
+    // 4. Kameran kääntö oikealta puoliskolta (KORJATTU vakaus ja rajaus)
     const getActiveCameraTouches = (touches) => {
       const result = [];
       for (let i = 0; i < touches.length; i++) {
         const t = touches[i];
         if (this.joystickActive && t.identifier === this.joystickTouchId) continue;
+        
+        // Varmista ettei kosketus osu joystickiin tai toimintanappeihin
         const target = document.elementFromPoint(t.clientX, t.clientY);
-        if (target && target.closest('button, .touch-action-btn, .mobile-pill-btn, .hotbar-slot, .modal.active, .menu-modal.active, #mobile-joystick-zone, input, select')) {
+        if (target && target.closest('button, .touch-action-btn, .mobile-pill-btn, .hotbar-slot, .modal, .menu-modal, #mobile-joystick-zone, input, select')) {
           continue;
         }
-        if (t.clientX > window.innerWidth * 0.28) {
+        
+        // Kameravyöhyke: näytön oikea puoli (yli 35% leveydestä)
+        if (t.clientX > window.innerWidth * 0.35) {
           result.push(t);
         }
       }
@@ -1044,8 +748,6 @@ export default class MobileControls {
 
     window.addEventListener('touchstart', (e) => {
       const camTouches = getActiveCameraTouches(e.touches);
-
-      // Dedicated two-finger pinch zoom ONLY if two fingers are placed together in the camera look zone
       if (camTouches.length >= 2) {
         this.isPinching = true;
         this.pinchDist = Math.hypot(
@@ -1054,56 +756,49 @@ export default class MobileControls {
         );
         return;
       }
-
-      // Single-finger camera orbit (works flawlessly while moving with joystick)
       if (camTouches.length === 1) {
         this.isPinching = false;
-        if (this.cameraTouchId === null || this.cameraTouchId !== camTouches[0].identifier) {
-          this.cameraTouchId = camTouches[0].identifier;
-          this.cameraLastPos = { x: camTouches[0].clientX, y: camTouches[0].clientY };
-          this.cameraTapStart = { time: performance.now(), x: camTouches[0].clientX, y: camTouches[0].clientY };
-          this.cameraTapMoved = 0;
-        }
+        this.cameraTouchId = camTouches[0].identifier;
+        this.cameraLastPos = { x: camTouches[0].clientX, y: camTouches[0].clientY };
       }
     }, { passive: true });
 
     window.addEventListener('touchmove', (e) => {
       const camTouches = getActiveCameraTouches(e.touches);
 
-      // 1. Two-finger pinch zoom (strictly in camera area, never triggered by joystick)
+      // Zoom
       if (this.isPinching && camTouches.length >= 2 && this.player) {
         const currentDist = Math.hypot(
           camTouches[0].clientX - camTouches[1].clientX,
           camTouches[0].clientY - camTouches[1].clientY
         );
         const diff = this.pinchDist - currentDist;
-        if (Math.abs(diff) > 8) {
+        if (Math.abs(diff) > 6) {
           this.player.targetCameraDistance = Math.max(
             1.8,
-            Math.min(6.5, this.player.targetCameraDistance + diff * 0.012)
+            Math.min(6.5, this.player.targetCameraDistance + diff * 0.015)
           );
           this.pinchDist = currentDist;
         }
         return;
       }
 
-      // 2. Camera look drag (independent of joystick)
+      // Kameran kääntö
       if (this.cameraTouchId !== null) {
         for (let i = 0; i < e.changedTouches.length; i++) {
           const touch = e.changedTouches[i];
           if (touch.identifier === this.cameraTouchId) {
             const dx = touch.clientX - this.cameraLastPos.x;
             const dy = touch.clientY - this.cameraLastPos.y;
-            this.cameraTapMoved += Math.hypot(dx, dy);
             this.cameraLastPos = { x: touch.clientX, y: touch.clientY };
 
-            // Rotate camera (YXZ order)
             if (this.camera) {
               this.camera.rotation.order = 'YXZ';
               this.camera.rotation.y -= dx * this.cameraSensitivity;
               this.camera.rotation.x -= dy * this.cameraSensitivity;
-              // Clamp pitch between -75 deg and +75 deg
-              const maxPitch = Math.PI * 0.42;
+
+              // Lukitaan pystykulma niin ettei heitä ympäri
+              const maxPitch = Math.PI * 0.40;
               this.camera.rotation.x = Math.max(-maxPitch, Math.min(maxPitch, this.camera.rotation.x));
               this.camera.rotation.z = 0;
             }
@@ -1118,22 +813,14 @@ export default class MobileControls {
       if (camTouches.length < 2) {
         this.isPinching = false;
       }
-      let camFound = false;
+      let found = false;
       for (let i = 0; i < camTouches.length; i++) {
         if (camTouches[i].identifier === this.cameraTouchId) {
-          camFound = true;
+          found = true;
           break;
         }
       }
-      if (!camFound) {
-        // Quick tap: if near interactive target (chest, gravestone, NPC, campfire), trigger interaction!
-        if (this.cameraTapStart && (performance.now() - this.cameraTapStart.time < 350) && this.cameraTapMoved < 16) {
-          if (this.isNearAnyInteractable() && window.triggerGameInteraction) {
-            window.triggerGameInteraction();
-          }
-        }
-        this.cameraTapStart = null;
-
+      if (!found) {
         if (camTouches.length > 0) {
           this.cameraTouchId = camTouches[0].identifier;
           this.cameraLastPos = { x: camTouches[0].clientX, y: camTouches[0].clientY };
@@ -1160,44 +847,15 @@ export default class MobileControls {
           e.stopPropagation();
           callback();
         };
-
-        el.addEventListener('pointerdown', trigger);
         el.addEventListener('touchstart', trigger, { passive: false });
         el.addEventListener('click', trigger);
       }
     };
 
-    bindPill('mbtn-backpack', () => {
-      if (this.backpackScreen) this.backpackScreen.toggle();
-    });
-
-    bindPill('mbtn-craft', () => {
-      if (this.craftingMenu) this.craftingMenu.toggle();
-    });
-
-    bindPill('mbtn-map', () => {
-      if (this.mapScreen) this.mapScreen.toggle();
-    });
-
-    bindPill('mbtn-skills', () => {
-      if (this.skillTree) this.skillTree.toggle();
-    });
-
-    bindPill('mbtn-fullscreen', () => {
-      if (typeof window.toggleGameFullscreen === 'function') {
-        window.toggleGameFullscreen();
-      } else {
-        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-          const el = document.documentElement;
-          if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
-          else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-        } else {
-          if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
-          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-        }
-      }
-    });
-
+    bindPill('mbtn-backpack', () => { if (this.backpackScreen) this.backpackScreen.toggle(); });
+    bindPill('mbtn-craft', () => { if (this.craftingMenu) this.craftingMenu.toggle(); });
+    bindPill('mbtn-map', () => { if (this.mapScreen) this.mapScreen.toggle(); });
+    bindPill('mbtn-skills', () => { if (this.skillTree) this.skillTree.toggle(); });
     bindPill('mbtn-menu', () => {
       if (this.pauseMenu) {
         const isActive = this.pauseMenu.classList.contains('active');
@@ -1220,7 +878,7 @@ export default class MobileControls {
       return;
     }
 
-    if (this.buildingSystem && this.buildingSystem.isPlacing()) {
+    if (this.buildingSystem && this.buildingSystem.isPlacing && this.buildingSystem.isPlacing()) {
       this.buildingSystem.tryPlace(this.world);
       return;
     }
@@ -1230,7 +888,7 @@ export default class MobileControls {
       return;
     }
 
-    if (this.resourceNode && this.resourceNode.isAimingAtHarvestable()) {
+    if (this.resourceNode && this.resourceNode.isAimingAtHarvestable && this.resourceNode.isAimingAtHarvestable()) {
       this.resourceNode.tickHarvest(0.18);
       return;
     }
@@ -1240,51 +898,15 @@ export default class MobileControls {
     }
   }
 
-  isNearAnyInteractable() {
-    if (!this.player) return false;
-    const pPos = this.player.getPosition ? this.player.getPosition() : this.player.playerPos;
-    if (!pPos) return false;
-
-    // 1. NPC targeted
-    if (this.npcManager && this.npcManager.targetedNPC) return true;
-
-    // 2. Chest nearby
-    if (this.world && this.world.wildChests) {
-      for (const c of this.world.wildChests) {
-        if (!c.isOpened && pPos.distanceTo(c.position) < 3.8) return true;
-      }
-    }
-
-    // 3. Tombstone nearby
-    if (this.world && this.world.tombstones) {
-      for (const t of this.world.tombstones) {
-        if (pPos.distanceTo(t.position) < 3.8) return true;
-      }
-    }
-
-    // 4. Campfire nearby
-    if (this.world && this.world.campfires) {
-      for (const cf of this.world.campfires) {
-        if (Math.hypot(pPos.x - cf.baseX, pPos.z - cf.baseZ) < 4.2) return true;
-      }
-    }
-
-    return false;
-  }
-
   performInteractTrigger() {
     if (window.triggerGameInteraction) {
       window.triggerGameInteraction();
       return;
     }
-
-    // 1. NPC interaction
     if (this.npcManager && this.npcManager.targetedNPC) {
       this.npcManager.onKeyE();
       return;
     }
-
-    // 2. Player generic interact
     if (this.player && this.player.tryInteract) {
       this.player.tryInteract();
     }
@@ -1293,24 +915,20 @@ export default class MobileControls {
   update(delta) {
     if (!this.container || !this.isTouchDevice) return;
 
-    // Dynamically update interact button icon/label based on player context
     const subLabel = document.getElementById('btn-interact-sub');
     const interactBtn = document.getElementById('btn-mobile-interact');
     const iconSpan = interactBtn ? interactBtn.querySelector('.btn-icon') : null;
 
     if (subLabel && this.player) {
       const pPos = this.player.getPosition ? this.player.getPosition() : this.player.playerPos;
-      const isFi = (typeof Localization !== 'undefined' && Localization.lang === 'en') ? false : true;
+      const isFi = (typeof Localization === 'undefined' || Localization.lang !== 'en');
 
-      // 1. NPC targeted
       if (this.npcManager && this.npcManager.targetedNPC) {
         subLabel.textContent = isFi ? 'PUHU' : 'TALK';
         if (iconSpan) iconSpan.textContent = '💬';
-        if (interactBtn) interactBtn.classList.add('highlight');
         return;
       }
 
-      // 2. Wild chest nearby
       let nearChest = false;
       if (this.world && this.world.wildChests && pPos) {
         for (const c of this.world.wildChests) {
@@ -1323,68 +941,11 @@ export default class MobileControls {
       if (nearChest) {
         subLabel.textContent = isFi ? 'AVAA' : 'OPEN';
         if (iconSpan) iconSpan.textContent = '🎁';
-        if (interactBtn) interactBtn.classList.add('highlight');
         return;
       }
 
-      // 3. Tombstone nearby
-      let nearTomb = false;
-      if (this.world && this.world.tombstones && pPos) {
-        for (const t of this.world.tombstones) {
-          if (pPos.distanceTo(t.position) < 3.8) {
-            nearTomb = true;
-            break;
-          }
-        }
-      }
-      if (nearTomb) {
-        subLabel.textContent = isFi ? 'KERÄÄ' : 'LOOT';
-        if (iconSpan) iconSpan.textContent = '🪦';
-        if (interactBtn) interactBtn.classList.add('highlight');
-        return;
-      }
-
-      // 4. Fishing bite
-      if (this.fishingSystem && this.fishingSystem.state === 'bite') {
-        subLabel.textContent = isFi ? 'KALA!' : 'FISH!';
-        if (iconSpan) iconSpan.textContent = '🎣';
-        if (interactBtn) interactBtn.classList.add('highlight');
-        return;
-      }
-
-      // 5. Campfire / cooking / resting
-      let nearFire = false;
-      if (this.world && this.world.campfires && pPos) {
-        for (const cf of this.world.campfires) {
-          if (Math.hypot(pPos.x - cf.baseX, pPos.z - cf.baseZ) < 4.2) {
-            nearFire = true;
-            break;
-          }
-        }
-      }
-      if (nearFire) {
-        const canCook = this.inventory && (this.inventory.has('meat', 1) || this.inventory.has('trout', 1) || this.inventory.has('pike', 1) || this.inventory.has('salmon', 1));
-        subLabel.textContent = canCook ? (isFi ? 'PAISTA' : 'COOK') : (isFi ? 'LEPÄÄ' : 'REST');
-        if (iconSpan) iconSpan.textContent = '🔥';
-        if (interactBtn) interactBtn.classList.add('highlight');
-        return;
-      }
-
-      // 6. Water edge
-      if (pPos) {
-        const riverX = -16 + Math.sin(pPos.z * 0.015) * 20;
-        if (Math.abs(pPos.x - riverX) < 13 && pPos.y < 1.4) {
-          subLabel.textContent = isFi ? 'JUO' : 'DRINK';
-          if (iconSpan) iconSpan.textContent = '💧';
-          if (interactBtn) interactBtn.classList.add('highlight');
-          return;
-        }
-      }
-
-      // Default state
       subLabel.textContent = isFi ? 'KÄYTÄ' : 'USE';
       if (iconSpan) iconSpan.textContent = '✋';
-      if (interactBtn) interactBtn.classList.remove('highlight');
     }
   }
 }

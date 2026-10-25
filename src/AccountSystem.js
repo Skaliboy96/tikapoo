@@ -143,6 +143,18 @@ export default class AccountSystem {
     return this.currentAccount.saveData || null;
   }
 
+  clearCurrentProfileSave() {
+    if (!this.currentAccount) return false;
+    const accounts = this._getAccounts();
+    const userKey = this.currentAccount.username.toLowerCase();
+    if (!accounts[userKey]) return false;
+    accounts[userKey].saveData = null;
+    accounts[userKey].lastPlayed = new Date().toISOString();
+    this.currentAccount = accounts[userKey];
+    this._saveAccounts(accounts);
+    return true;
+  }
+
   /**
    * Logs out of current account
    */

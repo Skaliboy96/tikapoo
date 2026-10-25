@@ -31,23 +31,39 @@ export default class BuildingSystem {
       { id: 'plasterWindowWall', category: 'structures', wood: 4, stone: 3, nameEn: 'Plaster Window Wall', nameFi: 'Rappaus-Ikkunaseinä', icon: '🪟', descEn: 'Wall with open arched window for sunlight', descFi: 'Ikkunallinen valkea seinä asumuksiin' },
       { id: 'brickWindowWall', category: 'structures', wood: 2, stone: 6, nameEn: 'Stone Window Wall', nameFi: 'Kivi-Ikkunaseinä', icon: '🪟', descEn: 'Fortified stone wall with narrow arrow slit window', descFi: 'Ampuma-aukkoinen kiviseinä' },
       { id: 'plasterDoorway', category: 'structures', wood: 3, stone: 3, nameEn: 'Doorway Arch Wall', nameFi: 'Oviaukkoseinä', icon: '🚪', descEn: 'Door frame entrance wall for houses', descFi: 'Oviaukkorunko sisäänkäynteihin' },
+      { id: 'woodenCorner', category: 'structures', wood: 6, stone: 0, nameEn: 'Wood Corner', nameFi: 'Hirsikulma', icon: '📐', descEn: 'Corner joint for connecting timber walls', descFi: 'Kulmaliitos hirsiseinien yhdistämiseen' },
+      { id: 'halfWall', category: 'structures', wood: 3, stone: 0, nameEn: 'Half Wall', nameFi: 'Puoliseinä', icon: '🪵', descEn: 'Low wall for balconies, porches and railings', descFi: 'Matala seinä parvekkeille, kuisteille ja kaiteiksi' },
+      { id: 'woodBeam', category: 'structures', wood: 3, stone: 0, nameEn: 'Support Beam', nameFi: 'Tukipalkki', icon: '🪚', descEn: 'Timber support post for multi-level houses', descFi: 'Tukeva pystypalkki monikerroksisiin taloihin' },
       { id: 'stoneArch', category: 'structures', wood: 0, stone: 8, nameEn: 'Stone Arch', nameFi: 'Kivikaari', icon: '⛩️', descEn: 'Monumental arched stone doorway', descFi: 'Muinaisen linnan juhlava kivikaari' },
       { id: 'stoneWall', category: 'structures', wood: 0, stone: 6, nameEn: 'Stone Wall', nameFi: 'Kivimuuri', icon: '🧱', descEn: 'Heavy granite defensive barrier', descFi: 'Vahva graniittimuuri' },
       { id: 'woodenDoor', category: 'structures', wood: 4, stone: 0, nameEn: 'Heavy Door', nameFi: 'Salpaovi', icon: '🚪', descEn: 'Secures your home against wild creatures', descFi: 'Avattava linnoituksen ovi' },
       { id: 'palisade', category: 'structures', wood: 6, stone: 0, nameEn: 'Palisade Wall', nameFi: 'Paaluaita', icon: '🛡️', descEn: 'Spiked defensive perimeter fortification', descFi: 'Teräväkärkinen suojamuuri kylän ympärille' },
       { id: 'woodFence', category: 'structures', wood: 3, stone: 0, nameEn: 'Wood Fence', nameFi: 'Puuaita', icon: '🪵', descEn: 'Low wooden yard and garden fence', descFi: 'Matalampi aita pihoille ja karjalle' },
+      { id: 'homeA', category: 'buildings', wood: 24, stone: 8, nameEn: 'Village House A', nameFi: 'Kylätalo A', icon: '🏠', descEn: 'Ready-made medieval home for a lively settlement', descFi: 'Valmis keskiaikainen talo elävään kylään' },
+      { id: 'homeB', category: 'buildings', wood: 28, stone: 10, nameEn: 'Village House B', nameFi: 'Kylätalo B', icon: '🏡', descEn: 'Second house style for varied village streets', descFi: 'Toinen talomalli vaihtelevaan kylään' },
+      { id: 'blacksmithBuilding', category: 'buildings', wood: 32, stone: 18, nameEn: 'Blacksmith Building', nameFi: 'Sepän paja', icon: '⚒️', descEn: 'A full blacksmith workshop building', descFi: 'Kokonainen sepän työpajarakennus' },
+      { id: 'tavernBuilding', category: 'buildings', wood: 36, stone: 14, nameEn: 'Tavern', nameFi: 'Krouvi', icon: '🍺', descEn: 'A warm gathering place for your settlement', descFi: 'Lämmin kokoontumispaikka asutukselle' },
+      { id: 'churchBuilding', category: 'buildings', wood: 30, stone: 28, nameEn: 'Village Church', nameFi: 'Kyläkirkko', icon: '⛪', descEn: 'A landmark church for the growing village', descFi: 'Näyttävä maamerkkikirkko kasvavaan kylään' },
+      { id: 'archeryBuilding', category: 'buildings', wood: 26, stone: 12, nameEn: 'Archery Range', nameFi: 'Jousiammuntarata', icon: '🏹', descEn: 'Training grounds for hunters and guards', descFi: 'Harjoitusalue metsästäjille ja vartijoille' },
+      { id: 'lumbermillBuilding', category: 'buildings', wood: 34, stone: 12, nameEn: 'Lumber Mill', nameFi: 'Saha', icon: '🪚', descEn: 'A practical mill for the forest settlement', descFi: 'Käytännöllinen saha metsäkylään' },
+      { id: 'wellBuilding', category: 'buildings', wood: 8, stone: 20, nameEn: 'Village Well', nameFi: 'Kylän kaivo', icon: '🪣', descEn: 'A decorative stone well for the village square', descFi: 'Koristeellinen kivikaivo kylän torille' },
 
       // 🏠 ROOFS (roofs)
       { id: 'woodenRoof', category: 'roofs', wood: 6, stone: 2, nameEn: 'Clay Tile Roof (4x4)', nameFi: 'Savitiilikatto (4x4)', icon: '🏮', descEn: 'Heavy curved terracotta clay tile roof section', descFi: 'Kaareva punasavitiilikatto sateensuojaksi' },
       { id: 'roofWood', category: 'roofs', wood: 5, stone: 0, nameEn: 'Wood Shingle Roof', nameFi: 'Pärekatto (2x1)', icon: '🏠', descEn: 'Slanted rustic pine wood shake shingle roof', descFi: 'Kotoisa pärekatto puutaloon' },
       { id: 'roofWoodCorner', category: 'roofs', wood: 6, stone: 0, nameEn: 'Wood Roof Corner', nameFi: 'Päre-Kattokulma', icon: '📐', descEn: '45-degree angle hip roof corner connector', descFi: 'Kulmapala pärekattorakenteisiin' },
       { id: 'roofLog', category: 'roofs', wood: 7, stone: 0, nameEn: 'Timber Log Roof', nameFi: 'Hirsikatto', icon: '🏕️', descEn: 'Heavy overlapping spruce logs for northern cabins', descFi: 'Jyhkeä havuhirsikatto erämaamökkiin' },
+      { id: 'roofThatched', category: 'roofs', wood: 5, stone: 0, nameEn: 'Thatched Roof', nameFi: 'Olki-/turvekatto', icon: '🌾', descEn: 'Warm rustic thatched roof for cottages', descFi: 'Lämmin maalaismainen olkikatto mökkeihin' },
+      { id: 'roofStone', category: 'roofs', wood: 3, stone: 8, nameEn: 'Stone Roof', nameFi: 'Kivikatto', icon: '🏰', descEn: 'Heavy slate roof for fortified homes', descFi: 'Raskas liuskekivikatto linnoituksiin' },
+      { id: 'roofRidge', category: 'roofs', wood: 4, stone: 0, nameEn: 'Roof Ridge', nameFi: 'Katon harja', icon: '🔺', descEn: 'Ridge cap that finishes a gabled roof', descFi: 'Harjapala harjakaton viimeistelyyn' },
+      { id: 'roofEave', category: 'roofs', wood: 3, stone: 0, nameEn: 'Roof Eave', nameFi: 'Kattoräystäs', icon: '🏠', descEn: 'Wide overhanging eave to keep rain off walls', descFi: 'Leveä räystäs suojaamaan seiniä sateelta' },
 
       // 🪜 FLOORS, STAIRS & CLIMBING LADDERS (floors_stairs)
       { id: 'woodenFloor', category: 'floors_stairs', wood: 4, stone: 0, nameEn: 'Wood Floor', nameFi: 'Lankkulattia', icon: '🪚', descEn: 'Smooth wooden plank foundation', descFi: 'Sileä puulattia asumuksen pohjaksi' },
       { id: 'floorDarkWood', category: 'floors_stairs', wood: 4, stone: 0, nameEn: 'Dark Timber Floor', nameFi: 'Tumma Puulattia', icon: '🪵', descEn: 'Stained dark oak timber floor panels', descFi: 'Tumma tervattu tammilattia' },
       { id: 'floorLightWood', category: 'floors_stairs', wood: 4, stone: 0, nameEn: 'Light Birch Floor', nameFi: 'Vaalea Puulattia', icon: '🪵', descEn: 'Light natural birch plank flooring', descFi: 'Vaalea koivulankkulattia' },
       { id: 'stoneFloor', category: 'floors_stairs', wood: 0, stone: 4, nameEn: 'Stone Floor', nameFi: 'Kivilattia', icon: '🏛️', descEn: 'Paved stone floor for forges and hearths', descFi: 'Tasainen kivilattia tulisijoille ja pajoille' },
+      { id: 'stoneFoundation', category: 'floors_stairs', wood: 0, stone: 6, nameEn: 'Stone Foundation', nameFi: 'Kiviperustus', icon: '🧱', descEn: 'Raised foundation for sturdy houses', descFi: 'Korotettu kiviperustus tukeville taloille' },
       { id: 'woodenStairs', category: 'floors_stairs', wood: 4, stone: 0, nameEn: 'Wood Stairs', nameFi: 'Puuportaat', icon: '🪜', descEn: 'Access upper floors and watchtowers', descFi: 'Portaat toiseen kerrokseen tai torniin' },
       { id: 'stairsExterior', category: 'floors_stairs', wood: 5, stone: 0, nameEn: 'Exterior Straight Stairs', nameFi: 'Ulkoportaat', icon: '🪜', descEn: 'Wide exterior timber steps with side beams', descFi: 'Leveät ulkoportaat parvekkeille ja kukkuloille' },
       { id: 'stairsPlatform', category: 'floors_stairs', wood: 4, stone: 0, nameEn: 'Stair Landing Platform', nameFi: 'Porrastasanne', icon: '🪵', descEn: 'Elevated landing platform for multi-level staircases', descFi: 'Tasanne porraskäytävien ja tornien väliin' },
@@ -158,13 +174,14 @@ export default class BuildingSystem {
           </div>
 
           <div class="build-tabs-row">
-            <button class="build-tab-btn active" data-cat="all">Kaikki (30)</button>
-            <button class="build-tab-btn" data-cat="structures">🪵 Seinät &amp; Muurit (11)</button>
-            <button class="build-tab-btn" data-cat="roofs">🏠 Katot (4)</button>
-            <button class="build-tab-btn" data-cat="floors_stairs">🪜 Lattiat, Portaat &amp; Tikkaat (7)</button>
-            <button class="build-tab-btn" data-cat="crafting">🛠️ Pajat &amp; Varasto (5)</button>
-            <button class="build-tab-btn" data-cat="fire">🔥 Tuli (2)</button>
-            <button class="build-tab-btn" data-cat="furniture">🛏️ Huonekalut (3)</button>
+            <button class="build-tab-btn active" data-cat="all">Kaikki</button>
+            <button class="build-tab-btn" data-cat="structures">🪵 Seinät &amp; Muurit</button>
+            <button class="build-tab-btn" data-cat="roofs">🏠 Katot</button>
+            <button class="build-tab-btn" data-cat="buildings">🏘️ Rakennukset</button>
+            <button class="build-tab-btn" data-cat="floors_stairs">🪜 Lattiat, Portaat &amp; Tikkaat</button>
+            <button class="build-tab-btn" data-cat="crafting">🛠️ Pajat &amp; Varasto</button>
+            <button class="build-tab-btn" data-cat="fire">🔥 Tuli</button>
+            <button class="build-tab-btn" data-cat="furniture">🛏️ Huonekalut</button>
           </div>
 
           <div id="build-modal-grid" class="build-modal-cards-grid">
@@ -193,6 +210,13 @@ export default class BuildingSystem {
           this.currentCategory = tabBtn.getAttribute('data-cat') || 'all';
           this.renderBuildMenuGrid();
         });
+      });
+
+      // Keep menu pointer events isolated from the game canvas and camera.
+      ['pointerdown', 'mousedown', 'click', 'wheel'].forEach(eventName => {
+        modal.addEventListener(eventName, (e) => {
+          e.stopPropagation();
+        }, { passive: eventName === 'wheel' });
       });
     }
     this.modalEl = modal;
@@ -361,9 +385,12 @@ export default class BuildingSystem {
 
     // Attach click handlers to select structure
     gridEl.querySelectorAll('.build-card').forEach(card => {
-      card.addEventListener('click', (e) => {
+      let lastSelection = 0;
+      const selectCard = (e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (performance.now() - lastSelection < 250) return;
+        lastSelection = performance.now();
         const id = card.getAttribute('data-structure-id');
         const idx = this.structureKeys.indexOf(id);
         if (idx !== -1) {
@@ -376,7 +403,9 @@ export default class BuildingSystem {
             this.hud.showNotification(`🔨 Valittu: ${def.icon} ${this.getDefName(def)}`);
           }
         }
-      });
+      };
+      card.addEventListener('pointerdown', selectCard, { passive: false });
+      card.addEventListener('click', selectCard);
     });
   }
 
@@ -419,6 +448,8 @@ export default class BuildingSystem {
 
       // [B] Key: Toggle Building Menu / Place Mode
       if (e.code === 'KeyB') {
+        e.preventDefault();
+        e.stopPropagation();
         if (this.isHammerActive || this.isPlacing()) {
           this.toggleBuildMenu();
         } else {
@@ -426,9 +457,9 @@ export default class BuildingSystem {
           if (this.inventory && this.inventory.tools && this.inventory.tools.hammer) {
             if (this.inventory.hotbar) {
               this.inventory.hotbar.selectSlot(6, true);
-            } else {
-              this.setHammerActive(true);
             }
+            this.setHammerActive(true);
+            this.openBuildMenu();
           } else {
             if (this.hud) this.hud.showNotification('⚠️ Sinulla ei ole Rakennusvasaraa! Valmista se painamalla [C].');
           }
@@ -438,6 +469,7 @@ export default class BuildingSystem {
 
       // Controls when hammer is active or placing
       if (this.isHammerActive || this.isPlacing()) {
+        if (this.isBuildMenuOpen) return;
         // [Q] Previous structure piece
         if (e.code === 'KeyQ') {
           this.cycleStructure(-1);
@@ -445,6 +477,10 @@ export default class BuildingSystem {
         }
         // [E] Next structure piece (when hammer is active)
         if (e.code === 'KeyE') {
+          const playerPosition = this.player?.getPosition ? this.player.getPosition() : null;
+          if (!this.isPlacing() && playerPosition && this.toggleDoor(playerPosition)) {
+            return;
+          }
           this.cycleStructure(1);
           return;
         }
@@ -499,6 +535,48 @@ export default class BuildingSystem {
 
   isPlacing() {
     return this.selectedStructure !== null;
+  }
+
+  getNearbyDoor(playerPosition, radius = 3.2) {
+    if (!playerPosition) return null;
+    let nearest = null;
+    let nearestDistance = radius;
+    for (const structure of this.placedStructures) {
+      if (!structure || structure.type !== 'woodenDoor' || !structure.mesh) continue;
+      const distance = Math.hypot(
+        playerPosition.x - structure.mesh.position.x,
+        playerPosition.z - structure.mesh.position.z
+      );
+      if (distance < nearestDistance) {
+        nearest = structure;
+        nearestDistance = distance;
+      }
+    }
+    return nearest;
+  }
+
+  toggleDoor(playerPosition) {
+    const door = this.getNearbyDoor(playerPosition);
+    if (!door) return false;
+
+    door.isOpen = !door.isOpen;
+    door.mesh.userData.isOpen = door.isOpen;
+    door.mesh.traverse(child => {
+      if (child.isMesh) child.castShadow = !door.isOpen;
+    });
+
+    const collider = this.placedColliders.find(item => item.mesh === door.mesh);
+    if (collider) collider.enabled = !door.isOpen;
+    door.mesh.rotation.y = door.isOpen
+      ? door.baseRotationY + Math.PI * 0.5
+      : door.baseRotationY;
+
+    if (this.audioManager?.playClick) this.audioManager.playClick();
+    if (this.hud) {
+      const text = door.isOpen ? '🚪 Ovi avattu' : '🚪 Ovi suljettu';
+      this.hud.showNotification(text, 1200);
+    }
+    return true;
   }
 
   startPlacing(type) {
@@ -556,7 +634,42 @@ export default class BuildingSystem {
         })
       : null;
 
-    if (type === 'campfire') {
+    const assetBuildings = {
+      homeA: 'HexHomeAGreen',
+      homeB: 'HexHomeBRed',
+      blacksmithBuilding: 'HexBlacksmithBlue',
+      tavernBuilding: 'HexTavernYellow',
+      churchBuilding: 'HexChurchBlue',
+      archeryBuilding: 'HexArcheryGreen',
+      lumbermillBuilding: 'HexLumbermillRed',
+      wellBuilding: 'HexWellYellow'
+    };
+    if (assetBuildings[type]) {
+      const model = this.assetLoader ? this.assetLoader.get(assetBuildings[type]) : null;
+      if (model) {
+        const scale = type === 'wellBuilding' ? 0.9 : 1.15;
+        model.scale.set(scale, scale, scale);
+        model.traverse(child => {
+          if (!child.isMesh) return;
+          if (isPreview) {
+            child.material = previewMat;
+          } else {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+        group.add(model);
+      } else {
+        const fallbackMat = previewMat || new THREE.MeshStandardMaterial({ color: 0x8b5a3c, roughness: 0.85 });
+        const width = type === 'wellBuilding' ? 1.4 : 4.8;
+        const depth = type === 'wellBuilding' ? 1.4 : 4.2;
+        const body = new THREE.Mesh(new THREE.BoxGeometry(width, type === 'wellBuilding' ? 0.8 : 3.4, depth), fallbackMat);
+        body.position.y = type === 'wellBuilding' ? 0.4 : 1.7;
+        body.castShadow = !isPreview;
+        body.receiveShadow = !isPreview;
+        group.add(body);
+      }
+    } else if (type === 'campfire') {
       const cauldronModel = this.assetLoader ? this.assetLoader.get('Cauldron') : null;
 
       if (cauldronModel) {
@@ -692,7 +805,7 @@ export default class BuildingSystem {
         }
         group.add(floorMesh);
       }
-    } else if (type === 'woodenRoof') {
+    } else if (['woodenRoof', 'roofThatched', 'roofStone'].includes(type)) {
       const roofModel = this.assetLoader ? this.assetLoader.get('Roof_RoundTiles_4x4') : null;
       if (roofModel) {
         roofModel.scale.set(1.1, 1.1, 1.1);
@@ -702,6 +815,28 @@ export default class BuildingSystem {
           roofModel.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
         }
         group.add(roofModel);
+      } else {
+        const roofColors = {
+          woodenRoof: 0x9b4b2f,
+          roofWood: 0x6f432b,
+          roofWoodCorner: 0x80502d,
+          roofLog: 0x4b2d1d,
+          roofThatched: 0xb88b42,
+          roofStone: 0x59616b
+        };
+        const roofMat = previewMat || new THREE.MeshStandardMaterial({
+          color: roofColors[type] || 0x80502d,
+          roughness: 0.9
+        });
+        const roofGeo = type === 'roofWoodCorner'
+          ? new THREE.ConeGeometry(1.85, 1.35, 4)
+          : new THREE.BoxGeometry(3.0, 0.22, 2.6);
+        const roof = new THREE.Mesh(roofGeo, roofMat);
+        roof.position.y = type === 'roofWoodCorner' ? 2.8 : 2.65;
+        roof.rotation.y = type === 'roofWoodCorner' ? Math.PI / 4 : 0;
+        roof.castShadow = !isPreview;
+        roof.receiveShadow = !isPreview;
+        group.add(roof);
       }
     } else if (type === 'woodenStairs') {
       const stairsModel = this.assetLoader ? this.assetLoader.get('Stairs_Exterior_Straight') : null;
@@ -724,6 +859,14 @@ export default class BuildingSystem {
           doorModel.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
         }
         group.add(doorModel);
+      } else {
+        const frameMat = previewMat || new THREE.MeshStandardMaterial({ color: 0x5b351f, roughness: 0.85 });
+        const doorMat = previewMat || new THREE.MeshStandardMaterial({ color: 0x8b542f, roughness: 0.8 });
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.8, 0.2), frameMat);
+        frame.position.y = 1.4;
+        const slab = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.35, 0.12), doorMat);
+        slab.position.set(0, 1.25, 0.14);
+        group.add(frame, slab);
       }
     } else if (type === 'workbench') {
       const anvilModel = this.assetLoader ? this.assetLoader.get('Anvil_Log') : null;
@@ -1121,6 +1264,38 @@ export default class BuildingSystem {
         else model.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
         group.add(model);
       }
+    } else if (['woodenCorner', 'halfWall', 'woodBeam', 'roofRidge', 'roofEave', 'stoneFoundation'].includes(type)) {
+      const isStone = type === 'stoneFoundation';
+      const material = previewMat || new THREE.MeshStandardMaterial({
+        color: isStone ? 0x66717a : 0x76502f,
+        roughness: 0.82,
+        metalness: 0.02
+      });
+      const addBlock = (width, height, depth, x, y, z, rotation = 0) => {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
+        mesh.position.set(x, y, z);
+        mesh.rotation.y = rotation;
+        mesh.castShadow = !isPreview;
+        mesh.receiveShadow = !isPreview;
+        group.add(mesh);
+      };
+
+      if (type === 'woodenCorner') {
+        addBlock(2.2, 2.8, 0.28, 0, 1.4, -0.95);
+        addBlock(0.28, 2.8, 2.2, -0.95, 1.4, 0);
+      } else if (type === 'halfWall') {
+        addBlock(2.4, 1.25, 0.28, 0, 0.625, 0);
+      } else if (type === 'woodBeam') {
+        addBlock(0.32, 3.0, 0.32, 0, 1.5, 0);
+        addBlock(0.42, 0.22, 0.42, 0, 2.85, 0);
+      } else if (type === 'roofRidge') {
+        addBlock(2.6, 0.24, 0.3, 0, 2.72, 0);
+        addBlock(2.6, 0.24, 0.3, 0, 2.56, 0, Math.PI / 4);
+      } else if (type === 'roofEave') {
+        addBlock(2.8, 0.18, 1.25, 0, 2.45, 0);
+      } else {
+        addBlock(2.8, 0.32, 2.8, 0, 0.16, 0);
+      }
     } else if (type === 'ladder') {
       // Procedural vertical climbing ladder
       const railMat = previewMat || new THREE.MeshLambertMaterial({ color: 0x5c4033 });
@@ -1318,7 +1493,9 @@ export default class BuildingSystem {
       if (snapSocket) {
         // Snap locked directly to previous building piece!
         this.previewMesh.position.set(snapSocket.x, snapSocket.y, snapSocket.z);
-        this.previewMesh.rotation.y = (snapSocket.rotY + this.currentRotation) % (Math.PI * 2);
+        // Socket rotations are already in world space. Adding currentRotation
+        // here rotated snapped pieces twice after pressing R.
+        this.previewMesh.rotation.y = snapSocket.rotY;
         this.previewMesh.visible = true;
 
         // Visual feedback: glowing cyan wireframe indicating active piece-to-piece snap
@@ -1329,15 +1506,31 @@ export default class BuildingSystem {
         }
       } else {
         // Free ground placement snapped to terrain grid
-        const snapX = Math.round(hitPoint.x * 2) / 2;
-        const snapZ = Math.round(hitPoint.z * 2) / 2;
+        const modularTypes = [
+          'woodenWall', 'plasterWall', 'brickWall', 'plasterWindowWall',
+          'brickWindowWall', 'plasterDoorway', 'stoneArch', 'stoneWall',
+          'woodenDoor', 'palisade', 'woodFence', 'woodenCorner', 'halfWall', 'woodBeam',
+          'woodenFloor', 'floorDarkWood', 'floorLightWood',
+          'stoneFloor', 'stoneFoundation', 'woodenRoof', 'roofWood',
+          'roofWoodCorner', 'roofLog', 'roofThatched', 'roofStone',
+          'roofRidge', 'roofEave', 'woodenStairs', 'stairsExterior',
+          'stairsPlatform'
+        ];
+        const gridSize = modularTypes.includes(this.selectedStructure) ? 2.5 : 0.5;
+        const snapX = Math.round(hitPoint.x / gridSize) * gridSize;
+        const snapZ = Math.round(hitPoint.z / gridSize) * gridSize;
         const snapY = world.getGroundHeight(snapX, snapZ);
 
         this.previewMesh.position.set(snapX, snapY, snapZ);
         this.previewMesh.visible = true;
 
         // Align walls with camera facing + rotation offset
-        if (this.selectedStructure === 'woodenWall' || this.selectedStructure === 'stoneWall' || this.selectedStructure === 'palisade' || this.selectedStructure === 'woodenDoor') {
+        if (modularTypes.includes(this.selectedStructure) && (
+          this.selectedStructure.includes('Wall') ||
+          this.selectedStructure.includes('wall') ||
+          this.selectedStructure.includes('Door') ||
+          ['woodenDoor', 'palisade', 'woodFence', 'woodenCorner', 'halfWall', 'woodBeam', 'stoneArch'].includes(this.selectedStructure)
+        )) {
           const camDir = new THREE.Vector3();
           camera.getWorldDirection(camDir);
           const angle = Math.atan2(camDir.x, camDir.z);
@@ -1369,12 +1562,26 @@ export default class BuildingSystem {
     if (!this.placedStructures || this.placedStructures.length === 0) return null;
 
     let bestSocket = null;
-    let minDistance = 2.6; // Magnet snap radius in meters
+    let minDistance = 3.2; // Magnet snap radius in meters
 
-    const isPlacingWall = ['woodenWall', 'stoneWall', 'palisade', 'woodenDoor'].includes(placingType);
-    const isPlacingFloor = ['woodenFloor', 'stoneFloor'].includes(placingType);
-    const isPlacingRoof = placingType === 'woodenRoof';
-    const isPlacingStairs = placingType === 'woodenStairs';
+    const wallTypes = [
+      'woodenWall', 'plasterWall', 'brickWall', 'plasterWindowWall',
+      'brickWindowWall', 'plasterDoorway', 'stoneArch', 'stoneWall',
+      'woodenDoor', 'palisade', 'woodFence', 'woodenCorner', 'halfWall', 'woodBeam'
+    ];
+    const floorTypes = [
+      'woodenFloor', 'floorDarkWood', 'floorLightWood', 'stoneFloor',
+      'stoneFoundation', 'stairsPlatform'
+    ];
+    const roofTypes = [
+      'woodenRoof', 'roofWood', 'roofWoodCorner', 'roofLog',
+      'roofThatched', 'roofStone', 'roofRidge', 'roofEave'
+    ];
+    const isPlacingWall = wallTypes.includes(placingType);
+    const isPlacingFloor = floorTypes.includes(placingType);
+    const isPlacingRoof = roofTypes.includes(placingType);
+    const isPlacingStairs = ['woodenStairs', 'stairsExterior'].includes(placingType);
+    const buildGrid = 2.5;
     const isPlacingItem = ['workbench', 'smelter', 'forge', 'chest', 'barrel', 'bed', 'table', 'chair', 'campfire', 'standingTorch'].includes(placingType);
 
     for (let i = 0; i < this.placedStructures.length; i++) {
@@ -1401,9 +1608,10 @@ export default class BuildingSystem {
       // ----------------------------------------------------
       // CASE 1: Placed structure is a FLOOR (woodenFloor / stoneFloor)
       // ----------------------------------------------------
-      if (pType === 'woodenFloor' || pType === 'stoneFloor') {
-        const floorSize = 2.5;
+      if (floorTypes.includes(pType)) {
+        const floorSize = buildGrid;
         const half = floorSize / 2;
+        const desiredRotation = pRot + this.currentRotation;
 
         if (isPlacingFloor) {
           // Snap adjacent floor pieces in 4 cardinal directions
@@ -1416,10 +1624,10 @@ export default class BuildingSystem {
         } else if (isPlacingWall) {
           // Snap walls along the 4 perimeter edges of the floor
           sockets.push(
-            { ...rot(0, half), y: pPos.y, rotY: pRot },
-            { ...rot(0, -half), y: pPos.y, rotY: pRot },
-            { ...rot(half, 0), y: pPos.y, rotY: pRot + Math.PI / 2 },
-            { ...rot(-half, 0), y: pPos.y, rotY: pRot + Math.PI / 2 }
+            { ...rot(0, half), y: pPos.y, rotY: desiredRotation },
+            { ...rot(0, -half), y: pPos.y, rotY: desiredRotation },
+            { ...rot(half, 0), y: pPos.y, rotY: desiredRotation + Math.PI / 2 },
+            { ...rot(-half, 0), y: pPos.y, rotY: desiredRotation + Math.PI / 2 }
           );
         } else if (isPlacingItem) {
           // Snap furniture/crafting station directly onto floor surface
@@ -1435,34 +1643,42 @@ export default class BuildingSystem {
       // ----------------------------------------------------
       // CASE 2: Placed structure is a WALL (woodenWall / stoneWall / palisade / woodenDoor)
       // ----------------------------------------------------
-      else if (['woodenWall', 'stoneWall', 'palisade', 'woodenDoor'].includes(pType)) {
-        const wallWidth = 2.4;
+      else if (wallTypes.includes(pType)) {
+        const wallWidth = buildGrid;
         const wallHeight = 2.6;
         const halfW = wallWidth / 2;
+        const rotationStep = Math.round(this.currentRotation / (Math.PI / 2)) * (Math.PI / 2);
+        const desiredRotation = pRot + rotationStep;
 
         if (isPlacingWall) {
-          // 1. Straight extension left and right
-          sockets.push(
-            { ...rot(wallWidth, 0), y: pPos.y, rotY: pRot },
-            { ...rot(-wallWidth, 0), y: pPos.y, rotY: pRot },
-            // 2. Corner walls (90 degrees right and left)
-            { ...rot(halfW, -halfW), y: pPos.y, rotY: pRot + Math.PI / 2 },
-            { ...rot(halfW, halfW), y: pPos.y, rotY: pRot - Math.PI / 2 },
-            { ...rot(-halfW, -halfW), y: pPos.y, rotY: pRot + Math.PI / 2 },
-            { ...rot(-halfW, halfW), y: pPos.y, rotY: pRot - Math.PI / 2 },
-            // 3. Vertical stacking (2nd story wall!)
-            { x: pPos.x, y: pPos.y + wallHeight, z: pPos.z, rotY: pRot }
-          );
+          const quarterTurn = Math.abs(rotationStep) % Math.PI === Math.PI / 2;
+          if (quarterTurn) {
+            // A rotated wall meets the end of the existing wall at its corner.
+            sockets.push(
+              { ...rot(halfW, halfW), y: pPos.y, rotY: desiredRotation, priority: 0 },
+              { ...rot(halfW, -halfW), y: pPos.y, rotY: desiredRotation, priority: 0 },
+              { ...rot(-halfW, halfW), y: pPos.y, rotY: desiredRotation, priority: 0 },
+              { ...rot(-halfW, -halfW), y: pPos.y, rotY: desiredRotation, priority: 0 }
+            );
+          } else {
+            // Same-axis walls continue edge-to-edge, not center-to-edge.
+            sockets.push(
+              { ...rot(wallWidth, 0), y: pPos.y, rotY: desiredRotation, priority: 0 },
+              { ...rot(-wallWidth, 0), y: pPos.y, rotY: desiredRotation, priority: 0 }
+            );
+          }
+          // Vertical stacking (2nd story wall)
+          sockets.push({ x: pPos.x, y: pPos.y + wallHeight, z: pPos.z, rotY: desiredRotation, priority: 0.5 });
         } else if (isPlacingRoof) {
           // Snap roof directly on top of wall
-          sockets.push({ x: pPos.x, y: pPos.y + wallHeight, z: pPos.z, rotY: pRot });
+          sockets.push({ x: pPos.x, y: pPos.y + wallHeight, z: pPos.z, rotY: desiredRotation });
         } else if (isPlacingFloor) {
           // Snap floor at base of wall or ceiling/second story
           sockets.push(
-            { ...rot(0, 1.25), y: pPos.y, rotY: pRot },
-            { ...rot(0, -1.25), y: pPos.y, rotY: pRot },
-            { ...rot(0, 1.25), y: pPos.y + wallHeight, z: pRot },
-            { ...rot(0, -1.25), y: pPos.y + wallHeight, z: pRot }
+            { ...rot(0, 1.25), y: pPos.y, rotY: desiredRotation },
+            { ...rot(0, -1.25), y: pPos.y, rotY: desiredRotation },
+            { ...rot(0, 1.25), y: pPos.y + wallHeight, rotY: desiredRotation },
+            { ...rot(0, -1.25), y: pPos.y + wallHeight, rotY: desiredRotation }
           );
         }
       }
@@ -1470,8 +1686,8 @@ export default class BuildingSystem {
       // ----------------------------------------------------
       // CASE 3: Placed structure is a ROOF (woodenRoof)
       // ----------------------------------------------------
-      else if (pType === 'woodenRoof') {
-        const roofSpan = 2.5;
+      else if (roofTypes.includes(pType)) {
+        const roofSpan = buildGrid;
         if (isPlacingRoof) {
           sockets.push(
             { ...rot(roofSpan, 0), y: pPos.y, rotY: pRot },
@@ -1499,9 +1715,18 @@ export default class BuildingSystem {
       // Test all generated sockets against hitPoint
       for (let s = 0; s < sockets.length; s++) {
         const sock = sockets[s];
-        const dist = Math.hypot(sock.x - hitPoint.x, (sock.y - hitPoint.y) * 1.5, sock.z - hitPoint.z);
-        if (dist < minDistance) {
-          minDistance = dist;
+        // Keep every compatible socket on the same modular construction grid.
+        sock.x = Math.round(sock.x / buildGrid) * buildGrid;
+        sock.z = Math.round(sock.z / buildGrid) * buildGrid;
+        const horizontalDistance = Math.hypot(sock.x - hitPoint.x, sock.z - hitPoint.z);
+        const verticalDistance = Math.abs(sock.y - hitPoint.y);
+        // The cursor can hit the middle of a wall while the desired socket is
+        // at its base. Horizontal edge proximity is therefore more reliable
+        // than raw 3D distance for wall and floor snapping.
+        if (horizontalDistance > 3.2 || verticalDistance > 3.5) continue;
+        const score = horizontalDistance + verticalDistance * 0.2 + (sock.priority || 0);
+        if (score < minDistance) {
+          minDistance = score;
           bestSocket = sock;
         }
       }
@@ -1535,20 +1760,25 @@ export default class BuildingSystem {
     this.scene.add(solidMesh);
 
     const structureMaxHp = this.getDefaultMaxHp(this.selectedStructure);
-    this.placedStructures.push({
+    const structure = {
       mesh: solidMesh,
       type: this.selectedStructure,
       position: solidMesh.position.clone(),
+      baseRotationY: solidMesh.rotation.y,
+      isOpen: false,
       health: structureMaxHp,
       maxHealth: structureMaxHp
-    });
+    };
+    this.placedStructures.push(structure);
 
     // Add solid structure collider so player cannot walk through walls/crafting stations/props
     const p = solidMesh.position;
     const type = this.selectedStructure;
     let rad = 0;
     const tLower = (type || '').toLowerCase();
-    if (tLower.includes('wall') || tLower.includes('palisade') || tLower.includes('beam') || tLower.includes('log') || tLower.includes('gate') || tLower.includes('fence')) {
+    if (['homea', 'homeb'].includes(tLower) || tLower.includes('building')) {
+      rad = tLower.includes('well') ? 0.9 : 2.8;
+    } else if (tLower.includes('wall') || tLower.includes('palisade') || tLower.includes('beam') || tLower.includes('log') || tLower.includes('gate') || tLower.includes('fence')) {
       rad = 1.1;
     } else if (tLower.includes('door')) {
       rad = 0.9;
@@ -1567,7 +1797,8 @@ export default class BuildingSystem {
         minZ: p.z - rad,
         maxZ: p.z + rad,
         radius: rad,
-        mesh: solidMesh
+        mesh: solidMesh,
+        enabled: type !== 'woodenDoor'
       });
 
       // Prevent player from getting trapped or stuck inside the newly placed structure
@@ -1621,10 +1852,14 @@ export default class BuildingSystem {
     return true;
   }
 
-  placeDirect(type, position, rotationY = 0, customId = null) {
+  placeDirect(type, position, rotationY = 0, customId = null, isOpen = false) {
     const solidMesh = this.createStructureMesh(type, false);
     solidMesh.position.copy(position);
     solidMesh.rotation.y = rotationY;
+    solidMesh.userData.isOpen = Boolean(isOpen);
+    if (type === 'woodenDoor' && isOpen) {
+      solidMesh.rotation.y += Math.PI * 0.5;
+    }
     if (customId) {
       solidMesh.userData.customId = customId;
     }
@@ -1636,6 +1871,8 @@ export default class BuildingSystem {
       type: type,
       position: solidMesh.position.clone(),
       customId: customId || null,
+      baseRotationY: rotationY,
+      isOpen: Boolean(solidMesh.userData.isOpen),
       health: structureMaxHp,
       maxHealth: structureMaxHp
     };
@@ -1644,7 +1881,9 @@ export default class BuildingSystem {
     const p = solidMesh.position;
     let rad = 0;
     const tLower = (type || '').toLowerCase();
-    if (tLower.includes('wall') || tLower.includes('palisade') || tLower.includes('beam') || tLower.includes('log') || tLower.includes('gate') || tLower.includes('fence')) {
+    if (['homea', 'homeb'].includes(tLower) || tLower.includes('building')) {
+      rad = tLower.includes('well') ? 0.9 : 2.8;
+    } else if (tLower.includes('wall') || tLower.includes('palisade') || tLower.includes('beam') || tLower.includes('log') || tLower.includes('gate') || tLower.includes('fence')) {
       rad = 1.1;
     } else if (tLower.includes('door')) {
       rad = 0.9;
@@ -1663,7 +1902,8 @@ export default class BuildingSystem {
         minZ: p.z - rad,
         maxZ: p.z + rad,
         radius: rad,
-        mesh: solidMesh
+        mesh: solidMesh,
+        enabled: type !== 'woodenDoor' || !structure.isOpen
       });
 
       // Prevent player from getting trapped or stuck inside the newly placed structure
@@ -1701,6 +1941,7 @@ export default class BuildingSystem {
 
   getDefaultMaxHp(type) {
     const t = (type || '').toLowerCase();
+    if (['homea', 'homeb'].includes(t) || t.includes('building')) return t.includes('church') ? 800 : 500;
     if (t.includes('palisade') || t.includes('gate')) return 350;
     if (t.includes('wall') || t.includes('log')) return 250;
     if (t.includes('door')) return 160;

@@ -4,6 +4,69 @@
   -webkit-user-select: none;
 }
 
+/* Nordic glass treatment: readable HUD with more depth over the 3D world. */
+.hotbar-root-container,
+#quest-log,
+#chat-panel,
+.hud-btn,
+.hud-level-badge,
+.hud-biome-badge {
+  backdrop-filter: blur(10px) saturate(1.15);
+  -webkit-backdrop-filter: blur(10px) saturate(1.15);
+}
+
+#hud {
+  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.18));
+}
+
+.hud-btn,
+.hotbar-slot,
+.skill-hotbar-slot {
+  transition: transform 160ms ease, filter 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.hud-btn:hover,
+.hotbar-slot:hover,
+.skill-hotbar-slot:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.16) drop-shadow(0 5px 10px rgba(0, 0, 0, 0.25));
+}
+
+.hotbar-slot.active,
+.skill-hotbar-slot.active {
+  box-shadow: 0 0 0 1px rgba(255, 224, 145, 0.8), 0 0 22px rgba(255, 176, 72, 0.35);
+}
+
+.main-menu-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(125, 204, 255, 0.18), transparent 34%),
+    linear-gradient(135deg, rgba(17, 28, 42, 0.1), rgba(4, 10, 18, 0.42));
+  mix-blend-mode: screen;
+}
+
+.menu-btn {
+  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+}
+
+.menu-btn:hover {
+  transform: translateY(-3px) scale(1.015);
+  filter: brightness(1.1);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3), 0 0 24px rgba(93, 190, 255, 0.16);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-btn,
+  .hotbar-slot,
+  .skill-hotbar-slot,
+  .menu-btn {
+    transition: none;
+  }
+}
+
 html, body {
   margin: 0;
   padding: 0;
@@ -228,6 +291,8 @@ canvas {
   pointer-events: none;
   z-index: 100;
   user-select: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* --- TOP-LEFT: Vitals Cluster & Companions Party Widget --- */
@@ -3590,6 +3655,7 @@ canvas {
   align-items: center;
   justify-content: center;
   z-index: 9999;
+  pointer-events: auto;
   backdrop-filter: blur(6px);
 }
 
@@ -3603,6 +3669,7 @@ canvas {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  pointer-events: auto;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 25px rgba(243, 156, 18, 0.2);
 }
 
@@ -4738,7 +4805,92 @@ body.mobile-mode .shield-block-container.visible {
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior-y: contain !important;
 }
+/* ============================================================
+   ULTRA-KOMPAKTI PÄÄVALIKKO & TAUKOVALIKKO (MATALAT NÄYTÖT)
+   ============================================================ */
+@media (max-height: 520px), (max-width: 600px) {
+  .main-menu-overlay,
+  .pause-menu-overlay,
+  #pause-menu {
+    padding: 4px !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
 
+  .menu-container,
+  .pause-box {
+    padding: 8px 14px !important;
+    max-width: min(310px, 92vw) !important;
+    width: 88% !important;
+    max-height: 92vh !important;
+    gap: 4px !important;
+    border-radius: 8px !important;
+    overflow-y: hidden !important; /* Poistaa vierityspalkin kokonaan */
+  }
 
+  /* Riimurivi & otsikot */
+  .menu-rune {
+    font-size: 8.5px !important;
+    letter-spacing: 3px !important;
+    margin-bottom: 0 !important;
+    line-height: 1 !important;
+  }
 
+  .menu-title {
+    font-size: 18px !important;
+    letter-spacing: 2px !important;
+    margin: 0 !important;
+    line-height: 1.1 !important;
+  }
 
+  .pause-box h2 {
+    font-size: 14px !important;
+    margin: 0 !important;
+    line-height: 1.1 !important;
+  }
+
+  .menu-subtitle {
+    display: none !important;
+  }
+
+  .menu-tagline {
+    display: none !important;
+  }
+
+  /* Käyttäjäbadge */
+  .menu-user-badge {
+    font-size: 9px !important;
+    padding: 1px 7px !important;
+    margin: 1px auto 2px auto !important;
+    border-radius: 10px !important;
+  }
+
+  /* Painikelista */
+  .menu-nav {
+    gap: 4px !important;
+    max-width: 100% !important;
+  }
+
+  /* Painikkeet */
+  .menu-btn,
+  .pause-box .menu-btn {
+    padding: 5px 10px !important;
+    font-size: 10px !important;
+    gap: 4px !important;
+    border-radius: 5px !important;
+    min-height: 28px !important;
+    box-shadow: none !important;
+    letter-spacing: 1px !important;
+  }
+
+  .menu-btn-primary,
+  .pause-box .menu-btn-primary {
+    padding: 6px 10px !important;
+    font-size: 10.5px !important;
+    min-height: 30px !important;
+  }
+
+  .menu-footer {
+    display: none !important;
+  }
+}

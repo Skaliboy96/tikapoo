@@ -80,19 +80,23 @@ async function init() {
   );
 
   const renderer = new THREE.WebGLRenderer({
-    antialias: true,
+    antialias: !isTouchDevice,
     powerPreference: 'high-performance',
     precision: isTouchDevice ? 'mediump' : 'highp',
     stencil: false,
     depth: true
   });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(isTouchDevice ? Math.min(window.devicePixelRatio, 1.5) : Math.min(window.devicePixelRatio, 2.0));
+  // Keep the 3D image crisp on high-density mobile screens. The previous 1.5 cap
+  // made the full-screen canvas visibly soft when it was scaled to the viewport.
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.0));
   // Enable clean grounded shadows on mobile with high performance
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = isTouchDevice ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.domElement.style.imageRendering = 'auto';
   container.appendChild(renderer.domElement);
 
   // Safe WebGL context restoration to prevent black screen or reload on mobile tab switch
@@ -103,6 +107,9 @@ async function init() {
 
   // --- Controls & Pointer Lock Setup ---
   const controls = new PointerLockControls(camera, renderer.domElement);
+  const setGameplayCursor = (hidden) => {
+    renderer.domElement.style.cursor = hidden ? 'none' : 'auto';
+  };
 
   // UI Elements
   const crosshair = document.getElementById('crosshair');
@@ -312,7 +319,7 @@ async function init() {
   player.playerPos.set(0, initialGroundY, 0);
 
   // Global dev reference for runtime diagnostics & benchmarking
-  window.__game = { world, player, devMode, inventory, hud, audioManager, scene, controls, startGame: () => startGame() };
+  window.__game = { world, player, devMode, inventory, hud, audioManager, scene, controls, renderer, buildingSystem, startGame: () => startGame() };
 
   // --- Initial Menu Visibility State ---
   let isGameStarted = false;
@@ -354,6 +361,7 @@ async function init() {
     if (questLogEl) questLogEl.style.display = 'block';
     if (invDisplayEl) invDisplayEl.style.display = 'none'; // Inventory is accessed via [I] key
     if (crosshair) crosshair.style.display = 'block';
+    setGameplayCursor(true);
 
     const pPos = player.getPosition();
     camera.position.set(pPos.x, pPos.y + player.heightAboveGround, pPos.z);
@@ -405,8 +413,12 @@ async function init() {
 
   if (menuPlayBtn) {
     bindTouchClick(menuPlayBtn, (e) => {
-      const hasSavedChar = localStorage.getItem('tikapoo_character');
+      const hasSavedChar = accountSystem && accountSystem.isLoggedIn()
+        ? !!accountSystem.loadCurrentProfile()?.character
+        : !!localStorage.getItem('tikapoo_character');
       if (!hasSavedChar) {
+        localStorage.removeItem('tikapoo_character');
+        characterCreator.resetToDefaults();
         if (mainMenu) mainMenu.style.display = 'none';
         characterCreator.open();
       } else {
@@ -418,7 +430,10 @@ async function init() {
   // --- Main Menu Save / Continue / Load Buttons ---
   const menuContinueBtn = document.getElementById('menu-continue-btn');
   if (menuContinueBtn) {
-    if (saveSystem.hasSave() || (accountSystem && accountSystem.loadCurrentProfile())) {
+    const hasRelevantSave = accountSystem && accountSystem.isLoggedIn()
+      ? !!accountSystem.loadCurrentProfile()
+      : saveSystem.hasSave();
+    if (hasRelevantSave) {
       menuContinueBtn.style.display = 'block';
     }
     bindTouchClick(menuContinueBtn, (e) => {
@@ -543,8 +558,13 @@ async function init() {
     if (userInput && isLogged) userInput.value = username;
     if (passInput && isLogged) passInput.value = '';
 
-    if (menuContinueBtn && (saveSystem.hasSave() || (accountSystem && accountSystem.loadCurrentProfile()))) {
+    const hasRelevantSave = accountSystem && accountSystem.isLoggedIn()
+      ? !!accountSystem.loadCurrentProfile()
+      : saveSystem.hasSave();
+    if (menuContinueBtn && hasRelevantSave) {
       menuContinueBtn.style.display = 'block';
+    } else if (menuContinueBtn) {
+      menuContinueBtn.style.display = 'none';
     }
   };
 
@@ -572,6 +592,9 @@ async function init() {
         if (savedData) {
           saveSystem.applySaveData(savedData);
           if (hud) hud.showNotification(`💾 Profiilin tallennus ladattu käyttäjälle ${res.profile.username}!`, 4000);
+        } else {
+          localStorage.removeItem('tikapoo_character');
+          characterCreator.resetToDefaults();
         }
         setTimeout(() => {
           closeModal('modal-account');
@@ -592,8 +615,8 @@ async function init() {
       }
       if (res.success) {
         updateAccountUI();
-        const payload = saveSystem.createSavePayload();
-        accountSystem.saveCurrentProfile(payload);
+        localStorage.removeItem('tikapoo_character');
+        characterCreator.resetToDefaults();
         if (hud) hud.showNotification(`🎉 Tili luotu ja edistyminen tallennettu käyttäjälle ${res.profile.username}!`, 4500);
         setTimeout(() => {
           closeModal('modal-account');
@@ -608,6 +631,7 @@ async function init() {
       if (accountSystem.isLoggedIn()) {
         const payload = saveSystem.createSavePayload();
         accountSystem.saveCurrentProfile(payload);
+      } else {
         saveSystem.saveToLocalStorage();
         if (accMsgArea) {
           accMsgArea.textContent = `💾 Tallennettu tilille onnistuneesti! (${new Date().toLocaleTimeString()})`;
@@ -623,6 +647,8 @@ async function init() {
     accLogoutBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       accountSystem.logout();
+      localStorage.removeItem('tikapoo_character');
+      characterCreator.resetToDefaults();
       updateAccountUI();
       if (accMsgArea) {
         accMsgArea.textContent = 'Kirjauduttu ulos.';
@@ -637,6 +663,7 @@ async function init() {
     if (isGameStarted && player && !player.isDead && accountSystem && accountSystem.isLoggedIn()) {
       const payload = saveSystem.createSavePayload();
       accountSystem.saveCurrentProfile(payload);
+    } else if (isGameStarted && player && !player.isDead) {
       saveSystem.saveToLocalStorage();
     }
   }, 25000);
@@ -748,7 +775,7 @@ async function init() {
       else if (val === 'high') scale = 1.5;
       else if (val === 'ultra') scale = 2.0;
 
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, scale));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, scale));
       renderer.setSize(window.innerWidth, window.innerHeight);
       hud.showNotification(`Resoluution skaalaus: ${scale}x`);
     });
@@ -951,14 +978,33 @@ async function init() {
   // --- Pointer Lock Controls & Pause Menu ---
   let lastResumeTime = 0;
   let lastMenuCloseTime = 0;
+  let lastPointerLockErrorTime = 0;
 
   const safeLockControls = () => {
     if (!isGameStarted) return;
     try {
       lastResumeTime = performance.now();
       const p = controls.lock();
-      if (p && p.catch) p.catch(() => {});
-    } catch (e) {}
+      if (p && p.catch) {
+        p.catch(() => {
+          lastPointerLockErrorTime = performance.now();
+          if (pauseMenu) {
+            pauseMenu.classList.remove('active');
+            pauseMenu.style.display = '';
+          }
+          if (crosshair) crosshair.style.display = 'block';
+          setGameplayCursor(true);
+        });
+      }
+    } catch (e) {
+      lastPointerLockErrorTime = performance.now();
+      if (pauseMenu) {
+        pauseMenu.classList.remove('active');
+        pauseMenu.style.display = '';
+      }
+      if (crosshair) crosshair.style.display = 'block';
+      setGameplayCursor(true);
+    }
   };
   window.safeLockControls = safeLockControls;
 
@@ -979,7 +1025,8 @@ async function init() {
   };
 
   document.addEventListener('pointerlockerror', () => {
-    // Gracefully handle browser pointer lock cooldown rejection without UI lockup
+    // A rejected lock request must not be interpreted as pressing Escape.
+    lastPointerLockErrorTime = performance.now();
   });
 
   const isAnyGameMenuOpen = () => {
@@ -988,6 +1035,7 @@ async function init() {
            (mapScreen && mapScreen.isOpen) ||
            (skillTree && skillTree.isOpen) ||
            (characterCreator && characterCreator.isOpen) ||
+           (buildingSystem && buildingSystem.isBuildMenuOpen) ||
            (pauseMenu && pauseMenu.classList.contains('active')) ||
            (mainMenu && mainMenu.style.display !== 'none') ||
            document.querySelector('.menu-modal.active') ||
@@ -999,17 +1047,21 @@ async function init() {
 
   controls.addEventListener('lock', () => {
     if (crosshair && isGameStarted) crosshair.style.display = 'block';
+    setGameplayCursor(true);
     if (pauseMenu) pauseMenu.classList.remove('active');
   });
 
   controls.addEventListener('unlock', () => {
     if (mobileControls && mobileControls.isTouchDevice) return;
+    setGameplayCursor(false);
     if (isAnyGameMenuOpen() && crosshair) crosshair.style.display = 'none';
     if (!isGameStarted) return;
 
     const now = performance.now();
     // Prevent immediate bounce-back into pause menu if we just resumed or closed an in-game screen
-    if (now - lastResumeTime < 800 || now - lastMenuCloseTime < 800) return;
+    if (now - lastResumeTime < 800 ||
+        now - lastMenuCloseTime < 800 ||
+        now - lastPointerLockErrorTime < 1000) return;
 
     if (!isAnyGameMenuOpen() && pauseMenu) {
       pauseMenu.style.display = '';
@@ -1058,8 +1110,6 @@ async function init() {
       resumeGame();
     };
     pauseResumeBtn.addEventListener('click', handleResume);
-    pauseResumeBtn.addEventListener('pointerdown', handleResume);
-    pauseResumeBtn.addEventListener('touchend', handleResume);
   }
 
   const pauseSaveBtn = document.getElementById('pause-save-btn');
@@ -1067,11 +1117,11 @@ async function init() {
     pauseSaveBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const payload = saveSystem.createSavePayload();
-      saveSystem.saveToLocalStorage();
       if (accountSystem && accountSystem.isLoggedIn()) {
         accountSystem.saveCurrentProfile(payload);
         if (hud) hud.showNotification(`💾 Edistyminen tallennettu tilillesi: ${accountSystem.getCurrentUsername()}!`, 4000);
       } else {
+        saveSystem.saveToLocalStorage();
         if (hud) hud.showNotification(`💾 Tallennettu laitteelle! Avaa TILI valikosta tallentaaksesi pysyvästi profiilille.`, 4500);
       }
       if (audioManager && audioManager.playPickup) audioManager.playPickup();
@@ -1256,8 +1306,6 @@ async function init() {
       restartGame();
     };
     pauseRestartBtn.addEventListener('click', handleRestart);
-    pauseRestartBtn.addEventListener('pointerdown', handleRestart);
-    pauseRestartBtn.addEventListener('touchend', handleRestart);
   }
 
   // Global ESC key and browser protection handler
@@ -1387,7 +1435,14 @@ async function init() {
     }
   }, { passive: false });
 
-  // Click on canvas always relocks pointer if in-game and no modal is active
+  // A pointerdown is the most reliable user gesture for re-entering Pointer Lock.
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    if (!isGameStarted || controls.isLocked || isAnyGameMenuOpen()) return;
+    if (e.cancelable) e.preventDefault();
+    safeLockControls();
+  }, { passive: false });
+
+  // Click on canvas also relocks pointer if in-game and no modal is active.
   renderer.domElement.addEventListener('click', () => {
     if (isGameStarted && !controls.isLocked) {
       const anyModal = document.querySelector('.modal.active') ||
@@ -1440,6 +1495,11 @@ async function init() {
 
     const pPos = player ? player.getPosition() : null;
     if (!pPos) return false;
+
+    // Player-built doors are handled before generic loot and activity prompts.
+    if (buildingSystem && buildingSystem.toggleDoor && buildingSystem.toggleDoor(pPos)) {
+      return true;
+    }
 
     // 1.5 Player Gravestone loot recovery
     let nearbyTombstone = null;
@@ -1699,9 +1759,16 @@ async function init() {
   const clock = new THREE.Clock();
   let frameCount = 0;
   let lastFpsTime = performance.now();
+  let interactionUiTimer = 0;
+  let minimapTimer = 0;
+  let explorationTimer = 0;
+  let biomeTimer = 0;
+  let cachedBiome = 'meadows';
+  let lastAnnouncedBiome = 'meadows';
 
   // Reusable vector for camera heading calculation in animate loop (prevents GC allocation churn)
   const _camDirReuse = new THREE.Vector3();
+  const _menuOrbitTarget = new THREE.Vector3(8, 3, 4);
 
   function animate() {
     requestAnimationFrame(animate);
@@ -1729,7 +1796,7 @@ async function init() {
       camera.position.y = 11 + Math.sin(menuOrbitAngle * 0.6) * 2;
       camera.lookAt(2, 3.2, -6);
 
-      world.update(delta, new THREE.Vector3(8, 3, 4));
+      world.update(delta, _menuOrbitTarget);
       dayNightCycle.update(delta * 0.4);
       renderer.render(scene, camera);
       return;
@@ -1750,29 +1817,33 @@ async function init() {
     player.update(delta, world, combat);
     skillTree.update(delta);
     hotbar.update(delta);
-    world.update(delta, player.getPosition());
+    const playerPos = player.getPosition();
+    world.update(delta, playerPos);
     dayNightCycle.update(delta);
-    lootManager.update(delta, player.getPosition());
+    lootManager.update(delta, playerPos);
     ragdollManager.update(delta);
-    animalManager.update(delta, player.getPosition());
+    animalManager.update(delta, playerPos);
     fishingSystem.update(delta);
     farmingSystem.update(delta);
     resourceNode.update(delta, camera, activeInput);
     buildingSystem.update(delta, camera, activeInput, world);
-    enemyManager.update(delta, player.getPosition(), dayNightCycle, player, camera);
-    bossManager.update(delta, player.getPosition());
+    enemyManager.update(delta, playerPos, dayNightCycle, player, camera);
+    bossManager.update(delta, playerPos);
     combat.update(delta);
     npcManager.update(delta, camera, activeInput);
     if (mobileControls) mobileControls.update(delta);
 
     // Contextual interaction tooltips for gravestones, chests, campfire and water
-    const pPos = player.getPosition();
+    const pPos = playerPos;
+    interactionUiTimer -= delta;
     const isTouch = window.isTouchDevice || ('ontouchstart' in window) || /Android|iPhone|iPad|iPod|Windows Phone|webOS|BlackBerry/i.test(navigator.userAgent) || window.innerWidth <= 900;
     const isFi = (typeof Localization !== 'undefined' && Localization.lang === 'en') ? false : true;
 
     // Show tooltips whenever no modal is active (don't strictly require desktop pointer lock)
     const anyModal = (craftingMenu && craftingMenu.isOpen) || (mapScreen && mapScreen.isOpen) || (backpackScreen && backpackScreen.isOpen) || (skillTree && skillTree.isOpen) || (characterCreator && characterCreator.isOpen) || (pauseMenu && pauseMenu.classList.contains('active'));
 
+    if (interactionUiTimer <= 0) {
+      interactionUiTimer = 0.1;
     if (!anyModal && !resourceNode.isAimingAtHarvestable() && !npcManager.targetedNPC) {
       const nearTomb = (world && world.tombstones) ? world.tombstones.find(t => pPos.distanceTo(t.position) < 3.8) : null;
       let nearbyChest = null;
@@ -1824,13 +1895,17 @@ async function init() {
     } else {
       hud.hideTooltip();
     }
+    }
 
     // Check exploration proximity to Ancient Ruins Altar (x: 85, z: -25) and Highland Watchtower (x: 30, z: -68)
-    const distToAltar = Math.hypot(pPos.x - 85, pPos.z - (-25));
-    if (distToAltar < 16) {
-      questManager.onExploreAltar();
-    }
-    if (distToAltar < 6.0 && !anyModal) {
+    explorationTimer -= delta;
+    const distToAltar = Math.hypot(pPos.x - 85, pPos.z + 25);
+    if (explorationTimer <= 0) {
+      explorationTimer = 0.25;
+      if (distToAltar < 16) {
+        questManager.onExploreAltar();
+      }
+      if (distToAltar < 6.0 && !anyModal) {
       // Check if player has any Boss Trophy to offer at the Altar
       const hasStagTrophy = inventory.has('trophy_ancient_stag', 1);
       const hasWyrmTrophy = inventory.has('trophy_swamp_wyrm', 1);
@@ -1846,14 +1921,32 @@ async function init() {
       } else {
         hud.showTooltip('🏛️ Muinainen Alttari (Tuo tähän bossien Trophyja saadaksesi voimakkaita Buffeja)');
       }
-    }
-    if (Math.hypot(pPos.x - 30, pPos.z - (-68)) < 12) {
-      questManager.onExploreWatchtower();
+      }
+      if (Math.hypot(pPos.x - 30, pPos.z + 68) < 12) {
+        questManager.onExploreWatchtower();
+      }
     }
 
     // Update Biome Background Music based on player location
-    const currentBiome = getBiomeKey(pPos.x, pPos.z);
-    audioManager.updateBiomeMusic(currentBiome, delta);
+    biomeTimer -= delta;
+    if (biomeTimer <= 0) {
+      biomeTimer = 0.2;
+      cachedBiome = getBiomeKey(pPos.x, pPos.z);
+      if (cachedBiome !== lastAnnouncedBiome) {
+        lastAnnouncedBiome = cachedBiome;
+        world.applyBiomeAtmosphere(cachedBiome);
+        const biomeNames = {
+          meadows: 'Aarniometsä',
+          blackForest: 'Mustametsä',
+          swamp: 'Myrskysuo',
+          mountain: 'Jääkruunun tunturit',
+          runePlains: 'Riimutasangot',
+          ashlands: 'Sysivuoret'
+        };
+        hud.showNotification(`🌍 Saavuit alueelle: ${biomeNames[cachedBiome] || cachedBiome}`, 3200);
+      }
+    }
+    audioManager.updateBiomeMusic(cachedBiome, delta);
 
     // Biome environmental hazards & gear requirements
     if (typeof biomeHazardTimer === 'undefined') window.biomeHazardTimer = 0;
@@ -1862,7 +1955,7 @@ async function init() {
       window.biomeHazardTimer = 0;
       const isFi = (typeof Localization !== 'undefined' && Localization.lang === 'en') ? false : true;
 
-      if (currentBiome === 'mountain') {
+      if (cachedBiome === 'mountain') {
         const hasColdArmor = inventory && (inventory.equippedArmor === 'armor_wolf' || inventory.equippedArmor === 'armor_silver' || inventory.equippedArmor === 'armor_blackmetal');
         const nearFire = buildingSystem && buildingSystem.campfires && buildingSystem.campfires.some(c => Math.hypot(c.position.x - pPos.x, c.position.z - pPos.z) < 8.0);
         if (!hasColdArmor && !nearFire) {
@@ -1872,7 +1965,7 @@ async function init() {
             3000
           );
         }
-      } else if (currentBiome === 'ashlands') {
+      } else if (cachedBiome === 'ashlands') {
         const hasHeatArmor = inventory && (inventory.equippedArmor === 'armor_blackmetal' || inventory.equippedArmor === 'armor_flametal');
         if (!hasHeatArmor) {
           player.takeDamage(3);
@@ -1916,15 +2009,19 @@ async function init() {
     camera.getWorldDirection(_camDirReuse);
     const heading = Math.atan2(_camDirReuse.x, -_camDirReuse.z);
 
-    hud.updateMinimap(
-      player.getPosition(),
-      heading,
-      enemyManager.enemies,
-      buildingSystem.campfires,
-      currentBiome,
-      world.tombstones,
-      bossManager ? bossManager.getBossMarkers() : []
-    );
+    minimapTimer -= delta;
+    if (minimapTimer <= 0) {
+      minimapTimer = 0.1;
+      hud.updateMinimap(
+        playerPos,
+        heading,
+        enemyManager.enemies,
+        buildingSystem.campfires,
+        cachedBiome,
+        world.tombstones,
+        bossManager ? bossManager.getBossMarkers() : []
+      );
+    }
 
     // Render 3D Scene
     renderer.render(scene, camera);

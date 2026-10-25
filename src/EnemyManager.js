@@ -321,7 +321,7 @@ export default class EnemyManager {
       (navigator && navigator.maxTouchPoints > 0)
     );
     this.isMobile = isMobileDevice;
-    this.maxEnemies = isMobileDevice ? 15 : 36;
+    this.maxEnemies = isMobileDevice ? 18 : 44;
     this.spawnRadiusMin = 22;
     this.spawnRadiusMax = isMobileDevice ? 65 : 95;
     this.spawnTimer = 0;
@@ -567,7 +567,9 @@ export default class EnemyManager {
                 child.material.color.lerp(new THREE.Color(blueprint.color), 0.45);
               }
             }
-            child.material.roughness = 0.8;
+            if (child.material.isMeshStandardMaterial || child.material.isMeshPhysicalMaterial) {
+              child.material.roughness = 0.8;
+            }
             flashMaterials.push(child.material);
             originalColors.push(child.material.color.clone());
           }

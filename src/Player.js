@@ -637,8 +637,10 @@ export default class Player {
         if (n.includes('body') || n.includes('pauldron') || n.includes('bracer') || n.includes('torso')) {
           child.material = child.material.clone();
           if (child.material.color) child.material.color.set(style.color);
-          child.material.metalness = style.metalness;
-          child.material.roughness = style.roughness;
+          if (child.material.isMeshStandardMaterial || child.material.isMeshPhysicalMaterial) {
+            child.material.metalness = style.metalness;
+            child.material.roughness = style.roughness;
+          }
           if (style.emissive !== undefined && child.material.emissive) {
             child.material.emissive.set(style.emissive);
             child.material.emissiveIntensity = style.emissiveIntensity;

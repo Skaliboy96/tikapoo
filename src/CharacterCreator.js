@@ -21,21 +21,14 @@ export default class CharacterCreator {
 
     // Default character setup: basic starting clothes with open head and customizable hair/skin/clothes
     const saved = localStorage.getItem('tikapoo_character');
-    this.config = {
-      name: 'Eerik',
-      gender: 'male',
-      headStyle: 'hair',
-      hairStyle: 'short',
-      hairColor: 0x3d2817,
-      skinColor: 0xf5d0b5,
-      clothingColor: 0x2e5339
-    };
+    this.config = this.getDefaultConfig();
     if (saved) {
       try {
         this.config = { ...this.config, ...JSON.parse(saved) };
-      } catch (e) {}
+      } catch (e) {
+        console.warn('[CharacterCreator] Could not parse saved character:', e);
+      }
     }
-    // Always enforce open head with customizable hair (no forced hoods)
     this.config.headStyle = 'hair';
     this.config.model = 'Rogue';
 
@@ -58,6 +51,29 @@ export default class CharacterCreator {
     // Prevents allocating 2 simultaneous WebGL contexts on mobile (iOS WebKit context crash fix)
     this._initUI();
     this._setupListeners();
+  }
+
+  getDefaultConfig() {
+    return {
+      name: 'Eerik',
+      gender: 'male',
+      headStyle: 'hair',
+      hairStyle: 'short',
+      hairColor: 0x3d2817,
+      skinColor: 0xf5d0b5,
+      clothingColor: 0x2e5339
+    };
+  }
+
+  resetToDefaults() {
+    this.config = this.getDefaultConfig();
+    this.config.headStyle = 'hair';
+    this.config.model = 'Rogue';
+    localStorage.removeItem('tikapoo_character');
+    if (this.isOpen) {
+      this._syncUIFromConfig();
+      this.buildPreviewModel();
+    }
   }
 
   _initThreePreview() {

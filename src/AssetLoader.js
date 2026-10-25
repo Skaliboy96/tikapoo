@@ -428,6 +428,7 @@ export default class AssetLoader {
                 tex.repeat.set(repeatX, repeatY);
               }
               tex.colorSpace = THREE.SRGBColorSpace;
+              tex.anisotropy = Math.min(8, this.renderer?.capabilities?.getMaxAnisotropy?.() || 4);
               this.textures[name] = tex;
               done(tex);
             } catch (err) {
@@ -577,7 +578,25 @@ export default class AssetLoader {
       { name: 'Prop_Crate', url: '/assets/village/Prop_Crate.gltf' },
       { name: 'Prop_Chimney', url: '/assets/village/Prop_Chimney.gltf' },
       { name: 'Stairs_Exterior_Straight', url: '/assets/village/Stairs_Exterior_Straight.gltf' },
-      { name: 'Stairs_Exterior_Platform', url: '/assets/village/Stairs_Exterior_Platform.gltf' }
+      { name: 'Stairs_Exterior_Platform', url: '/assets/village/Stairs_Exterior_Platform.gltf' },
+
+      // KayKit Medieval Hexagon landmarks used by explored biome settlements.
+      { name: 'HexMarketGreen', url: '/assets/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Assets/gltf/buildings/green/building_market_green.gltf' },
+      { name: 'HexWindmillYellow', url: '/assets/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Assets/gltf/buildings/yellow/building_windmill_yellow.gltf' },
+      { name: 'HexTowerRed', url: '/assets/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Assets/gltf/buildings/red/building_tower_A_red.gltf' },
+      { name: 'HexBarracksBlue', url: '/assets/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Assets/gltf/buildings/blue/building_barracks_blue.gltf' },
+      { name: 'HexHomeAGreen', url: '/assets/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Assets/gltf/buildings/green/building_home_A_green.gltf' },
+      { name: 'HexHomeBRed', url: '/assets/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Assets/gltf/buildings/red/building_home_B_red.gltf' },
+      { name: 'HexBlacksmithBlue', url: '/assets/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Assets/gltf/buildings/blue/building_blacksmith_blue.gltf' },
+      { name: 'HexTavernYellow', url: '/assets/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Assets/gltf/buildings/yellow/building_tavern_yellow.gltf' },
+      { name: 'HexChurchBlue', url: '/assets/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Assets/gltf/buildings/blue/building_church_blue.gltf' },
+      { name: 'HexArcheryGreen', url: '/assets/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Assets/gltf/buildings/green/building_archeryrange_green.gltf' },
+      { name: 'HexLumbermillRed', url: '/assets/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Assets/gltf/buildings/red/building_lumbermill_red.gltf' },
+      { name: 'HexWellYellow', url: '/assets/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Assets/gltf/buildings/yellow/building_well_yellow.gltf' },
+      { name: 'HexTreeLarge', url: '/assets/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Assets/gltf/decoration/nature/trees_A_large.gltf' },
+      { name: 'HexTreeSmall', url: '/assets/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Assets/gltf/decoration/nature/trees_B_small.gltf' },
+      { name: 'HexTreeSingle', url: '/assets/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Assets/gltf/decoration/nature/tree_single_A.gltf' },
+      { name: 'HexRockA', url: '/assets/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Assets/gltf/decoration/nature/rock_single_A.gltf' }
     ];
 
     const textureManifest = [
@@ -625,7 +644,10 @@ export default class AssetLoader {
         'Chest_Wood', 'Barrel', 'Torch_Metal', 'Workbench', 'Table_Large', 'Bench', 'Anvil_Log',
         // Modular Village Architecture
         'Wall_Plaster_Straight', 'Wall_Plaster_Door_Flat', 'Roof_RoundTiles_4x4',
-        'Floor_WoodDark', 'Prop_WoodenFence_Single', 'Prop_Crate', 'Stairs_Exterior_Straight'
+        'Floor_WoodDark', 'Prop_WoodenFence_Single', 'Prop_Crate', 'Stairs_Exterior_Straight',
+        // Placeable village buildings
+        'HexHomeAGreen', 'HexHomeBRed', 'HexBlacksmithBlue', 'HexTavernYellow',
+        'HexChurchBlue', 'HexArcheryGreen', 'HexLumbermillRed', 'HexWellYellow'
       ]);
       activeModelManifest = modelManifest.filter(m => mobileModelNames.has(m.name));
       // Completely eliminate heavy OBJ models and duplicate palettes on mobile (zero OBJ parsing & zero extra texture loads)

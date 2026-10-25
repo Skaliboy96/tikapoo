@@ -25,17 +25,21 @@ export default class World {
     this.mossyWoodNodes = [];
     this.mushrooms = [];
     this.wildChests = []; // Hidden lootable treasure chests across forests and ruins
+    this.remoteBuildings = []; // Named asset buildings discovered in streamed chunks
     this.tombstones = []; // Player death gravestones (recover lost items)
     this.colliders = []; // World wall and obstacle colliders (prevents walking through buildings)
     this.workbenches = []; // Registered artisan crafting workbenches across the world
 
     this.windTime = 0;
+    this._fireflyUpdateTimer = 0;
     this.instancedGrass = null;
     this.instancedFerns = null;
     this.waterMesh = null;
     this.waterNormal = null;
     this.fireflies = null;
     this.clouds = [];
+    this.aurora = [];
+    this.atmosphereTime = 0;
     this.altarLight = null;
 
     // Load saved dev world edits (deleted entity positions) to suppress them upon world generation
@@ -63,6 +67,7 @@ export default class World {
     this.initInstancedFerns();
     this.initFireflies();
     this.initClouds();
+    this.initAurora();
 
     this.buildCentralTown();
     this.buildRiverBridge();
@@ -392,6 +397,25 @@ export default class World {
     });
     this.skyMesh = new THREE.Mesh(skyGeo, this.skyMat);
     this.scene.add(this.skyMesh);
+  }
+
+  applyBiomeAtmosphere(biome) {
+    const atmosphere = {
+      meadows: { fog: 0xc8b69b, sky: 0x76aed9, sun: 0xfff0d0, hemi: 0xffeedd },
+      blackForest: { fog: 0x43534a, sky: 0x35556b, sun: 0xd8e0c4, hemi: 0xc4d1c0 },
+      swamp: { fog: 0x465545, sky: 0x536958, sun: 0xc0d2a8, hemi: 0xb5c6ab },
+      mountain: { fog: 0x8295a4, sky: 0x88a9c2, sun: 0xe7f2ff, hemi: 0xdbeaff },
+      runePlains: { fog: 0x635979, sky: 0x806f9c, sun: 0xf3d8ff, hemi: 0xe5cbef },
+      ashlands: { fog: 0x5f433d, sky: 0x6e4038, sun: 0xffa36b, hemi: 0xe1aa8a }
+    };
+    const colors = atmosphere[biome] || atmosphere.meadows;
+    if (this.scene.fog) this.scene.fog.color.setHex(colors.fog);
+    if (this.skyMat) this.skyMat.color.setHex(colors.sky);
+    if (this.sun) this.sun.color.setHex(colors.sun);
+    if (this.hemiLight) {
+      this.hemiLight.color.setHex(colors.hemi);
+      this.hemiLight.groundColor.setHex(colors.fog);
+    }
   }
 
   initTerrain() {
@@ -780,8 +804,7 @@ export default class World {
     const cloudMat = new THREE.MeshLambertMaterial({
       color: 0xffffff,
       transparent: true,
-      opacity: 0.82,
-      roughness: 0.9
+      opacity: 0.82
     });
 
     for (let i = 0; i < 24; i++) {
@@ -809,6 +832,28 @@ export default class World {
 
       this.scene.add(cloudGroup);
       this.clouds.push(cloudGroup);
+    }
+  }
+
+  initAurora() {
+    const colors = [0x62f5c5, 0x6aa7ff, 0xc47cff];
+    for (let i = 0; i < 3; i++) {
+      const geometry = new THREE.PlaneGeometry(170, 34, 12, 4);
+      const material = new THREE.MeshBasicMaterial({
+        color: colors[i],
+        transparent: true,
+        opacity: 0.045,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        fog: false
+      });
+      const ribbon = new THREE.Mesh(geometry, material);
+      ribbon.position.set((i - 1) * 95, 78 + i * 4, -150 - i * 28);
+      ribbon.rotation.set(0.08, 0.18 + i * 0.12, (i - 1) * 0.08);
+      ribbon.userData.phase = i * 1.7;
+      this.scene.add(ribbon);
+      this.aurora.push(ribbon);
     }
   }
 
@@ -1064,6 +1109,7 @@ export default class World {
       const bCols = buildingSystem.placedColliders;
       for (let i = 0; i < bCols.length; i++) {
         const c = bCols[i];
+        if (c.enabled === false) continue;
         const halfW = (c.maxX - c.minX) * 0.5 + playerRadius;
         const halfD = (c.maxZ - c.minZ) * 0.5 + playerRadius;
         const midX = (c.minX + c.maxX) * 0.5;
@@ -2101,8 +2147,10 @@ export default class World {
             if (c.isMesh && c.material) {
               c.material = c.material.clone();
               c.material.color.setHex(cluster.color);
-              c.material.metalness = 0.65;
-              c.material.roughness = 0.55;
+              if (c.material.isMeshStandardMaterial || c.material.isMeshPhysicalMaterial) {
+                c.material.metalness = 0.65;
+                c.material.roughness = 0.55;
+              }
             }
           });
 
@@ -2249,7 +2297,7 @@ export default class World {
         'Flower_3_Group', 'Flower_4_Group', 'Clover_1', 'Fern_1',
         'Plant_1', 'Plant_7', 'Bush_Common_Flowers', 'Grass_Common_Tall'
       ],
-      blackforest: [
+      blackForest: [
         'WoodLog_Moss', 'TreeStump_Moss', 'Fern_1', 'Rock_Moss_1',
         'Mushroom_Common', 'Mushroom_Laetiporus', 'Rock_Moss_2'
       ],
@@ -2260,7 +2308,7 @@ export default class World {
       mountain: [
         'Pebble_Round_1', 'Rock_Medium_1', 'Rock_Medium_2', 'DeadTree_3'
       ],
-      plains: [
+      runePlains: [
         'Grass_Wispy_Tall', 'Grass_Common_Tall', 'Clover_1',
         'Flower_3_Group', 'Plant_1'
       ],
@@ -2368,29 +2416,201 @@ export default class World {
     else if (biome === 'ashlands') treeModels = ['TreeStump', 'Pine_Crooked_1'];
     else if (biome === 'mountain') treeModels = ['Pine_Snow_1', 'Pine_Snow_2', 'Pine_1'];
 
-    // Spawn 2-4 trees in newly entered wilderness chunk
-    const treeCount = isMobileDevice ? 2 : 4;
+    // Keep every explored 80x80 chunk visually alive instead of only dressing
+    // the starting area. Biomes get denser tree lines while mobile stays lighter.
+    const treeCountByBiome = {
+      meadows: isMobileDevice ? 6 : 14,
+      blackForest: isMobileDevice ? 9 : 20,
+      swamp: isMobileDevice ? 7 : 16,
+      mountain: isMobileDevice ? 5 : 12,
+      runePlains: isMobileDevice ? 4 : 10,
+      ashlands: isMobileDevice ? 6 : 14
+    };
+    const treeCount = treeCountByBiome[biome] || (isMobileDevice ? 6 : 14);
     for (let i = 0; i < treeCount; i++) {
       const tx = cx * 80 + 10 + Math.random() * 60;
       const tz = cz * 80 + 10 + Math.random() * 60;
-      if (this.isNearRiver(tx, tz, 16)) continue;
+      if (this.isNearRiver(tx, tz, 16)) {
+        i--;
+        continue;
+      }
       const model = treeModels[Math.floor(Math.random() * treeModels.length)];
-      this.spawnTree(tx, tz, model);
+      const scale = biome === 'blackForest' ? 1.5 + Math.random() * 0.8 : 1.0 + Math.random() * 0.55;
+      this.spawnTree(tx, tz, model, scale, Math.random() * Math.PI * 2);
     }
 
-    // Spawn 1-2 boulders / ores in newly entered chunk
-    const rockModels = ['Rock_1', 'Rock_Medium_1', 'Rock_Moss_1'];
-    const rockCount = isMobileDevice ? 1 : 2;
+    // Scatter useful resources as well as scenery in remote wilderness.
+    const rockModels = biome === 'mountain'
+      ? ['Rock_Medium_1', 'Rock_Medium_2', 'Rock_Moss_1']
+      : ['Rock_1', 'Rock_Medium_1', 'Rock_Moss_1'];
+    const rockCount = isMobileDevice ? 3 : 7;
     for (let i = 0; i < rockCount; i++) {
       const rx = cx * 80 + 10 + Math.random() * 60;
       const rz = cz * 80 + 10 + Math.random() * 60;
-      if (this.isNearRiver(rx, rz, 16)) continue;
+      if (this.isNearRiver(rx, rz, 16)) {
+        i--;
+        continue;
+      }
       const model = rockModels[Math.floor(Math.random() * rockModels.length)];
-      this.spawnStone(rx, rz, model);
+      this.spawnStone(rx, rz, model, 0.8 + Math.random() * 0.5);
+    }
+
+    this._generateChunkDressing(cx, cz, biome);
+  }
+
+  _generateChunkDressing(cx, cz, biome) {
+    const dressing = {
+      meadows: ['Flower_3_Group', 'Flower_4_Group', 'Clover_1', 'Bush_Common_Flowers'],
+      blackForest: ['WoodLog_Moss', 'TreeStump_Moss', 'Mushroom_Common', 'Rock_Moss_1', 'Fern_1'],
+      swamp: ['Plant_1', 'Plant_7', 'Mushroom_Laetiporus', 'TreeStump_Moss', 'DeadTree_2'],
+      mountain: ['Pebble_Round_1', 'Rock_Medium_1', 'Rock_Medium_2', 'DeadTree_3'],
+      runePlains: ['Grass_Wispy_Tall', 'Clover_1', 'Flower_3_Group', 'Plant_1'],
+      ashlands: ['DeadTree_1', 'Rock_Medium_3', 'TreeStump']
+    };
+    const models = dressing[biome] || dressing.meadows;
+    const countByBiome = {
+      meadows: isMobileDevice ? 10 : 24,
+      blackForest: isMobileDevice ? 12 : 28,
+      swamp: isMobileDevice ? 10 : 24,
+      mountain: isMobileDevice ? 8 : 20,
+      runePlains: isMobileDevice ? 8 : 18,
+      ashlands: isMobileDevice ? 8 : 20
+    };
+    const count = countByBiome[biome] || (isMobileDevice ? 9 : 22);
+    const originX = cx * 80;
+    const originZ = cz * 80;
+
+    for (let i = 0; i < count; i++) {
+      const x = originX + 8 + Math.random() * 64;
+      const z = originZ + 8 + Math.random() * 64;
+      const y = this.getGroundHeight(x, z);
+      if (this.isNearRiver(x, z, 17) || y < 1.0 || Math.hypot(x, z) < 68) {
+        i--;
+        continue;
+      }
+
+      const name = models[Math.floor(Math.random() * models.length)];
+      const scale = name.includes('Mushroom') ? 1.25 + Math.random() * 0.55 : 0.75 + Math.random() * 0.5;
+      const mesh = this._placeModel(name, x, z, scale, Math.random() * Math.PI * 2);
+      if (mesh) {
+        mesh.userData.chunkDecoration = true;
+        this.decorations.push(mesh);
+      }
+    }
+
+    const landmarkTrees = biome === 'swamp'
+      ? ['HexTreeSingle', 'HexTreeSmall']
+      : biome === 'mountain'
+        ? ['HexTreeSmall', 'HexTreeSingle']
+        : ['HexTreeLarge', 'HexTreeSmall', 'HexTreeSingle'];
+    const treeCount = isMobileDevice ? 3 : 7;
+    for (let i = 0; i < treeCount; i++) {
+      const x = originX + 8 + Math.random() * 64;
+      const z = originZ + 8 + Math.random() * 64;
+      const y = this.getGroundHeight(x, z);
+      if (this.isNearRiver(x, z, 17) || y < 1.0 || Math.hypot(x, z) < 68) {
+        i--;
+        continue;
+      }
+      const name = landmarkTrees[Math.floor(Math.random() * landmarkTrees.length)];
+      const mesh = this._placeModel(name, x, z, 0.9 + Math.random() * 0.35, Math.random() * Math.PI * 2);
+      if (mesh) {
+        mesh.userData.assetTree = true;
+        this.decorations.push(mesh);
+      }
+    }
+
+    // Small landmarks make remote chunks feel inhabited without turning the world
+    // into a continuous town. One landmark is enough for each suitable chunk.
+    const landmarkChunks = new Set(['1_-1', '2_0', '-2_-1', '1_1']);
+    const chunkKey = `${cx}_${cz}`;
+    if ((biome === 'meadows' || biome === 'runePlains') && landmarkChunks.has(chunkKey)) {
+      const landmarks = {
+        '1_-1': { model: 'HexMarketGreen', x: cx * 80 + 42, z: cz * 80 + 38, scale: 1.15, name: 'Rajaseudun markkinapaikka' },
+        '2_0': { model: 'HexTowerRed', x: cx * 80 + 40, z: cz * 80 + 40, scale: 1.15, name: 'Riimuvartion torni' },
+        '-2_-1': { model: 'HexBarracksBlue', x: cx * 80 + 38, z: cz * 80 + 42, scale: 1.15, name: 'Metsävartion kasarmi' },
+        '1_1': { model: 'HexWindmillYellow', x: cx * 80 + 44, z: cz * 80 + 36, scale: 1.15, name: 'Kultatasangon tuulimylly' }
+      };
+      const landmark = landmarks[chunkKey];
+      const y = this.getGroundHeight(landmark.x, landmark.z);
+      if (!this.isNearRiver(landmark.x, landmark.z, 18) && y > 1.0) {
+        const mesh = this._placeModel(landmark.model, landmark.x, landmark.z, landmark.scale, Math.random() * Math.PI * 2);
+        if (mesh) {
+          mesh.userData.landmark = landmark.name;
+          this.decorations.push(mesh);
+          this.remoteBuildings.push({
+            x: landmark.x,
+            z: landmark.z,
+            name: landmark.name,
+            biome,
+            model: landmark.model
+          });
+          this.addCircleCollider(landmark.x, landmark.z, 2.2, 'landmark');
+        }
+      }
+    }
+
+    // Procedural remote settlements: a small landmark every few wilderness
+    // chunks keeps long expeditions from becoming empty while preserving open space.
+    const settlementModels = biome === 'blackForest'
+      ? [
+          { model: 'HexLumbermillRed', name: 'Metsän saha' },
+          { model: 'HexArcheryGreen', name: 'Metsän jousirata' },
+          { model: 'HexHomeAGreen', name: 'Metsämaja' }
+        ]
+      : biome === 'swamp'
+        ? [
+            { model: 'HexLumbermillRed', name: 'Suon saha' },
+            { model: 'HexHomeBRed', name: 'Suomökki' }
+          ]
+      : biome === 'mountain'
+        ? [
+            { model: 'HexTowerRed', name: 'Vuoriston vartiotorni' },
+            { model: 'HexBlacksmithBlue', name: 'Vuoriston paja' },
+            { model: 'HexHomeBRed', name: 'Vuoristomökki' }
+          ]
+        : biome === 'ashlands'
+          ? [{ model: 'HexTowerRed', name: 'Tuhkamaan vartiotorni' }]
+          : [
+              { model: 'HexHomeAGreen', name: 'Niittytalo' },
+              { model: 'HexHomeBRed', name: 'Rajaseudun talo' },
+              { model: 'HexTavernYellow', name: 'Kultainen krouvi' },
+              { model: 'HexBlacksmithBlue', name: 'Kylän sepän paja' },
+              { model: 'HexChurchBlue', name: 'Kyläkirkko' }
+            ];
+    const chunkHash = Math.abs((cx * 92821) ^ (cz * 68917));
+    if (chunkHash % 4 === 0 && !landmarkChunks.has(chunkKey)) {
+      const x = originX + 40;
+      const z = originZ + 40;
+      const y = this.getGroundHeight(x, z);
+      if (!this.isNearRiver(x, z, 20) && y > 1.0) {
+        const settlement = settlementModels[chunkHash % settlementModels.length];
+        const settlementScale = settlement.model.includes('HexHome') ? 1.35 : 1.18;
+        const mesh = this._placeModel(settlement.model, x, z, settlementScale, (chunkHash % 4) * Math.PI / 2);
+        if (mesh) {
+          mesh.userData.landmark = settlement.name;
+          this.decorations.push(mesh);
+          this.remoteBuildings.push({
+            x,
+            z,
+            name: settlement.name,
+            biome,
+            model: settlement.model
+          });
+          this.addCircleCollider(x, z, 2.0, 'landmark');
+        }
+      }
     }
   }
 
   update(delta, playerPos = null) {
+    this.atmosphereTime += delta;
+    for (const ribbon of this.aurora) {
+      const phase = ribbon.userData.phase || 0;
+      ribbon.position.x += Math.sin(this.atmosphereTime * 0.08 + phase) * delta * 0.7;
+      ribbon.rotation.z += Math.sin(this.atmosphereTime * 0.12 + phase) * delta * 0.0015;
+      ribbon.material.opacity = 0.035 + (Math.sin(this.atmosphereTime * 0.35 + phase) + 1) * 0.018;
+    }
     this.windTime += delta;
 
     // Infinite / Seamless Open World dynamic centering & chunk generation
@@ -2414,7 +2634,9 @@ export default class World {
       this.waterMesh.position.y = -1.0 + Math.sin(this.windTime * 1.5) * 0.04;
     }
 
-    if (this.fireflies) {
+    this._fireflyUpdateTimer -= delta;
+    if (this.fireflies && this._fireflyUpdateTimer <= 0) {
+      this._fireflyUpdateTimer = 0.033;
       const pos = this.fireflies.geometry.attributes.position;
       const phase = this.fireflies.geometry.attributes.phase;
       for (let i = 0; i < pos.count; i++) {
