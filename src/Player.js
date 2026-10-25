@@ -184,6 +184,12 @@ export default class Player {
     this.torchLight.castShadow = false;
     this.scene.add(this.torchLight);
 
+    // Boss Trophy Altar Buffs
+    this.activeBossBuff = null; // 'stag', 'wyrm', 'golem', 'wraith', 'dragon'
+    this.woodcuttingBuffTimer = 0;
+    this.buffCooldownTimer = 0;
+    this.buffDurationTimer = 0;
+
     this._initPlayerModel();
     this.setupInputs();
 
@@ -282,8 +288,19 @@ export default class Player {
     const boss = new THREE.Mesh(bossGeo, ironMat);
     boss.position.z = 0.025;
     this.shieldOnArm.add(boss);
-    this.shieldOnArm.position.set(0.06, 0.12, 0);
-    this.shieldOnArm.rotation.set(0, Math.PI / 2, 0);
+    const isSlotL = (leftArmBone && leftArmBone.name && leftArmBone.name.toLowerCase().includes('slot'));
+    this.shieldRestPos = new THREE.Vector3();
+    this.shieldRestRot = new THREE.Euler();
+    if (isSlotL) {
+      this.shieldRestPos.set(0, 0, 0.05);
+      this.shieldRestRot.set(-Math.PI / 2, 0, 0);
+    } else {
+      // Attached to forearm bone: face outward to the left side
+      this.shieldRestPos.set(-0.10, 0.14, 0.04);
+      this.shieldRestRot.set(0, -Math.PI / 2, 0);
+    }
+    this.shieldOnArm.position.copy(this.shieldRestPos);
+    this.shieldOnArm.rotation.copy(this.shieldRestRot);
 
     if (leftArmBone) {
       leftArmBone.add(this.shieldOnArm);
@@ -476,8 +493,8 @@ export default class Player {
     if (bowAsset) {
       bowAsset.scale.set(0.8, 0.8, 0.8);
       if (isSlot) {
-        bowAsset.rotation.set(0, 0, 0);
-        bowAsset.position.set(0, 0, 0);
+        bowAsset.rotation.set(0, Math.PI / 2, -Math.PI / 2);
+        bowAsset.position.set(0.02, 0.06, 0.08);
       } else {
         bowAsset.rotation.set(Math.PI / 2, 0, 0);
         bowAsset.position.set(0.02, 0.04, 0.1);
@@ -692,13 +709,51 @@ export default class Player {
   stopBlock() {
     this.isBlocking = false;
     if (this.shieldOnArm) {
-      this.shieldOnArm.position.set(0.06, 0.12, 0);
-      this.shieldOnArm.rotation.set(0, Math.PI / 2, 0);
+      if (this.shieldRestPos && this.shieldRestRot) {
+        this.shieldOnArm.position.copy(this.shieldRestPos);
+        this.shieldOnArm.rotation.copy(this.shieldRestRot);
+      } else {
+        this.shieldOnArm.position.set(-0.10, 0.14, 0.04);
+        this.shieldOnArm.rotation.set(0, -Math.PI / 2, 0);
+      }
       const shield = this.getEquippedShield();
       this.shieldOnArm.visible = !!shield;
     }
     if (this.hud && this.hud.hideBlockMeter) {
       this.hud.hideBlockMeter(1200);
+    }
+  }
+
+  activateBossBuff(buffType) {
+    this.activeBossBuff = buffType;
+    try {
+      localStorage.setItem('tikapoo_boss_buff', buffType);
+    } catch (e) {}
+  }
+
+  triggerBossBuffPower() {
+    if (!this.activeBossBuff) {
+      if (this.hud) this.hud.showNotification('⚠️ Sinulla ei ole aktiivista Alttaribuffia! Tuo bossin Trophy alttarille.');
+      return;
+    }
+    if (this.buffCooldownTimer > 0) {
+      if (this.hud) this.hud.showNotification(`⏳ Buffin latausaika jäljellä: ${Math.ceil(this.buffCooldownTimer)}s`);
+      return;
+    }
+
+    if (this.activeBossBuff === 'stag') {
+      this.woodcuttingBuffTimer = 120.0; // 2 minutes
+      this.buffDurationTimer = 120.0;
+      this.buffCooldownTimer = 300.0; // 5 min cooldown
+      if (this.hud) this.hud.showNotification('🌲 METSURIN VOIMA AKTIVOITU! (Puunhakkuu 2x nopeampaa 2 minuutin ajan!)');
+    } else if (this.activeBossBuff === 'wyrm') {
+      this.buffDurationTimer = 120.0;
+      this.buffCooldownTimer = 300.0;
+      if (this.hud) this.hud.showNotification('⚡ SUOJUOKSIJA AKTIVOITU! (+35% Nopeus 2 minuutin ajan!)');
+    } else if (this.activeBossBuff === 'golem') {
+      this.buffDurationTimer = 120.0;
+      this.buffCooldownTimer = 300.0;
+      if (this.hud) this.hud.showNotification('🗿 VUOREN KILPI AKTIVOITU! (+50% Panssari 2 minuutin ajan!)');
     }
   }
 
@@ -829,6 +884,15 @@ export default class Player {
         e.preventDefault();
       }
 
+      // Ignore movement and action keys while typing in input fields, when dead, or when a menu is open
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+      if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+
+      // Activate Boss Trophy Buff with [F] key
+      if (e.code === 'KeyF') {
+        this.triggerBossBuffPower();
+      }
+
       // Toggle 3rd person / 1st person with [F5] or [P] (leaves [V] exclusively for Stone Pickaxe)
       if (e.code === 'F5' || e.code === 'KeyP') {
         e.preventDefault();
@@ -853,8 +917,6 @@ export default class Player {
         }
       }
 
-      // Ignore movement keys while typing in input fields, when dead, or when a menu is open
-      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
       if (this.isDead || this._isAnyMenuOpen()) return;
 
       switch (e.code) {
@@ -951,6 +1013,11 @@ export default class Player {
       this.updateHeldWeapon();
     }
 
+    // Update Boss Buff timers
+    if (this.buffCooldownTimer > 0) this.buffCooldownTimer = Math.max(0, this.buffCooldownTimer - delta);
+    if (this.buffDurationTimer > 0) this.buffDurationTimer = Math.max(0, this.buffDurationTimer - delta);
+    if (this.woodcuttingBuffTimer > 0) this.woodcuttingBuffTimer = Math.max(0, this.woodcuttingBuffTimer - delta);
+
     // Keep equipped armor visuals updated
     if (this.inventory && this._lastArmor !== this.inventory.equippedArmor) {
       this._lastArmor = this.inventory.equippedArmor;
@@ -963,7 +1030,7 @@ export default class Player {
 
     if (hasModal) {
       // Menu is open: freeze player movement inputs, but ensure gravity updates if in mid-air
-      if (this.isFalling) {
+      if (!this.isGrounded) {
         this.velocity.y -= 25.0 * delta;
         this.playerPos.y += this.velocity.y * delta;
         if (world) {
@@ -972,10 +1039,11 @@ export default class Player {
             this.playerPos.y = groundY;
             this.velocity.y = 0;
             this.isGrounded = true;
-            this.isFalling = false;
           }
         }
-        if (this.camera) this.camera.position.set(this.playerPos.x, this.playerPos.y + this.eyeHeight, this.playerPos.z);
+        if (this.camera) {
+          this.camera.position.set(this.playerPos.x, this.playerPos.y + this.heightAboveGround, this.playerPos.z);
+        }
       }
       return;
     }
@@ -986,8 +1054,9 @@ export default class Player {
       return;
     }
 
-    // Determine movement direction relative to camera facing
-    const isMoving = this.keys.forward || this.keys.back || this.keys.left || this.keys.right;
+    // Determine movement direction relative to camera facing (supports keyboard WASD and mobile analog joystick)
+    const isAnalogMoving = this.analogMove && (Math.abs(this.analogMove.x) > 0.05 || Math.abs(this.analogMove.y) > 0.05);
+    const isMoving = this.keys.forward || this.keys.back || this.keys.left || this.keys.right || isAnalogMoving;
     const canSprint = this.stamina > 5 && this.thirst > 5;
     const isSprinting = this.keys.sprint && isMoving && canSprint;
 
@@ -1038,6 +1107,9 @@ export default class Player {
     }
 
     let currentSpeed = isSprinting ? this.sprintSpeed : this.moveSpeed;
+    if (this.activeBossBuff === 'wyrm' && this.buffDurationTimer > 0) {
+      currentSpeed *= 1.35; // Swamp Wyrm buff: 35% faster movement speed!
+    }
     if (this.isBlocking) {
       currentSpeed *= 0.72; // Braced movement speed while holding shield guard
     } else if (this.isGuardBroken) {
@@ -1356,6 +1428,12 @@ export default class Player {
       if (combat && combat.weaponRig) {
         combat.weaponRig.visible = true;
       }
+    }
+
+    // Guarantee upright horizon with proper 'YXZ' Euler order so roll cannot accumulate
+    if (this.camera) {
+      this.camera.rotation.order = 'YXZ';
+      this.camera.rotation.z = 0;
     }
 
     // Contextual interaction prompts (Campfires / Beds, Water drinking)
@@ -1764,6 +1842,6 @@ export default class Player {
   }
 
   getPosition() {
-    return this.playerPos.clone();
+    return this.playerPos;
   }
 }

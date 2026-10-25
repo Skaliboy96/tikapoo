@@ -432,8 +432,6 @@ export default class MobileControls {
         font-size: 19px;
         line-height: 19px;
       }
-        line-height: 18px;
-      }
 
       /* Top Mobile Quick Navigation Bar */
       .mobile-top-bar {
@@ -472,18 +470,31 @@ export default class MobileControls {
 
       /* Screen Adaptation for Mobile */
       body.mobile-mode #hud {
-        top: 8px;
-        left: 8px;
-        bottom: auto;
-        transform: none;
-        padding: 5px 8px;
-        width: 140px;
-        min-width: 120px;
-        max-width: 150px;
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        background: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        pointer-events: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      body.mobile-mode #hud-vitals-container {
+        position: fixed !important;
+        top: max(8px, env(safe-area-inset-top, 8px)) !important;
+        left: max(8px, env(safe-area-inset-left, 8px)) !important;
+        width: 135px !important;
+        max-width: 145px !important;
+        height: auto !important;
+        pointer-events: auto !important;
         background: rgba(10, 14, 20, 0.85);
-        border-radius: 6px;
-        gap: 3px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+        border: 1px solid rgba(255, 215, 0, 0.25);
+        border-radius: 8px;
+        padding: 6px 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
       }
 
       body.mobile-mode #hud .bar-label span:last-child {
@@ -1094,6 +1105,7 @@ export default class MobileControls {
               // Clamp pitch between -75 deg and +75 deg
               const maxPitch = Math.PI * 0.42;
               this.camera.rotation.x = Math.max(-maxPitch, Math.min(maxPitch, this.camera.rotation.x));
+              this.camera.rotation.z = 0;
             }
             break;
           }

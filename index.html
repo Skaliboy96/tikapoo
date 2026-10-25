@@ -195,45 +195,39 @@
         <div id="hud-biome-tag" class="hud-biome-badge">AARNIOMETSÄ</div>
       </div>
 
-      <!-- Hotbar + Right Menu Actions Row -->
+      <!-- Hotbar Row (Clean Action Bar in Bottom-Center) -->
       <div class="hud-hotbar-row">
         <!-- Hotbar (10 slots) -->
         <div id="hotbar" class="hotbar-container"></div>
-
-        <!-- Menu Action Buttons Row -->
-        <div id="hud-hotbar-actions" class="hud-hotbar-actions">
-          <button id="open-backpack-btn" class="hud-btn hud-btn-bp" title="Reppu [I]">
-            <span class="hud-btn-icon">🎒</span>
-            <span class="hud-btn-text">Reppu</span>
-            <span class="hud-btn-key">[I]</span>
-          </button>
-          <button id="open-craft-btn" class="hud-btn hud-btn-craft" title="Paja [C]">
-            <span class="hud-btn-icon">⚒️</span>
-            <span class="hud-btn-text">Paja</span>
-            <span class="hud-btn-key">[C]</span>
-          </button>
-          <button id="open-map-btn" class="hud-btn hud-btn-map" title="Kartta [M]">
-            <span class="hud-btn-icon">🗺️</span>
-            <span class="hud-btn-text">Kartta</span>
-            <span class="hud-btn-key">[M]</span>
-          </button>
-          <button id="open-skills-btn" class="hud-btn hud-btn-skills" title="Taidot [O]">
-            <span class="hud-btn-icon">⭐</span>
-            <span class="hud-btn-text">Taidot</span>
-            <span class="hud-btn-key">[O]</span>
-          </button>
-          <button id="open-build-btn" class="hud-btn hud-btn-build build-highlight" title="Rakennustila [B]">
-            <span class="hud-btn-icon">🔨</span>
-            <span class="hud-btn-text">RAKENNUS</span>
-            <span class="hud-btn-key">[B]</span>
-          </button>
-          <button id="open-pause-btn" class="hud-btn hud-btn-pause" title="Valikko [Esc]">
-            <span class="hud-btn-icon">⚙️</span>
-            <span class="hud-btn-text">Valikko</span>
-            <span class="hud-btn-key">[Esc]</span>
-          </button>
-        </div>
       </div>
+    </div>
+
+    <!-- Right Side Menu Action Buttons (Distinct Valheim / RPG sidebar layout) -->
+    <div id="hud-hotbar-actions" class="hud-hotbar-actions">
+      <button id="open-backpack-btn" class="hud-btn hud-btn-bp" title="Inventaario [I]">
+        <span class="hud-btn-text">INVENTAARIO</span>
+        <span class="hud-btn-key">[I]</span>
+      </button>
+      <button id="open-craft-btn" class="hud-btn hud-btn-craft" title="Laitteet / Valmista [C]">
+        <span class="hud-btn-text">LAITTEET</span>
+        <span class="hud-btn-key">[C]</span>
+      </button>
+      <button id="open-map-btn" class="hud-btn hud-btn-map" title="Kartta [M]">
+        <span class="hud-btn-text">KARTTA</span>
+        <span class="hud-btn-key">[M]</span>
+      </button>
+      <button id="open-skills-btn" class="hud-btn hud-btn-skills" title="Taidot [O]">
+        <span class="hud-btn-text">TAIDOT</span>
+        <span class="hud-btn-key">[O]</span>
+      </button>
+      <button id="open-build-btn" class="hud-btn hud-btn-build build-highlight" title="Rakenna [B]">
+        <span class="hud-btn-text">RAKENNA</span>
+        <span class="hud-btn-key">[B]</span>
+      </button>
+      <button id="open-pause-btn" class="hud-btn hud-btn-pause" title="Valikko [Esc]">
+        <span class="hud-btn-text">VALIKKO</span>
+        <span class="hud-btn-key">[ESC]</span>
+      </button>
     </div>
   </div>
 
@@ -955,6 +949,9 @@
     <div class="dev-bottom-drawer">
       <div class="dev-drawer-tabs">
         <button class="dev-category-tab active" data-category="nature">🌲 Luonto (Nature)</button>
+        <button class="dev-category-tab" data-category="buildings">🏰 Isot Rakennukset (Buildings)</button>
+        <button class="dev-category-tab" data-category="water">🌊 Joet &amp; Vesi (Rivers &amp; Water)</button>
+        <button class="dev-category-tab" data-category="terrain">⛰️ Muokkaa Maastoa (Terrain Sculpt)</button>
         <button class="dev-category-tab" data-category="structures">🪵 Rakenteet (Structures)</button>
         <button class="dev-category-tab" data-category="crafting">🔥 Tuli &amp; Työpisteet</button>
         <button class="dev-category-tab" data-category="props">📦 Huonekalut &amp; Tavarat</button>
@@ -974,6 +971,38 @@
         <button class="dev-palette-btn" data-category="nature" data-type="rock_pebble" data-model="Pebble_Round_1" data-name="Irtokivi">🪨 Irtokivi</button>
         <button class="dev-palette-btn" data-category="nature" data-type="bush_berry" data-model="BushBerries_1" data-name="Marjapensas">🫐 Marjapensas</button>
         <button class="dev-palette-btn" data-category="nature" data-type="chest" data-model="Chest_Wood" data-name="Aarrearkku">🎁 Aarrearkku</button>
+      </div>
+
+      <!-- Big Buildings Palette -->
+      <div class="dev-palette-content" id="dev-palette-buildings" style="display: none;">
+        <button class="dev-palette-btn" data-category="buildings" data-type="prefab_longhouse" data-name="Viikinkien Pitkätalo">🏰 Pitkätalo (Longhouse)</button>
+        <button class="dev-palette-btn" data-category="buildings" data-type="prefab_cottage" data-name="Hirsimökki">🛖 Hirsimökki (Cottage)</button>
+        <button class="dev-palette-btn" data-category="buildings" data-type="prefab_tower" data-name="Kivinen Vartiotorni">🗼 Vartiotorni (Tower)</button>
+        <button class="dev-palette-btn" data-category="buildings" data-type="prefab_pier" data-name="Satamalaituri">⚓ Satamalaituri (Pier)</button>
+        <button class="dev-palette-btn" data-category="buildings" data-type="prefab_bridge" data-name="Kivisilta">🌉 Kivisilta (Bridge)</button>
+        <button class="dev-palette-btn" data-category="buildings" data-type="prefab_gate" data-name="Linnakkeen Portti">⛩️ Portti (Town Gate)</button>
+      </div>
+
+      <!-- Rivers & Water Palette -->
+      <div class="dev-palette-content" id="dev-palette-water" style="display: none;">
+        <button class="dev-palette-btn" data-category="water" data-type="water_river_straight" data-name="Suora Jokiosuus (16m)">🌊 Jokiosuus (16m)</button>
+        <button class="dev-palette-btn" data-category="water" data-type="water_river_wide" data-name="Leveä Joki (32m)">🌊 Leveä Joki (32m)</button>
+        <button class="dev-palette-btn" data-category="water" data-type="water_pond" data-name="Metsälampi">💧 Metsälampi (Pond)</button>
+        <button class="dev-palette-btn" data-category="water" data-type="water_spring" data-name="Lähdeallas">⛲ Lähdeallas (Spring)</button>
+      </div>
+
+      <!-- Terrain Sculpting Palette -->
+      <div class="dev-palette-content" id="dev-palette-terrain" style="display: none;">
+        <button class="dev-terrain-tool-btn dev-palette-btn active" data-category="terrain" data-type="terrain_raise" data-action="raise" data-name="Nosta Maata (+)">⛰️ Nosta Maata (+)</button>
+        <button class="dev-terrain-tool-btn dev-palette-btn" data-category="terrain" data-type="terrain_lower" data-action="lower" data-name="Kaiva Maata / Joki (-)">⛏️ Kaiva Maata / Joki (-)</button>
+        <button class="dev-terrain-tool-btn dev-palette-btn" data-category="terrain" data-type="terrain_flatten" data-action="flatten" data-name="Tasaa Maata (=)">📐 Tasaa Maata (=)</button>
+        <button class="dev-terrain-tool-btn dev-palette-btn" data-category="terrain" data-type="terrain_smooth" data-action="smooth" data-name="Pehmennä (~)">🌊 Pehmennä (~)</button>
+        <div style="display: flex; align-items: center; gap: 4px; margin-left: 8px;">
+          <span style="font-size: 11px; color: #8fa3bf;">Säde:</span>
+          <button class="dev-terrain-size-btn dev-speed-btn" data-radius="4">4m</button>
+          <button class="dev-terrain-size-btn dev-speed-btn active" data-radius="8">8m</button>
+          <button class="dev-terrain-size-btn dev-speed-btn" data-radius="16">16m</button>
+        </div>
       </div>
 
       <!-- Structures Palette -->

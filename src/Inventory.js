@@ -236,7 +236,18 @@ export default class Inventory {
       swampScale: '🐉 Suomu',
       graniteCore: '💎 Graniittisydän',
       runeCore: '💠 Riimuydin',
-      dragonCrown: '👑 Varjokruunu'
+      dragonCrown: '👑 Varjokruunu',
+      backpack: '🎒 Nahkainen Reppu (+Lisätilaa)',
+      rake: '🌾 Harava (Peltojen muokkaus)',
+      potato: '🥔 Peruna',
+      potato_seed: '🌱 Perunan siemen',
+      carrot_seed: '🌱 Porkkanan siemen',
+      wheat_seed: '🌱 Viljan siemen',
+      trophy_ancient_stag: '🦌 Sarvipadon Sarvi & Pää',
+      trophy_swamp_wyrm: '🐍 Vesipedon Kallo',
+      trophy_mountain_golem: '🗿 Jätin Kivisydän',
+      trophy_rune_wraith: '💀 Riimu-aaveen Kallo',
+      trophy_shadow_dragon: '🐉 Varjodraakin Pää'
     };
 
     const namesEn = {

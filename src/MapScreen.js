@@ -45,6 +45,8 @@ export default class MapScreen {
 
   _setupListeners() {
     window.addEventListener('keydown', (e) => {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+      if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
       if (e.code === 'KeyM') {
         e.preventDefault();
         this.toggle();

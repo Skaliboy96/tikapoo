@@ -371,6 +371,16 @@ export default class NPC {
           const qTitle = isFi ? (q.title_fi || q.title) : (q.title_en || q.title);
           this.hud.showNotification(`${isFi ? '⚔️ Tehtävä aloitettu' : '⚔️ Quest accepted'}: ${qTitle}`);
         }
+
+        // Reveal boss clues through NPC quest dialogue
+        const bm = window.__game?.bossManager;
+        if (bm) {
+          if (qid === 'slayBoss1' || qid === 'exploreRuins') bm.revealBoss('forestBeast', this.activeNPC?.name);
+          else if (qid === 'scoutTower') bm.revealBoss('mountainGolem', this.activeNPC?.name);
+          else if (qid === 'slayBoss4') bm.revealBoss('runeWraith', this.activeNPC?.name);
+          else if (qid === 'slayBoss5') bm.revealBoss('ashDemon', this.activeNPC?.name);
+        }
+
         this.closeDialogue();
       });
     });
@@ -379,6 +389,13 @@ export default class NPC {
         e.stopPropagation();
         const qid = btn.dataset.qid;
         this.questManager.complete(qid);
+
+        const bm = window.__game?.bossManager;
+        if (bm) {
+          if (qid === 'slayBoss1') bm.revealBoss('swampWyrm', this.activeNPC?.name);
+          else if (qid === 'scoutTower') bm.revealBoss('mountainGolem', this.activeNPC?.name);
+        }
+
         this.closeDialogue();
       });
     });

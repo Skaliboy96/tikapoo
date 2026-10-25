@@ -60,6 +60,8 @@ export default class BackpackScreen {
 
   _setupListeners() {
     window.addEventListener('keydown', (e) => {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+      if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
       if (e.code === 'KeyI') {
         // Toggle inventory screen [I]
         e.preventDefault();
@@ -622,6 +624,16 @@ export default class BackpackScreen {
     const isFi = Localization.lang === 'fi';
 
     const itemMeta = {
+      potato:         { name: isFi ? 'Peruna' : 'Potato', icon: '🥔', type: isFi ? 'Ruoka' : 'Food', usable: true },
+      potato_seed:    { name: isFi ? 'Perunan siemen' : 'Potato Seed', icon: '🌱', type: isFi ? 'Siemen' : 'Seed' },
+      carrot_seed:    { name: isFi ? 'Porkkanan siemen' : 'Carrot Seed', icon: '🌱', type: isFi ? 'Siemen' : 'Seed' },
+      wheat_seed:     { name: isFi ? 'Viljan siemen' : 'Wheat Seed', icon: '🌱', type: isFi ? 'Siemen' : 'Seed' },
+      backpack:       { name: isFi ? 'Nahkareppu' : 'Leather Backpack', icon: '🎒', type: isFi ? 'Varuste' : 'Gear' },
+      trophy_ancient_stag: { name: isFi ? 'Sarvipadon Pää' : 'Stag Trophy', icon: '🦌', type: isFi ? 'Trophy' : 'Trophy' },
+      trophy_swamp_wyrm:   { name: isFi ? 'Vesipedon Kallo' : 'Wyrm Trophy', icon: '🐍', type: isFi ? 'Trophy' : 'Trophy' },
+      trophy_mountain_golem: { name: isFi ? 'Jätin Kivisydän' : 'Golem Trophy', icon: '🗿', type: isFi ? 'Trophy' : 'Trophy' },
+      trophy_rune_wraith:    { name: isFi ? 'Aaveen Kallo' : 'Wraith Trophy', icon: '💀', type: isFi ? 'Trophy' : 'Trophy' },
+      trophy_shadow_dragon:  { name: isFi ? 'Draakin Pää' : 'Dragon Trophy', icon: '🐉', type: isFi ? 'Trophy' : 'Trophy' },
       wood:           { name: isFi ? 'Puu' : 'Wood', icon: '🪵', type: isFi ? 'Resurssi' : 'Resource' },
       stone:          { name: isFi ? 'Kivi' : 'Stone', icon: '🪨', type: isFi ? 'Resurssi' : 'Resource' },
       berry:          { name: isFi ? 'Villimarja' : 'Wild Berry', icon: '🫐', type: isFi ? 'Ruoka' : 'Food', usable: true },
@@ -685,6 +697,7 @@ export default class BackpackScreen {
 
     // Add crafted/owned tools
     const toolMeta = {
+      rake:            { name: isFi ? 'Harava' : 'Rake', icon: '🌾', type: isFi ? 'Työkalu' : 'Tool' },
       torch:           { name: isFi ? 'Soihtu' : 'Torch', icon: '🔥', type: isFi ? 'Valonlähde' : 'Light Source' },
       stoneAxe:        { name: isFi ? 'Kivikirves' : 'Stone Axe', icon: '🪓', type: isFi ? 'Kirves' : 'Axe' },
       bronzeAxe:       { name: isFi ? 'Pronssikirves' : 'Bronze Axe', icon: '🪓', type: isFi ? 'Kirves' : 'Axe' },
@@ -721,8 +734,13 @@ export default class BackpackScreen {
       }
     }
 
-    // Fill up to 24 slots (4 rows x 6 cols)
-    const totalSlots = 24;
+    // Check if player has backpack (40 slots instead of 24)
+    const hasBackpack = (this.inventory && this.inventory.has && this.inventory.has('backpack', 1));
+    const totalSlots = hasBackpack ? 40 : 24;
+    const invTitleEl = document.querySelector('.bp-inv-title');
+    if (invTitleEl) {
+      invTitleEl.textContent = `INVENTORY (${totalSlots} SLOTS)${hasBackpack ? ' [REMPULLA LAAJENNETTU]' : ''}`;
+    }
     let html = '';
 
     for (let i = 0; i < totalSlots; i++) {

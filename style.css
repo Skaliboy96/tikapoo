@@ -774,58 +774,59 @@ canvas {
 }
 
 .hud-hotbar-actions {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
   display: flex;
-  gap: 4px;
+  flex-direction: column;
+  gap: 5px;
   background: rgba(14, 18, 26, 0.88);
   border: 2px solid #5a452d;
   border-radius: 8px;
-  padding: 4px 6px;
+  padding: 8px 10px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(5px);
+  z-index: 100;
+  min-width: 110px;
 }
 
 .hud-btn {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  background: rgba(22, 28, 38, 0.9);
-  border: 1.5px solid #4a3b2c;
+  justify-content: space-between;
+  background: rgba(22, 28, 38, 0.7);
+  border: 1px solid #4a3b2c;
   color: #d1d8e0;
-  padding: 4px 6px;
-  min-width: 46px;
-  height: 52px;
-  border-radius: 5px;
+  padding: 5px 8px;
+  border-radius: 4px;
   font-family: 'Cinzel', serif;
   cursor: pointer;
   transition: all 0.15s ease;
   user-select: none;
+  width: 100%;
 }
 
 .hud-btn:hover {
   background: rgba(35, 45, 62, 0.95);
   border-color: #d4af37;
   color: #fff;
-  transform: translateY(-2px);
+  transform: translateX(-2px);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
 }
 
-.hud-btn-icon {
-  font-size: 17px;
-  line-height: 18px;
-}
-
 .hud-btn-text {
-  font-size: 7.5px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.5px;
-  margin-top: 2px;
+  letter-spacing: 0.8px;
+  color: #ecf0f1;
 }
 
 .hud-btn-key {
-  font-size: 6.5px;
+  font-size: 9.5px;
   color: #f1c40f;
   font-weight: 800;
+  margin-left: 6px;
 }
 
 /* Dedicated Prominent Building Mode Button */
@@ -1022,24 +1023,10 @@ canvas {
   font-weight: 500;
 }
 
-/* Mini-Map bottom-right */
-#minimap-container {
-  position: fixed;
-  bottom: 25px;
-  right: 25px;
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
-  overflow: hidden;
-  background: rgba(10, 16, 22, 0.8);
-  z-index: 90;
-}
-
+/* Mini-Map bottom-right override removed to keep minimap in TOP-RIGHT with compass cardinals */
 #minimap {
-  width: 150px;
-  height: 150px;
+  width: 140px;
+  height: 140px;
   display: block;
 }
 
@@ -2270,16 +2257,14 @@ canvas {
    Valheim style wooden parchment tracker above HUD bottom-left
    ============================================================ */
 #quest-log {
-  position: fixed;
-  top: 75px;
-  left: 24px;
-  min-width: 240px;
-  max-width: 290px;
+  position: static;
+  min-width: 210px;
+  max-width: 260px;
+  margin-top: 10px;
   background: rgba(14, 18, 25, 0.92);
   border: 2px solid #57432e;
   border-radius: 6px;
-  padding: 10px 14px;
-  z-index: 90;
+  padding: 8px 12px;
   backdrop-filter: blur(5px);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.75), inset 0 0 10px rgba(0, 0, 0, 0.6);
 }

@@ -481,6 +481,14 @@ export default class AssetLoader {
       { name: 'dagger',                  url: '/assets/KayKit_Adventurers_2.0_FREE/KayKit_Adventurers_2.0_FREE/Assets/gltf/dagger.gltf' },
       { name: 'wand',                    url: '/assets/KayKit_Adventurers_2.0_FREE/KayKit_Adventurers_2.0_FREE/Assets/gltf/wand.gltf' },
 
+      // KayKit Nature Pack Assets
+      { name: 'Tree_1_A', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_1_A_Color1.gltf' },
+      { name: 'Tree_2_A', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_2_A_Color1.gltf' },
+      { name: 'Tree_3_A', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_3_A_Color1.gltf' },
+      { name: 'Bush_1_A', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Bush_1_A_Color1.gltf' },
+      { name: 'Rock_1_A', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_1_A_Color1.gltf' },
+      { name: 'Rock_2_A', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_2_A_Color1.gltf' },
+
       // Trees
       { name: 'Pine_1', url: '/assets/nature/Pine_1.gltf' },
       { name: 'Pine_2', url: '/assets/nature/Pine_2.gltf' },

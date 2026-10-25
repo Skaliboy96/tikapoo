@@ -1534,10 +1534,13 @@ export default class BuildingSystem {
     solidMesh.rotation.copy(this.previewMesh.rotation);
     this.scene.add(solidMesh);
 
+    const structureMaxHp = this.getDefaultMaxHp(this.selectedStructure);
     this.placedStructures.push({
       mesh: solidMesh,
       type: this.selectedStructure,
-      position: solidMesh.position.clone()
+      position: solidMesh.position.clone(),
+      health: structureMaxHp,
+      maxHealth: structureMaxHp
     });
 
     // Add solid structure collider so player cannot walk through walls/crafting stations/props
@@ -1627,11 +1630,14 @@ export default class BuildingSystem {
     }
     this.scene.add(solidMesh);
 
+    const structureMaxHp = this.getDefaultMaxHp(type);
     const structure = {
       mesh: solidMesh,
       type: type,
       position: solidMesh.position.clone(),
-      customId: customId || null
+      customId: customId || null,
+      health: structureMaxHp,
+      maxHealth: structureMaxHp
     };
     this.placedStructures.push(structure);
 
@@ -1691,6 +1697,71 @@ export default class BuildingSystem {
       }
     }
     return structure;
+  }
+
+  getDefaultMaxHp(type) {
+    const t = (type || '').toLowerCase();
+    if (t.includes('palisade') || t.includes('gate')) return 350;
+    if (t.includes('wall') || t.includes('log')) return 250;
+    if (t.includes('door')) return 160;
+    if (t.includes('roof') || t.includes('stairs')) return 180;
+    if (t.includes('floor')) return 200;
+    if (t.includes('forge') || t.includes('smelter')) return 400;
+    if (t.includes('workbench')) return 200;
+    return 150;
+  }
+
+  damageStructure(structure, amount) {
+    if (!structure) return;
+    if (structure.health === undefined) {
+      structure.maxHealth = this.getDefaultMaxHp(structure.type);
+      structure.health = structure.maxHealth;
+    }
+    structure.health -= amount;
+
+    // Visual damage flash
+    if (structure.mesh) {
+      structure.mesh.traverse(c => {
+        if (c.isMesh && c.material && c.material.color) {
+          const orig = c.userData._origColor || c.material.color.getHex();
+          c.userData._origColor = orig;
+          c.material.color.setHex(0xff3333);
+          setTimeout(() => {
+            if (c.material && c.material.color) c.material.color.setHex(orig);
+          }, 140);
+        }
+      });
+    }
+
+    if (structure.health <= 0) {
+      // Structure destroyed!
+      if (this.hud) {
+        this.hud.showNotification(`💥 Rakennus tuhoutui! (${structure.type})`);
+      }
+      this.removeStructure(structure.mesh);
+      return true; // destroyed
+    }
+    return false;
+  }
+
+  repairStructure(structure, amount = 60) {
+    if (!structure) return false;
+    if (structure.health === undefined) {
+      structure.maxHealth = this.getDefaultMaxHp(structure.type);
+      structure.health = structure.maxHealth;
+    }
+    if (structure.health >= structure.maxHealth) {
+      if (this.hud) this.hud.showNotification('🔨 Rakenne on jo täydessä kunnossa!');
+      return false;
+    }
+    structure.health = Math.min(structure.maxHealth, structure.health + amount);
+    if (this.audioManager && this.audioManager.playBuild) {
+      this.audioManager.playBuild();
+    }
+    if (this.hud) {
+      this.hud.showNotification(`🔨 Korjattu! Kunto: ${Math.round(structure.health)} / ${structure.maxHealth}`);
+    }
+    return true;
   }
 
   removeStructure(mesh) {

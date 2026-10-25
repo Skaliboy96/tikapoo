@@ -21,6 +21,7 @@ import LootManager from './LootManager.js';
 import Hotbar from './Hotbar.js';
 import AnimalManager from './AnimalManager.js';
 import FishingSystem from './FishingSystem.js';
+import FarmingSystem from './FarmingSystem.js';
 import BossManager from './BossManager.js';
 import SkillTree from './SkillTree.js';
 import AchievementManager from './AchievementManager.js';
@@ -67,6 +68,7 @@ async function init() {
     0.1,
     1600
   );
+  camera.rotation.order = 'YXZ';
   scene.add(camera);
 
   // Detect mobile & touch devices early for optimal GPU memory & canvas scaling
@@ -154,6 +156,10 @@ async function init() {
   // Fishing system (cast rod at river, bite detection, timed catch mini-game)
   const fishingSystem = new FishingSystem(scene, world, player, inventory, hud, audioManager, questManager);
   fishingSystem.achievementManager = achievementManager;
+
+  // Farming system (till soil with Rake, plant crops, harvest yield)
+  const farmingSystem = new FarmingSystem(scene, world, inventory, hud, audioManager);
+  farmingSystem.player = player;
   player.buildingSystem = buildingSystem;
   buildingSystem.player = player;
   inventory.buildingSystem = buildingSystem;
@@ -170,7 +176,11 @@ async function init() {
   const enemyManager = new EnemyManager(scene, world, inventory, hud, audioManager, questManager, assetLoader, lootManager);
   enemyManager.achievementManager = achievementManager;
   enemyManager.ragdollManager = ragdollManager;
+  enemyManager.buildingSystem = buildingSystem;
+  buildingSystem.enemyManager = enemyManager;
   const combat = new Combat(scene, camera, player, enemyManager, inventory, hud, audioManager, assetLoader, animalManager, bossManager);
+  combat.buildingSystem = buildingSystem;
+  combat.farmingSystem = farmingSystem;
   const dayNightCycle = new DayNightCycle(scene, world, hud, audioManager, questManager);
 
   // Skill Tree & Special Abilities (Keys 1-4, Tree UI on [O], Quests Tab, Achievements Tab)
@@ -357,17 +367,44 @@ async function init() {
   };
 
   const menuCharBtn = document.getElementById('menu-char-btn');
-  if (menuCharBtn) {
-    menuCharBtn.addEventListener('click', (e) => {
+  // Unified touch-friendly button binder (Guarantees immediate responsiveness on iOS Safari and Android)
+  const bindTouchClick = (el, handler) => {
+    if (!el) return;
+    let lastActionTime = 0;
+    const trigger = (e) => {
+      const now = performance.now();
+      if (now - lastActionTime < 320) return;
+      lastActionTime = now;
+      if (e.cancelable) e.preventDefault();
       e.stopPropagation();
+      if (audioManager) audioManager.ensureContext();
+      handler(e);
+    };
+    el.addEventListener('click', (e) => {
+      const now = performance.now();
+      if (now - lastActionTime < 320) return;
+      lastActionTime = now;
+      e.stopPropagation();
+      if (audioManager) audioManager.ensureContext();
+      handler(e);
+    });
+    el.addEventListener('touchend', trigger, { passive: false });
+    el.addEventListener('pointerup', (e) => {
+      if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+        trigger(e);
+      }
+    });
+  };
+
+  if (menuCharBtn) {
+    bindTouchClick(menuCharBtn, (e) => {
       if (mainMenu) mainMenu.style.display = 'none';
       characterCreator.open();
     });
   }
 
   if (menuPlayBtn) {
-    menuPlayBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    bindTouchClick(menuPlayBtn, (e) => {
       const hasSavedChar = localStorage.getItem('tikapoo_character');
       if (!hasSavedChar) {
         if (mainMenu) mainMenu.style.display = 'none';
@@ -384,8 +421,7 @@ async function init() {
     if (saveSystem.hasSave() || (accountSystem && accountSystem.loadCurrentProfile())) {
       menuContinueBtn.style.display = 'block';
     }
-    menuContinueBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    bindTouchClick(menuContinueBtn, (e) => {
       if (accountSystem && accountSystem.isLoggedIn() && accountSystem.loadCurrentProfile()) {
         saveSystem.applySaveData(accountSystem.loadCurrentProfile());
       } else {
@@ -398,8 +434,7 @@ async function init() {
   const saveFileInput = document.getElementById('savegame-file-input');
   const menuLoadBtn = document.getElementById('menu-load-btn');
   if (menuLoadBtn && saveFileInput) {
-    menuLoadBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    bindTouchClick(menuLoadBtn, (e) => {
       saveFileInput.click();
     });
   }
@@ -436,27 +471,23 @@ async function init() {
   };
 
   if (menuInstructionsBtn) {
-    menuInstructionsBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    bindTouchClick(menuInstructionsBtn, (e) => {
       openModal('modal-instructions');
     });
   }
   if (menuLoreBtn) {
-    menuLoreBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    bindTouchClick(menuLoreBtn, (e) => {
       openModal('modal-lore');
     });
   }
   if (menuSettingsBtn) {
-    menuSettingsBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    bindTouchClick(menuSettingsBtn, (e) => {
       openModal('modal-settings');
     });
   }
 
   if (pauseSettingsBtn) {
-    pauseSettingsBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    bindTouchClick(pauseSettingsBtn, (e) => {
       openModal('modal-settings');
     });
   }
@@ -464,8 +495,7 @@ async function init() {
   // --- User Account & Cloud/Internal Profile Save Handlers ---
   const menuAccountBtn = document.getElementById('menu-account-btn');
   if (menuAccountBtn) {
-    menuAccountBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    bindTouchClick(menuAccountBtn, (e) => {
       openModal('modal-account');
       updateAccountUI();
     });
@@ -473,8 +503,7 @@ async function init() {
 
   const pauseAccountBtn = document.getElementById('pause-account-btn');
   if (pauseAccountBtn) {
-    pauseAccountBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    bindTouchClick(pauseAccountBtn, (e) => {
       openModal('modal-account');
       updateAccountUI();
     });
@@ -860,15 +889,37 @@ async function init() {
     const pauseQuit = document.getElementById('pause-quit-btn');
     if (pauseQuit) pauseQuit.textContent = isFi ? '🏠 PÄÄVALIKKOON' : '🏠 MAIN MENU';
 
-    // HUD Buttons
+    // HUD Buttons (Maintain exact labels and keys)
     const craftBtn = document.getElementById('open-craft-btn');
-    if (craftBtn) craftBtn.textContent = isFi ? '⚒️ VALMISTA [C]' : '⚒️ CRAFT [C]';
+    if (craftBtn) {
+      const textEl = craftBtn.querySelector('.hud-btn-text');
+      if (textEl) textEl.textContent = isFi ? 'LAITTEET' : 'CRAFT';
+    }
     const bpBtn = document.getElementById('open-backpack-btn');
-    if (bpBtn) bpBtn.textContent = isFi ? '🎒 TAVARAT [I]' : '🎒 INVENTORY [I]';
+    if (bpBtn) {
+      const textEl = bpBtn.querySelector('.hud-btn-text');
+      if (textEl) textEl.textContent = isFi ? 'INVENTAARIO' : 'INVENTORY';
+    }
     const skillsBtn = document.getElementById('open-skills-btn');
-    if (skillsBtn) skillsBtn.textContent = isFi ? '⭐ TAIDOT [O]' : '⭐ SKILLS [O]';
+    if (skillsBtn) {
+      const textEl = skillsBtn.querySelector('.hud-btn-text');
+      if (textEl) textEl.textContent = isFi ? 'TAIDOT' : 'SKILLS';
+    }
     const mapBtn = document.getElementById('open-map-btn');
-    if (mapBtn) mapBtn.textContent = isFi ? '🗺️ KARTTA [M]' : '🗺️ MAP [M]';
+    if (mapBtn) {
+      const textEl = mapBtn.querySelector('.hud-btn-text');
+      if (textEl) textEl.textContent = isFi ? 'KARTTA' : 'MAP';
+    }
+    const buildBtn = document.getElementById('open-build-btn');
+    if (buildBtn) {
+      const textEl = buildBtn.querySelector('.hud-btn-text');
+      if (textEl) textEl.textContent = isFi ? 'RAKENNA' : 'BUILD';
+    }
+    const pauseBtn = document.getElementById('open-pause-btn');
+    if (pauseBtn) {
+      const textEl = pauseBtn.querySelector('.hud-btn-text');
+      if (textEl) textEl.textContent = isFi ? 'VALIKKO' : 'MENU';
+    }
 
     // HUD Controls Hint
     const hudHints = document.querySelectorAll('.hud-controls-hint span');
@@ -942,7 +993,8 @@ async function init() {
            document.querySelector('.menu-modal.active') ||
            document.querySelector('#death-screen.active') ||
            (npcManager && npcManager.activeNPC !== null) ||
-           (devMode && (devMode.isActive || devMode.isPromptOpen));
+           (devMode && (devMode.isActive || devMode.isPromptOpen)) ||
+           Boolean(document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA'));
   };
 
   controls.addEventListener('lock', () => {
@@ -1181,10 +1233,11 @@ async function init() {
       audioManager.playLevelUp();
     }
 
-    // 8. Close pause menu and unpause
-    isPaused = false;
-    if (pauseMenuEl) pauseMenuEl.classList.remove('active');
-    if (mobileControls) mobileControls.syncUIState();
+    // 8. Close pause menu and unpause cleanly
+    if (pauseMenu) pauseMenu.classList.remove('active');
+    if (controls) controls.isLocked = true;
+    if (mobileControls && mobileControls.syncUIState) mobileControls.syncUIState();
+    resumeGame();
 
     if (hud) {
       hud.updateVitals(player);
@@ -1503,6 +1556,37 @@ async function init() {
 
     const nearFire = getNearbyCampfire(pPos);
 
+    // 2b. Ancient Altar Trophy Offering
+    const distToAltar = Math.hypot(pPos.x - 85, pPos.z - (-25));
+    if (distToAltar < 6.0) {
+      if (inventory.has('trophy_ancient_stag', 1)) {
+        inventory.remove('trophy_ancient_stag', 1);
+        player.activateBossBuff('stag');
+        if (hud) hud.showNotification('⚡ ALTTARI SYTTYY VALOON! Sait "Metsurin Voima" -buffin! (+100% Puunhakkuunopeus, paina [F] aktivoidaksesi)');
+        return true;
+      } else if (inventory.has('trophy_swamp_wyrm', 1)) {
+        inventory.remove('trophy_swamp_wyrm', 1);
+        player.activateBossBuff('wyrm');
+        if (hud) hud.showNotification('⚡ ALTTARI SYTTYY VALOON! Sait "Suojuoksija" -buffin! (+35% Juoksunopeus, -50% staminankulutus)');
+        return true;
+      } else if (inventory.has('trophy_mountain_golem', 1)) {
+        inventory.remove('trophy_mountain_golem', 1);
+        player.activateBossBuff('golem');
+        if (hud) hud.showNotification('⚡ ALTTARI SYTTYY VALOON! Sait "Vuoren Kilpi" -buffin! (+50% Panssari)');
+        return true;
+      } else if (inventory.has('trophy_rune_wraith', 1)) {
+        inventory.remove('trophy_rune_wraith', 1);
+        player.activateBossBuff('wraith');
+        if (hud) hud.showNotification('⚡ ALTTARI SYTTYY VALOON! Sait "Arkaaninen Voima" -buffin!');
+        return true;
+      } else if (inventory.has('trophy_shadow_dragon', 1)) {
+        inventory.remove('trophy_shadow_dragon', 1);
+        player.activateBossBuff('dragon');
+        if (hud) hud.showNotification('👑 JUMALTEN SIUNAUS! Sait "Lohikäärmeen Raivo" -buffin!');
+        return true;
+      }
+    }
+
     // 3. Campfire cooking & resting
     if (nearFire) {
       if (inventory.has('meat', 1)) {
@@ -1616,6 +1700,9 @@ async function init() {
   let frameCount = 0;
   let lastFpsTime = performance.now();
 
+  // Reusable vector for camera heading calculation in animate loop (prevents GC allocation churn)
+  const _camDirReuse = new THREE.Vector3();
+
   function animate() {
     requestAnimationFrame(animate);
 
@@ -1669,6 +1756,7 @@ async function init() {
     ragdollManager.update(delta);
     animalManager.update(delta, player.getPosition());
     fishingSystem.update(delta);
+    farmingSystem.update(delta);
     resourceNode.update(delta, camera, activeInput);
     buildingSystem.update(delta, camera, activeInput, world);
     enemyManager.update(delta, player.getPosition(), dayNightCycle, player, camera);
@@ -1738,8 +1826,26 @@ async function init() {
     }
 
     // Check exploration proximity to Ancient Ruins Altar (x: 85, z: -25) and Highland Watchtower (x: 30, z: -68)
-    if (Math.hypot(pPos.x - 85, pPos.z - (-25)) < 16) {
+    const distToAltar = Math.hypot(pPos.x - 85, pPos.z - (-25));
+    if (distToAltar < 16) {
       questManager.onExploreAltar();
+    }
+    if (distToAltar < 6.0 && !anyModal) {
+      // Check if player has any Boss Trophy to offer at the Altar
+      const hasStagTrophy = inventory.has('trophy_ancient_stag', 1);
+      const hasWyrmTrophy = inventory.has('trophy_swamp_wyrm', 1);
+      const hasGolemTrophy = inventory.has('trophy_mountain_golem', 1);
+      const hasWraithTrophy = inventory.has('trophy_rune_wraith', 1);
+      const hasDragonTrophy = inventory.has('trophy_shadow_dragon', 1);
+
+      if (hasStagTrophy || hasWyrmTrophy || hasGolemTrophy || hasWraithTrophy || hasDragonTrophy) {
+        hud.showTooltip(isTouch
+          ? '🏛️ Uhraa Trophy Alttarille [Paina E]'
+          : '[E] 🏛️ Aseta Päävihollisen Trophy Alttarille & Lunasta Buffi!'
+        );
+      } else {
+        hud.showTooltip('🏛️ Muinainen Alttari (Tuo tähän bossien Trophyja saadaksesi voimakkaita Buffeja)');
+      }
     }
     if (Math.hypot(pPos.x - 30, pPos.z - (-68)) < 12) {
       questManager.onExploreWatchtower();
@@ -1807,9 +1913,8 @@ async function init() {
 
     // Update Mini-map radar (color coded by biome with fog of war) and In-game Clock
     hud.updateClock(dayNightCycle.getClockTime());
-    const camDir = new THREE.Vector3();
-    camera.getWorldDirection(camDir);
-    const heading = Math.atan2(camDir.x, -camDir.z);
+    camera.getWorldDirection(_camDirReuse);
+    const heading = Math.atan2(_camDirReuse.x, -_camDirReuse.z);
 
     hud.updateMinimap(
       player.getPosition(),

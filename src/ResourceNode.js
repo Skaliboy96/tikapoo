@@ -302,7 +302,11 @@ export default class ResourceNode {
           }
         }
 
-        this.holdTimer += delta;
+        let effDelta = delta;
+        if (activeNode.type === 'tree' && this.player && this.player.woodcuttingBuffTimer > 0) {
+          effDelta *= 2.0; // Ancient Stag Buff: 2x woodcutting speed!
+        }
+        this.holdTimer += effDelta;
         const progress = Math.min(1, this.holdTimer / requiredHoldTime);
         if (this.hud) {
           const actionText = activeNode.type === 'tree' ? 'Kaadetaan puuta' : (activeNode.type === 'stone' || activeNode.type === 'ore' ? 'Louhitaan kiveä' : (activeNode.type === 'mushroom' ? 'Poimitaan sieniä' : 'Kerätään'));
@@ -451,6 +455,18 @@ export default class ResourceNode {
       }
       yieldCount = Math.floor(Math.random() * 3) + 2; // 2 to 4
       this.inventory.add(berryType, yieldCount);
+      // Chance to get crop seeds from wild forage!
+      const seedRoll = Math.random();
+      if (seedRoll < 0.35) {
+        this.inventory.add('carrot_seed', 1);
+        if (this.hud) this.hud.showPickupText('+1 🌱 Porkkanan siemen!');
+      } else if (seedRoll < 0.65) {
+        this.inventory.add('potato_seed', 1);
+        if (this.hud) this.hud.showPickupText('+1 🌱 Perunan siemen!');
+      } else if (seedRoll < 0.85) {
+        this.inventory.add('wheat_seed', 1);
+        if (this.hud) this.hud.showPickupText('+1 🌱 Viljan siemen!');
+      }
       if (this.hud) {
         this.hud.showPickupText(`+${yieldCount} ${berryLabel}`);
       }

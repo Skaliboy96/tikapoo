@@ -87,12 +87,18 @@ export default class HUD {
 
       this.chatSendBtn.addEventListener('click', sendMsg);
       this.chatInput.addEventListener('keydown', (e) => {
+        e.stopPropagation();
         if (e.key === 'Enter') {
           e.preventDefault();
-          e.stopPropagation();
           sendMsg();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          this.chatInput.blur();
+          if (window.restoreGameFocus) window.restoreGameFocus();
         }
       });
+      this.chatInput.addEventListener('keyup', (e) => e.stopPropagation());
+      this.chatInput.addEventListener('keypress', (e) => e.stopPropagation());
     }
 
     // Global Enter key opens chat when in-game

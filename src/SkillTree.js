@@ -233,6 +233,8 @@ export default class SkillTree {
 
   _setupListeners() {
     window.addEventListener('keydown', (e) => {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+      if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
       // Toggle Skill Tree with [O]
       if (e.code === 'KeyO') {
         if (this.isOpen) {

@@ -25,6 +25,22 @@ export default class CraftingMenu {
     this.recipes = [
       // --- TOOLS & WEAPONS ---
       {
+        id: 'rake',
+        category: 'tools',
+        name: '🌾 Harava (Rake)',
+        type: 'tool',
+        desc: 'Muokkaa maata viljelyspelloiksi! Klikkaa maata luodaksesi peltomaata ja istuta siemeniä.',
+        cost: { wood: 5, stone: 2 }
+      },
+      {
+        id: 'backpack',
+        category: 'tools',
+        name: '🎒 Nahkainen Reppu (Backpack)',
+        type: 'item',
+        desc: 'Laadukas nahkareppu, joka laajentaa tavaraluettelon 24 slotista 40 slottiin!',
+        cost: { leather: 4, wood: 2 }
+      },
+      {
         id: 'stoneAxe',
         category: 'tools',
         name: '🪓 Kivikirves (Stone Axe)',
@@ -722,6 +738,8 @@ export default class CraftingMenu {
 
   setupListeners() {
     window.addEventListener('keydown', (e) => {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+      if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
       // Both 'KeyC' and 'Tab' toggle crafting!
       if (e.code === 'KeyC' || e.code === 'Tab') {
         e.preventDefault();

@@ -50,6 +50,11 @@ export default class World {
       console.warn('Failed to parse saved dev world edits in World:', e);
     }
 
+    // Infinite / Seamless Open World dynamic streaming
+    this.generatedChunks = new Set();
+    this._lastTerrainShiftX = 0;
+    this._lastTerrainShiftZ = 0;
+
     this.initLighting();
     this.initSky();
     this.initTerrain();
@@ -93,13 +98,11 @@ export default class World {
     // 3. Subtle organic ground undulation (micro-relief)
     const micro = (Math.sin(x * 0.11) * Math.cos(z * 0.09) + Math.cos(x * 0.07 - z * 0.07)) * 0.35;
 
-    // 4. Distant horizon mountain barrier (dist > 250m)
-    const distFromCenter = Math.hypot(x, z);
-    const rimDist = Math.min(26.0, Math.max(0, distFromCenter - 250) * 0.045);
-    const mountainNoise = Math.sin(x * 0.016) * Math.cos(z * 0.016) * 9.0;
-    const mountains = rimDist * 2.0 + (rimDist > 2 ? mountainNoise * (rimDist / 26) : 0);
+    // 4. Endless natural Scandinavian fell ridges & rolling wilderness terrain
+    const regionalFells = Math.sin(x * 0.005 + 1.2) * Math.cos(z * 0.005 - 0.8) * 4.2 +
+                          Math.sin(x * 0.012 - z * 0.010) * 2.2;
 
-    let landHeight = baseElevation + swell1 + swell2 + knoll1 + knoll2 + micro + mountains;
+    let landHeight = baseElevation + swell1 + swell2 + knoll1 + knoll2 + micro + regionalFells;
 
     // Biome-specific topography (calibrated for expanded biome layout)
     // 1. Mountain Biome (Northeast: x > 68, z < -58) -> Towering alpine fells & snow peaks
@@ -127,6 +130,7 @@ export default class World {
     }
 
     // 4. Smooth central village plateau (radius < 38m) for flat, natural town construction
+    const distFromCenter = Math.hypot(x, z);
     if (distFromCenter < 38) {
       const t = 1 - distFromCenter / 38;
       landHeight = landHeight * (1 - t * 0.6) + 3.2 * (t * 0.6);
@@ -927,6 +931,7 @@ export default class World {
     });
 
     this.trees.push(treeNode);
+    this.addCircleCollider(x, z, 0.45, 'tree', treeNode);
     return treeNode;
   }
 
@@ -958,6 +963,9 @@ export default class World {
     });
 
     this.stones.push(stoneNode);
+    if (!isLoose) {
+      this.addCircleCollider(x, z, 0.85, 'rock', stoneNode);
+    }
     return stoneNode;
   }
 
@@ -1016,15 +1024,23 @@ export default class World {
     this.colliders.push({ type: 'box', minX, maxX, minZ, maxZ, name });
   }
 
-  addCircleCollider(x, z, radius, name = '') {
-    this.colliders.push({ type: 'circle', x, z, radius, name });
+  addCircleCollider(x, z, radius, name = '', node = null) {
+    this.colliders.push({ type: 'circle', x, z, radius, name, node });
   }
 
   isPositionBlocked(x, z, playerRadius = 0.42, buildingSystem = null) {
-    // 1. Check World buildings and wall colliders
+    // 1. Check all registered World colliders (buildings, walls, props, trees, rocks, ores)
     for (let i = 0; i < this.colliders.length; i++) {
       const c = this.colliders[i];
+      if (c.node && c.node.harvested) continue;
+
       if (c.type === 'box') {
+        const halfW = (c.maxX - c.minX) * 0.5 + playerRadius;
+        const halfD = (c.maxZ - c.minZ) * 0.5 + playerRadius;
+        const midX = (c.minX + c.maxX) * 0.5;
+        const midZ = (c.minZ + c.maxZ) * 0.5;
+        if (Math.abs(x - midX) > halfW || Math.abs(z - midZ) > halfD) continue;
+
         const closestX = Math.max(c.minX, Math.min(x, c.maxX));
         const closestZ = Math.max(c.minZ, Math.min(z, c.maxZ));
         const dx = x - closestX;
@@ -1033,10 +1049,11 @@ export default class World {
           return true;
         }
       } else if (c.type === 'circle') {
+        const maxDist = playerRadius + c.radius;
         const dx = x - c.x;
         const dz = z - c.z;
-        const r = playerRadius + c.radius;
-        if (dx * dx + dz * dz < r * r) {
+        if (Math.abs(dx) > maxDist || Math.abs(dz) > maxDist) continue;
+        if (dx * dx + dz * dz < maxDist * maxDist) {
           return true;
         }
       }
@@ -1047,58 +1064,19 @@ export default class World {
       const bCols = buildingSystem.placedColliders;
       for (let i = 0; i < bCols.length; i++) {
         const c = bCols[i];
+        const halfW = (c.maxX - c.minX) * 0.5 + playerRadius;
+        const halfD = (c.maxZ - c.minZ) * 0.5 + playerRadius;
+        const midX = (c.minX + c.maxX) * 0.5;
+        const midZ = (c.minZ + c.maxZ) * 0.5;
+        if (Math.abs(x - midX) > halfW || Math.abs(z - midZ) > halfD) continue;
+
         const closestX = Math.max(c.minX, Math.min(x, c.maxX));
         const closestZ = Math.max(c.minZ, Math.min(z, c.maxZ));
         const dx = x - closestX;
         const dz = z - closestZ;
         if (dx * dx + dz * dz < playerRadius * playerRadius) {
-          // If the player is already penetrating/inside (e.g. wall built directly on player),
-          // allow stepping outwards toward the exterior so player never gets permanently stuck
           const isInside = (x >= c.minX && x <= c.maxX && z >= c.minZ && z <= c.maxZ);
-          if (isInside) {
-            continue;
-          }
-          return true;
-        }
-      }
-    }
-
-    // 3. Check large tree trunks (within 1.2m radius of player)
-    for (let i = 0; i < this.trees.length; i++) {
-      const t = this.trees[i];
-      if (t.harvested || !t.position) continue;
-      const dx = x - t.position.x;
-      const dz = z - t.position.z;
-      if (Math.abs(dx) > 1.2 || Math.abs(dz) > 1.2) continue;
-      const r = playerRadius + 0.45;
-      if (dx * dx + dz * dz < r * r) {
-        return true;
-      }
-    }
-
-    // 4. Check large stone boulders (pebbles don't block movement)
-    for (let i = 0; i < this.stones.length; i++) {
-      const s = this.stones[i];
-      if (s.harvested || !s.position || s.isLooseStone) continue;
-      const dx = x - s.position.x;
-      const dz = z - s.position.z;
-      if (Math.abs(dx) > 2.0 || Math.abs(dz) > 2.0) continue;
-      const r = playerRadius + 0.85;
-      if (dx * dx + dz * dz < r * r) {
-        return true;
-      }
-    }
-
-    // 5. Check mining ore boulder deposits (Copper, Tin, Iron, Silver)
-    if (this.ores) {
-      for (let i = 0; i < this.ores.length; i++) {
-        const o = this.ores[i];
-        if (o.harvested || !o.position) continue;
-        const dx = x - o.position.x;
-        const dz = z - o.position.z;
-        if (Math.abs(dx) > 2.0 || Math.abs(dz) > 2.0) continue;
-        const r = playerRadius + 0.95;
-        if (dx * dx + dz * dz < r * r) {
+          if (isInside) continue;
           return true;
         }
       }
@@ -1277,10 +1255,12 @@ export default class World {
     // Entrance step
     this._addPiece(group, floorType, -1, -0.28, 2.7, 0, 0.85);
 
-    // Warm interior light
-    const cLight = new THREE.PointLight(0xffa544, 2.0, 16, 1.3);
-    cLight.position.set(0, 2.1, 0);
-    group.add(cLight);
+    // Warm interior emissive lantern (zero dynamic WebGL light cost)
+    const lanternGeo = new THREE.SphereGeometry(0.12, 6, 6);
+    const lanternMat = new THREE.MeshBasicMaterial({ color: 0xffb84d });
+    const lantern = new THREE.Mesh(lanternGeo, lanternMat);
+    lantern.position.set(0, 2.1, 0);
+    group.add(lantern);
 
     // Solid cottage wall colliders (Door opening left at front X: [-1.6, -0.3])
     if (rotY === 0) {
@@ -1407,10 +1387,12 @@ export default class World {
     for (const spot of lanternSpots) {
       this._placeModel('CandleStick_Stand', spot.x, spot.z, 1.0, 0);
       const ly = this.getGroundHeight(spot.x, spot.z) + 1.2;
-      const lLight = new THREE.PointLight(0xffa544, 1.8, 16, 1.4);
-      lLight.position.set(spot.x, ly, spot.z);
-      this.scene.add(lLight);
-      this.campfires.push({ light: lLight, mesh: { scale: { set: () => {} } }, baseX: spot.x, baseZ: spot.z, baseY: ly });
+      // Glowing emissive candle flame (zero WebGL dynamic light overhead)
+      const flameGeo = new THREE.SphereGeometry(0.08, 6, 6);
+      const flameMat = new THREE.MeshBasicMaterial({ color: 0xffbb44 });
+      const flameMesh = new THREE.Mesh(flameGeo, flameMat);
+      flameMesh.position.set(spot.x, ly, spot.z);
+      this.scene.add(flameMesh);
     }
 
     // 7. Perimeter fences along roads
@@ -1536,10 +1518,12 @@ export default class World {
     for (const pl of pierLanterns) {
       this._placeModel('CandleStick_Stand', pl.x, pl.z, 1.0, 0);
       const ly = py + 1.25;
-      const pLight = new THREE.PointLight(0xffa544, 1.8, 16, 1.4);
-      pLight.position.set(pl.x, ly, pl.z);
-      this.scene.add(pLight);
-      this.campfires.push({ light: pLight, mesh: { scale: { set: () => {} } }, baseX: pl.x, baseZ: pl.z, baseY: ly });
+      // Glowing emissive candle flame
+      const flameGeo = new THREE.SphereGeometry(0.08, 6, 6);
+      const flameMat = new THREE.MeshBasicMaterial({ color: 0xffbb44 });
+      const flameMesh = new THREE.Mesh(flameGeo, flameMat);
+      flameMesh.position.set(pl.x, ly, pl.z);
+      this.scene.add(flameMesh);
     }
   }
 
@@ -1673,6 +1657,7 @@ export default class World {
           child.userData.resourceNode = treeNode;
         });
         this.trees.push(treeNode);
+        this.addCircleCollider(x, z, 0.45, 'tree', treeNode);
       }
     };
 
@@ -1834,6 +1819,7 @@ export default class World {
         });
 
         this.trees.push(treeNode);
+        this.addCircleCollider(x, z, 0.45, 'tree', treeNode);
       }
     }
   }
@@ -2038,6 +2024,9 @@ export default class World {
         });
 
         this.stones.push(stoneNode);
+        if (!isLoose) {
+          this.addCircleCollider(x, z, 0.85, 'rock', stoneNode);
+        }
       }
     }
 
@@ -2136,6 +2125,7 @@ export default class World {
           });
 
           this.ores.push(oreNode);
+          this.addCircleCollider(x, z, 0.95, 'ore', oreNode);
         }
       }
     }
@@ -2318,8 +2308,95 @@ export default class World {
     }
   }
 
+  // --- Infinite / Seamless Open World: Dynamic Terrain Centering & Nature Streaming ---
+  _updateInfiniteTerrain(playerPos) {
+    if (!this.groundMesh) return;
+
+    // 1. Shift ground and water mesh when player moves beyond 80m from current ground center
+    const dx = playerPos.x - this._lastTerrainShiftX;
+    const dz = playerPos.z - this._lastTerrainShiftZ;
+    if (Math.hypot(dx, dz) > 80) {
+      const shiftX = Math.round(playerPos.x / 40) * 40;
+      const shiftZ = Math.round(playerPos.z / 40) * 40;
+      this._lastTerrainShiftX = shiftX;
+      this._lastTerrainShiftZ = shiftZ;
+
+      this.groundMesh.position.set(shiftX, 0, shiftZ);
+      if (this.waterMesh) {
+        this.waterMesh.position.x = shiftX;
+        this.waterMesh.position.z = shiftZ;
+      }
+
+      // Re-sample vertex elevations from procedural Scandinavian formula
+      const pos = this.groundMesh.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const localX = pos.getX(i);
+        const localZ = pos.getZ(i);
+        const worldX = localX + shiftX;
+        const worldZ = localZ + shiftZ;
+        pos.setY(i, this.getGroundHeight(worldX, worldZ));
+      }
+      pos.needsUpdate = true;
+      this.groundMesh.geometry.computeVertexNormals();
+    }
+
+    // 2. Procedural chunk nature generation as player explores new 80m x 80m grid regions
+    const chunkX = Math.floor(playerPos.x / 80);
+    const chunkZ = Math.floor(playerPos.z / 80);
+    for (let ox = -1; ox <= 1; ox++) {
+      for (let oz = -1; oz <= 1; oz++) {
+        const key = `${chunkX + ox}_${chunkZ + oz}`;
+        if (!this.generatedChunks.has(key)) {
+          this.generatedChunks.add(key);
+          this._generateChunkNature(chunkX + ox, chunkZ + oz);
+        }
+      }
+    }
+  }
+
+  _generateChunkNature(cx, cz) {
+    // Avoid re-populating starting village center (within 65m of origin)
+    const centerX = cx * 80 + 40;
+    const centerZ = cz * 80 + 40;
+    if (Math.hypot(centerX, centerZ) < 65) return;
+
+    const biome = getBiomeKey(centerX, centerZ) || 'meadows';
+
+    // Model selection based on biome
+    let treeModels = ['Pine_1', 'Pine_2', 'Pine_3', 'Birch_1', 'Birch_2'];
+    if (biome === 'swamp') treeModels = ['Pine_Crooked_1', 'TreeStump_Moss', 'TreeStump'];
+    else if (biome === 'ashlands') treeModels = ['TreeStump', 'Pine_Crooked_1'];
+    else if (biome === 'mountain') treeModels = ['Pine_Snow_1', 'Pine_Snow_2', 'Pine_1'];
+
+    // Spawn 2-4 trees in newly entered wilderness chunk
+    const treeCount = isMobileDevice ? 2 : 4;
+    for (let i = 0; i < treeCount; i++) {
+      const tx = cx * 80 + 10 + Math.random() * 60;
+      const tz = cz * 80 + 10 + Math.random() * 60;
+      if (this.isNearRiver(tx, tz, 16)) continue;
+      const model = treeModels[Math.floor(Math.random() * treeModels.length)];
+      this.spawnTree(tx, tz, model);
+    }
+
+    // Spawn 1-2 boulders / ores in newly entered chunk
+    const rockModels = ['Rock_1', 'Rock_Medium_1', 'Rock_Moss_1'];
+    const rockCount = isMobileDevice ? 1 : 2;
+    for (let i = 0; i < rockCount; i++) {
+      const rx = cx * 80 + 10 + Math.random() * 60;
+      const rz = cz * 80 + 10 + Math.random() * 60;
+      if (this.isNearRiver(rx, rz, 16)) continue;
+      const model = rockModels[Math.floor(Math.random() * rockModels.length)];
+      this.spawnStone(rx, rz, model);
+    }
+  }
+
   update(delta, playerPos = null) {
     this.windTime += delta;
+
+    // Infinite / Seamless Open World dynamic centering & chunk generation
+    if (playerPos) {
+      this._updateInfiniteTerrain(playerPos);
+    }
 
     // Track sun shadow frustum tightly on player position for crisp, soft PCF shadows
     if (playerPos && this.sun) {

@@ -57,6 +57,15 @@ export default class DevMode {
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
 
+    // Terrain Sculpting Tools
+    this.terrainSculptActive = false;
+    this.terrainAction = 'raise'; // 'raise', 'lower', 'flatten', 'smooth'
+    this.terrainRadius = 8;
+    this.terrainStrength = 2.5;
+    this.isSculptingMouseDown = false;
+    this.terrainBrushHelper = null;
+    this.sculptHitPoint = new THREE.Vector3();
+
     // Local Storage Edits
     this.storageKey = 'tikapoo_dev_world_edits';
     this.edits = this.loadEdits();
@@ -315,6 +324,33 @@ export default class DevMode {
       });
     });
 
+    // Terrain Sculpting Tool & Size Buttons
+    document.querySelectorAll('.dev-terrain-tool-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.querySelectorAll('.dev-terrain-tool-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.terrainAction = btn.dataset.action || 'raise';
+        this.terrainSculptActive = true;
+        this.cancelPlacement();
+        this.deselectObject();
+        this.toggleDeleteTool(false);
+        if (this.hud) this.hud.showNotification(`⛰️ Maastonmuokkaus: ${btn.dataset.name}! Paina ja maalaa maastoa hiiren vasemmalla.`, 3000);
+      });
+    });
+
+    document.querySelectorAll('.dev-terrain-size-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.querySelectorAll('.dev-terrain-size-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.terrainRadius = parseFloat(btn.dataset.radius) || 8;
+        if (this.terrainBrushHelper) {
+          this.terrainBrushHelper.scale.set(this.terrainRadius, 1, this.terrainRadius);
+        }
+      });
+    });
+
     // Teleport Buttons
     document.querySelectorAll('.dev-tp-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -425,13 +461,18 @@ export default class DevMode {
         return;
       }
 
-      // Left click: check for object dragging
+      // Left click: terrain sculpting or object dragging
       if (e.button === 0) {
         if (e.target.closest('.dev-toolbar') ||
             e.target.closest('.dev-bottom-drawer') ||
             e.target.closest('.dev-inspector-card') ||
             e.target.closest('.dev-placement-banner') ||
             e.target.closest('.menu-modal')) {
+          return;
+        }
+
+        if (this.terrainSculptActive) {
+          this.isSculptingMouseDown = true;
           return;
         }
 
@@ -463,11 +504,14 @@ export default class DevMode {
       if (e.button === 2) {
         this.isRightMouseDown = false;
       }
-      if (e.button === 0 && this.isDraggingObject) {
-        this.isDraggingObject = false;
-        document.body.style.cursor = '';
-        if (this.dragMoved) {
-          if (this.hud) this.hud.showNotification('📍 Kohde siirretty uuteen sijaintiin!', 1600);
+      if (e.button === 0) {
+        this.isSculptingMouseDown = false;
+        if (this.isDraggingObject) {
+          this.isDraggingObject = false;
+          document.body.style.cursor = '';
+          if (this.dragMoved) {
+            if (this.hud) this.hud.showNotification('📍 Kohde siirretty uuteen sijaintiin!', 1600);
+          }
         }
       }
     });
@@ -540,6 +584,13 @@ export default class DevMode {
       if (this.activePlacement && this.placementGhost) {
         this.updatePlacementGhost(e);
       }
+
+      // Update terrain sculpt brush cursor if sculpting active
+      if (this.terrainSculptActive) {
+        this.updateTerrainSculptCursor(e);
+      } else if (this.terrainBrushHelper) {
+        this.terrainBrushHelper.visible = false;
+      }
     });
 
     // Mouse wheel rotates placement ghost
@@ -568,6 +619,11 @@ export default class DevMode {
           e.target.closest('.dev-inspector-card') ||
           e.target.closest('.dev-placement-banner') ||
           e.target.closest('.menu-modal')) {
+        return;
+      }
+
+      // If terrain sculpting tool is active: prevent object selection
+      if (this.terrainSculptActive) {
         return;
       }
 
@@ -626,7 +682,7 @@ export default class DevMode {
   verifyPassword() {
     if (!this.passwordInput) return;
     const val = this.passwordInput.value.trim().toLowerCase();
-    if (val === 'kissa') {
+    if (val === 'ylijumala') {
       this.isUnlocked = true;
       try { localStorage.removeItem('tikapoo_dev_unlocked'); } catch (e) {}
       this.closePasswordPrompt();
@@ -668,6 +724,9 @@ export default class DevMode {
     this.isActive = false;
     this.isUnlocked = false;
     this.isRightMouseDown = false;
+    this.isSculptingMouseDown = false;
+    this.terrainSculptActive = false;
+    if (this.terrainBrushHelper) this.terrainBrushHelper.visible = false;
     this.toggleDeleteTool(false);
     this.cancelPlacement();
     this.deselectObject();
@@ -723,7 +782,23 @@ export default class DevMode {
     this.placementRotation = 0;
 
     // Create ghost mesh preview
-    if (category === 'structures' || category === 'crafting' || category === 'props') {
+    if (category === 'water') {
+      const w = (type === 'water_river_wide') ? 32 : (type === 'water_river_straight') ? 16 : (type === 'water_pond') ? 14 : 7;
+      const l = (type === 'water_river_wide') ? 32 : (type === 'water_river_straight') ? 24 : (type === 'water_pond') ? 14 : 7;
+      const geo = (type === 'water_pond' || type === 'water_spring')
+        ? new THREE.CylinderGeometry(w * 0.5, w * 0.5, 0.2, 24)
+        : new THREE.PlaneGeometry(w, l);
+      if (type !== 'water_pond' && type !== 'water_spring') geo.rotateX(-Math.PI / 2);
+      const mat = new THREE.MeshBasicMaterial({ color: 0x00d4ff, transparent: true, opacity: 0.55 });
+      this.placementGhost = new THREE.Mesh(geo, mat);
+    } else if (category === 'buildings') {
+      let geo = new THREE.BoxGeometry(10, 4, 6);
+      if (type === 'prefab_tower') geo = new THREE.CylinderGeometry(2.5, 2.8, 10, 8);
+      else if (type === 'prefab_longhouse') geo = new THREE.BoxGeometry(14, 5, 8);
+      else if (type === 'prefab_pier' || type === 'prefab_bridge') geo = new THREE.BoxGeometry(4.5, 0.6, 15);
+      const mat = new THREE.MeshBasicMaterial({ color: 0xf1c40f, transparent: true, opacity: 0.45, wireframe: true });
+      this.placementGhost = new THREE.Mesh(geo, mat);
+    } else if (category === 'structures' || category === 'crafting' || category === 'props') {
       if (this.buildingSystem) {
         this.placementGhost = this.buildingSystem.createStructureMesh(type, true, true);
       }
@@ -895,6 +970,146 @@ export default class DevMode {
           }
         }
         break;
+      // --- Water & River Pieces ---
+      case 'water_river_straight':
+      case 'water_river_wide':
+      case 'water_pond':
+      case 'water_spring': {
+        const w = (type === 'water_river_wide') ? 32 : (type === 'water_river_straight') ? 16 : (type === 'water_pond') ? 14 : 7;
+        const l = (type === 'water_river_wide') ? 32 : (type === 'water_river_straight') ? 24 : (type === 'water_pond') ? 14 : 7;
+        const waterGeo = (type === 'water_pond' || type === 'water_spring')
+          ? new THREE.CylinderGeometry(w * 0.5, w * 0.5, 0.2, 24)
+          : new THREE.PlaneGeometry(w, l, 8, 8);
+        if (type !== 'water_pond' && type !== 'water_spring') {
+          waterGeo.rotateX(-Math.PI / 2);
+        }
+        const waterMat = new THREE.MeshStandardMaterial({
+          color: 0x1a728a,
+          roughness: 0.1,
+          metalness: 0.15,
+          transparent: true,
+          opacity: 0.88
+        });
+        const waterMesh = new THREE.Mesh(waterGeo, waterMat);
+        waterMesh.position.set(pos.x, pos.y + 0.08, pos.z);
+        waterMesh.rotation.y = rotY;
+        waterMesh.userData.customId = customId;
+        this.scene.add(waterMesh);
+        if (!this.world.decorations) this.world.decorations = [];
+        this.world.decorations.push(waterMesh);
+        spawned = waterMesh;
+        break;
+      }
+
+      // --- Large Prefab Buildings ---
+      case 'prefab_longhouse': {
+        const group = new THREE.Group();
+        group.position.set(pos.x, pos.y, pos.z);
+        group.rotation.y = rotY;
+        const fMesh = new THREE.Mesh(new THREE.BoxGeometry(14, 1.2, 8), new THREE.MeshStandardMaterial({ color: 0x4a453f, roughness: 0.9 }));
+        fMesh.position.y = -0.5;
+        const wMesh = new THREE.Mesh(new THREE.BoxGeometry(13.6, 3.6, 7.6), new THREE.MeshStandardMaterial({ color: 0x5a3d28, roughness: 0.8 }));
+        wMesh.position.y = 1.8;
+        const rGeo = new THREE.ConeGeometry(8.2, 3.2, 4);
+        rGeo.rotateY(Math.PI / 4);
+        const rMesh = new THREE.Mesh(rGeo, new THREE.MeshStandardMaterial({ color: 0x3d2716, roughness: 0.85 }));
+        rMesh.position.y = 4.8;
+        rMesh.scale.set(1.5, 1, 0.9);
+        group.add(fMesh, wMesh, rMesh);
+        group.userData.customId = customId;
+        this.scene.add(group);
+        if (this.world.addBoxCollider) this.world.addBoxCollider(pos.x - 7, pos.x + 7, pos.z - 4, pos.z + 4, 'Longhouse');
+        if (!this.world.decorations) this.world.decorations = [];
+        this.world.decorations.push(group);
+        spawned = group;
+        break;
+      }
+      case 'prefab_cottage': {
+        const group = new THREE.Group();
+        group.position.set(pos.x, pos.y, pos.z);
+        group.rotation.y = rotY;
+        const wMesh = new THREE.Mesh(new THREE.BoxGeometry(5.6, 3.0, 5.6), new THREE.MeshStandardMaterial({ color: 0x6e4726, roughness: 0.8 }));
+        wMesh.position.y = 1.5;
+        const rGeo = new THREE.ConeGeometry(4.4, 2.2, 4);
+        rGeo.rotateY(Math.PI / 4);
+        const rMesh = new THREE.Mesh(rGeo, new THREE.MeshStandardMaterial({ color: 0x482a17, roughness: 0.85 }));
+        rMesh.position.y = 3.9;
+        group.add(wMesh, rMesh);
+        group.userData.customId = customId;
+        this.scene.add(group);
+        if (this.world.addBoxCollider) this.world.addBoxCollider(pos.x - 3, pos.x + 3, pos.z - 3, pos.z + 3, 'Cottage');
+        if (!this.world.decorations) this.world.decorations = [];
+        this.world.decorations.push(group);
+        spawned = group;
+        break;
+      }
+      case 'prefab_tower': {
+        const group = new THREE.Group();
+        group.position.set(pos.x, pos.y, pos.z);
+        group.rotation.y = rotY;
+        const tMesh = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.8, 9.0, 8), new THREE.MeshStandardMaterial({ color: 0x5a5855, roughness: 0.9 }));
+        tMesh.position.y = 4.5;
+        const roof = new THREE.Mesh(new THREE.ConeGeometry(3.0, 2.6, 8), new THREE.MeshStandardMaterial({ color: 0x3d2516, roughness: 0.85 }));
+        roof.position.y = 10.1;
+        group.add(tMesh, roof);
+        group.userData.customId = customId;
+        this.scene.add(group);
+        if (this.world.addCircleCollider) this.world.addCircleCollider(pos.x, pos.z, 2.6, 'Tower');
+        if (!this.world.decorations) this.world.decorations = [];
+        this.world.decorations.push(group);
+        spawned = group;
+        break;
+      }
+      case 'prefab_pier': {
+        const group = new THREE.Group();
+        group.position.set(pos.x, pos.y, pos.z);
+        group.rotation.y = rotY;
+        const pMesh = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.4, 14.0), new THREE.MeshStandardMaterial({ color: 0x5c4228, roughness: 0.85 }));
+        pMesh.position.y = 0.2;
+        group.add(pMesh);
+        group.userData.customId = customId;
+        this.scene.add(group);
+        if (!this.world.decorations) this.world.decorations = [];
+        this.world.decorations.push(group);
+        spawned = group;
+        break;
+      }
+      case 'prefab_bridge': {
+        const group = new THREE.Group();
+        group.position.set(pos.x, pos.y, pos.z);
+        group.rotation.y = rotY;
+        const bMesh = new THREE.Mesh(new THREE.BoxGeometry(5.0, 0.6, 16.0), new THREE.MeshStandardMaterial({ color: 0x61615f, roughness: 0.9 }));
+        bMesh.position.y = 0.3;
+        group.add(bMesh);
+        group.userData.customId = customId;
+        this.scene.add(group);
+        if (!this.world.decorations) this.world.decorations = [];
+        this.world.decorations.push(group);
+        spawned = group;
+        break;
+      }
+      case 'prefab_gate': {
+        const group = new THREE.Group();
+        group.position.set(pos.x, pos.y, pos.z);
+        group.rotation.y = rotY;
+        const postL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 4.5, 0.8), new THREE.MeshStandardMaterial({ color: 0x4a321d }));
+        postL.position.set(-2.2, 2.25, 0);
+        const postR = new THREE.Mesh(new THREE.BoxGeometry(0.8, 4.5, 0.8), new THREE.MeshStandardMaterial({ color: 0x4a321d }));
+        postR.position.set(2.2, 2.25, 0);
+        const beam = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.7, 0.8), new THREE.MeshStandardMaterial({ color: 0x4a321d }));
+        beam.position.set(0, 4.2, 0);
+        group.add(postL, postR, beam);
+        group.userData.customId = customId;
+        this.scene.add(group);
+        if (this.world.addCircleCollider) {
+          this.world.addCircleCollider(pos.x - 2.2, pos.z, 0.6, 'Gate_L');
+          this.world.addCircleCollider(pos.x + 2.2, pos.z, 0.6, 'Gate_R');
+        }
+        if (!this.world.decorations) this.world.decorations = [];
+        this.world.decorations.push(group);
+        spawned = group;
+        break;
+      }
       case 'boar':
         if (this.enemyManager) spawned = this.enemyManager.spawnAt(pos.x, pos.z, 'meadows');
         break;
@@ -1230,8 +1445,77 @@ export default class DevMode {
     this.exportModal.style.display = 'flex';
   }
 
+  initTerrainBrush() {
+    if (this.terrainBrushHelper) return;
+    const geo = new THREE.RingGeometry(this.terrainRadius - 0.25, this.terrainRadius, 32);
+    geo.rotateX(-Math.PI / 2);
+    const mat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide });
+    this.terrainBrushHelper = new THREE.Mesh(geo, mat);
+    this.terrainBrushHelper.visible = false;
+    this.scene.add(this.terrainBrushHelper);
+  }
+
+  updateTerrainSculptCursor(e) {
+    this.initTerrainBrush();
+    this.mouse.set(
+      (e.clientX / window.innerWidth) * 2 - 1,
+      -(e.clientY / window.innerHeight) * 2 + 1
+    );
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+    if (!this.world || !this.world.groundMesh) return;
+    const hits = this.raycaster.intersectObject(this.world.groundMesh, false);
+    if (hits.length > 0) {
+      this.sculptHitPoint.copy(hits[0].point);
+      this.terrainBrushHelper.position.set(hits[0].point.x, hits[0].point.y + 0.12, hits[0].point.z);
+      this.terrainBrushHelper.scale.set(this.terrainRadius / 8, 1, this.terrainRadius / 8);
+      this.terrainBrushHelper.visible = true;
+    } else {
+      this.terrainBrushHelper.visible = false;
+    }
+  }
+
+  sculptTerrain(cx, cz, action, radius, strength, delta) {
+    if (!this.world || !this.world.groundMesh) return;
+    const geo = this.world.groundMesh.geometry;
+    const pos = geo.attributes.position;
+    const meshX = this.world.groundMesh.position.x;
+    const meshZ = this.world.groundMesh.position.z;
+    const targetY = action === 'flatten' ? this.world.getGroundHeight(cx, cz) : 0;
+
+    for (let i = 0; i < pos.count; i++) {
+      const vx = pos.getX(i) + meshX;
+      const vz = pos.getZ(i) + meshZ;
+      const dist = Math.hypot(vx - cx, vz - cz);
+      if (dist > radius) continue;
+
+      const factor = (1 - dist / radius);
+      const curY = pos.getY(i);
+      let newY = curY;
+
+      if (action === 'raise') {
+        newY += strength * factor * delta * 5.0;
+      } else if (action === 'lower') {
+        newY -= strength * factor * delta * 5.0;
+      } else if (action === 'flatten') {
+        newY = curY + (targetY - curY) * factor * delta * 5.0;
+      } else if (action === 'smooth') {
+        const avg = this.world.getGroundHeight(vx, vz);
+        newY = curY + (avg - curY) * factor * delta * 4.0;
+      }
+
+      pos.setY(i, newY);
+    }
+    pos.needsUpdate = true;
+    geo.computeVertexNormals();
+  }
+
   update(delta) {
     if (!this.isActive) return;
+
+    // Realtime continuous terrain sculpting when LMB is held down on terrain
+    if (this.terrainSculptActive && this.isSculptingMouseDown && this.sculptHitPoint) {
+      this.sculptTerrain(this.sculptHitPoint.x, this.sculptHitPoint.z, this.terrainAction, this.terrainRadius, this.terrainStrength, delta);
+    }
 
     // Keep selection outline synchronized with object
     if (this.selectionBox && this.selectedObject) {

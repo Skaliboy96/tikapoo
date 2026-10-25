@@ -874,6 +874,16 @@ export default class EnemyManager {
         continue; // Incapacitated by parry stagger!
       }
 
+      // Check if player is dead: If dead, enemies stop attacking and body is left in peace!
+      const isPlayerDead = player.isDead || (player.health !== undefined && player.health <= 0);
+      if (isPlayerDead) {
+        if (enemy.state !== 'idle') {
+          enemy.state = 'idle';
+          enemy.playAnim('Idle_A');
+        }
+        continue;
+      }
+
       const isHostileBiome = enemy.biome !== 'meadows';
       // Biome enemies (Greydwarf, Draugr, Wolf, Berserker, Drake) are territorial and actively aggro!
       const shouldAggro = (distToPlayer <= aggroRadius && (isHostileBiome || isNight)) ||
@@ -902,8 +912,41 @@ export default class EnemyManager {
           enemy.mesh.lookAt(playerPos.x, enemy.mesh.position.y, playerPos.z);
 
           if (distToPlayer > attackRadius * 0.8) {
-            enemy.mesh.position.addScaledVector(dir, currentSpeed * delta);
-            enemy.playAnim('Walking_A');
+            // Check collision with player-built structures (walls, palisades, doors)
+            let isBlockedByBuilding = false;
+            let targetStructure = null;
+            if (this.buildingSystem && this.buildingSystem.placedStructures) {
+              const nextX = enemy.mesh.position.x + dir.x * (currentSpeed * delta + 0.5);
+              const nextZ = enemy.mesh.position.z + dir.z * (currentSpeed * delta + 0.5);
+              for (const struct of this.buildingSystem.placedStructures) {
+                if (!struct || !struct.position) continue;
+                const dStruct = Math.hypot(nextX - struct.position.x, nextZ - struct.position.z);
+                if (dStruct < 1.35) {
+                  isBlockedByBuilding = true;
+                  targetStructure = struct;
+                  break;
+                }
+              }
+            }
+
+            if (isBlockedByBuilding && targetStructure) {
+              // Attack and damage the building instead of clipping through!
+              if (enemy.cooldownTimer <= 0) {
+                enemy.cooldownTimer = enemy.attackCooldown || 1.8;
+                const baseDmg = enemy.damage || 15;
+                if (this.buildingSystem.damageStructure) {
+                  this.buildingSystem.damageStructure(targetStructure, baseDmg);
+                }
+                const hasWeapon = enemy.weapon !== null && enemy.weapon !== undefined;
+                const anim = enemy.isRigMedium ? 'Use_Item' : (hasWeapon ? 'Sword_Regular_A' : 'Melee_Hook');
+                enemy.playAnim(anim, false);
+              } else {
+                enemy.playAnim('Idle_A');
+              }
+            } else {
+              enemy.mesh.position.addScaledVector(dir, currentSpeed * delta);
+              enemy.playAnim('Walking_A');
+            }
           } else {
             if (enemy.cooldownTimer > 0) {
               enemy.playAnim('Idle_A');

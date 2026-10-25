@@ -34,6 +34,12 @@ export default class Combat {
     this.projectiles = [];
     // Active visual effects (Ground slam rings, Whirlwind arcs, Celestial beams)
     this.vfxList = [];
+
+    // Reusable scratch vectors for zero-allocation projectile updates
+    this._projStep = new THREE.Vector3();
+    this._projLook = new THREE.Vector3();
+    this._camDirHelper = new THREE.Vector3();
+    this._projTargetPoint = new THREE.Vector3();
   }
 
   initViewmodel() {
@@ -246,6 +252,45 @@ export default class Combat {
     if (this.currentCooldown > 0) return;
 
     const equipped = this.inventory ? this.inventory.equippedTool : null;
+
+    // 0. Repair mode with Hammer
+    if (equipped === 'hammer' && this.buildingSystem && this.buildingSystem.placedStructures) {
+      this.raycaster.setFromCamera(this.screenCenter, this.camera);
+      const bMeshes = this.buildingSystem.placedStructures.map(s => s.mesh).filter(Boolean);
+      const bHits = this.raycaster.intersectObjects(bMeshes, true);
+      if (bHits.length > 0) {
+        let hitObj = bHits[0].object;
+        while (hitObj && hitObj.parent && hitObj.parent !== this.scene) {
+          hitObj = hitObj.parent;
+        }
+        const struct = this.buildingSystem.placedStructures.find(s => s.mesh === hitObj);
+        if (struct) {
+          this.currentCooldown = 0.35;
+          if (this.player && this.player.playAttackAnimation) this.player.playAttackAnimation('hammer');
+          this.buildingSystem.repairStructure(struct, 65);
+          return;
+        }
+      }
+    }
+
+    // 0b. Tilling soil with Rake
+    if (equipped === 'rake' && this.farmingSystem) {
+      this.raycaster.setFromCamera(this.screenCenter, this.camera);
+      const groundTarget = (this.player && this.player.world) ? (this.player.world.groundMesh || this.player.world.terrainMesh) : null;
+      if (groundTarget) {
+        const hits = this.raycaster.intersectObject(groundTarget);
+        if (hits.length > 0) {
+          const pt = hits[0].point;
+          const pPos = this.player ? this.player.getPosition() : this.camera.position;
+          if (pPos.distanceTo(pt) < 5.0) {
+            this.currentCooldown = 0.4;
+            if (this.player && this.player.playAttackAnimation) this.player.playAttackAnimation('hoe');
+            this.farmingSystem.tillGround(pt.x, pt.z);
+            return;
+          }
+        }
+      }
+    }
 
     // 1. Bow shooting
     if (equipped === 'huntingBow') {
@@ -463,11 +508,14 @@ export default class Combat {
 
     // Raycast from camera center to find target impact point
     this.raycaster.setFromCamera(this.screenCenter, this.camera);
+    const terrain = (this.player && this.player.world)
+      ? (this.player.world.groundMesh || this.player.world.terrainMesh)
+      : null;
     const meshes = [
       ...(this.enemyManager ? this.enemyManager.getEnemyMeshes() : []),
       ...(this.bossManager ? this.bossManager.getBossMeshes() : []),
       ...(this.animalManager ? this.animalManager.getAnimals().map(a => a.mesh) : []),
-      (this.player && this.player.world && this.player.world.terrainMesh) ? this.player.world.terrainMesh : null
+      terrain
     ].filter(Boolean);
 
     const hits = this.raycaster.intersectObjects(meshes, true);
@@ -475,9 +523,8 @@ export default class Combat {
     if (hits.length > 0 && hits[0].distance > 1.8) {
       targetPoint = hits[0].point;
     } else {
-      const camDir = new THREE.Vector3();
-      this.camera.getWorldDirection(camDir);
-      targetPoint = this.camera.position.clone().add(camDir.multiplyScalar(75.0));
+      this.camera.getWorldDirection(this._camDirHelper);
+      targetPoint = this._projTargetPoint.copy(this.camera.position).addScaledVector(this._camDirHelper, 75.0);
     }
 
     // In 3rd person, spawn in front of character chest/shoulder (never behind the back!)
@@ -946,13 +993,15 @@ export default class Combat {
       const p = this.projectiles[i];
       p.life -= delta;
 
-      // Apply physics
+      // Apply physics without heap allocations
       p.velocity.y += (p.gravity || 0) * delta;
-      p.mesh.position.add(p.velocity.clone().multiplyScalar(delta));
+      this._projStep.copy(p.velocity).multiplyScalar(delta);
+      p.mesh.position.add(this._projStep);
 
       // Orient mesh to velocity
       if (p.velocity.lengthSq() > 0.01) {
-        p.mesh.lookAt(p.mesh.position.clone().add(p.velocity));
+        this._projLook.copy(p.mesh.position).add(p.velocity);
+        p.mesh.lookAt(this._projLook);
       }
 
       // Check hit against enemies & animals & bosses

@@ -32,6 +32,14 @@ export default class BossManager {
     }
     this.defeatedBossIds = new Set(savedDefeated);
 
+    let savedRevealed = [];
+    try {
+      savedRevealed = JSON.parse(localStorage.getItem('tikapoo_revealed_boss_ids') || '[]');
+    } catch (e) {
+      savedRevealed = [];
+    }
+    this.revealedBossIds = new Set(savedRevealed);
+
     const savedProgress = localStorage.getItem('tikapoo_boss_progress');
     this.unlockedBossIndex = savedProgress !== null ? parseInt(savedProgress, 10) : 0;
     this.unlockedBossIndex = isNaN(this.unlockedBossIndex) ? 0 : Math.max(0, Math.min(4, this.unlockedBossIndex));
@@ -53,7 +61,7 @@ export default class BossManager {
         color: 0x2e401e,
         glowColor: 0xf1c40f,
         type: 'beast',
-        drops: { beastHeart: 1, hardAntler: 2, leather: 6, meat: 5 },
+        drops: { trophy_ancient_stag: 1, beastHeart: 1, hardAntler: 2, leather: 6, meat: 5 },
         unlockMessage: 'Suon sumut hälvenevät... Sait Kovan Sarven! Valmista Sarvihakku ja louhi Pronssia Mustametsästä.'
       },
       {
@@ -68,7 +76,7 @@ export default class BossManager {
         color: 0x1b4332,
         glowColor: 0x2ecc71,
         type: 'wyrm',
-        drops: { swampScale: 1, swampKey: 1, salmon: 4, bronze: 6 },
+        drops: { trophy_swamp_wyrm: 1, swampScale: 1, swampKey: 1, salmon: 4, bronze: 6 },
         unlockMessage: 'Sait Suoavaimen! Sumusoilta voit nyt louhia Rautamalmia ja takoa rauta-aseita.'
       },
       {
@@ -83,7 +91,7 @@ export default class BossManager {
         color: 0x4a4a4a,
         glowColor: 0xe74c3c,
         type: 'golem',
-        drops: { graniteCore: 1, wishbone: 1, stone: 25, bronze: 6 },
+        drops: { trophy_mountain_golem: 1, graniteCore: 1, wishbone: 1, stone: 25, bronze: 6 },
         unlockMessage: 'Sait Maan Sydämen! Kalliovuoriston kätketyt Hopeasuonet ja Teräs ovat nyt louhittavissa.'
       },
       {
@@ -98,7 +106,7 @@ export default class BossManager {
         color: 0x192a56,
         glowColor: 0x00d2d3,
         type: 'wraith',
-        drops: { runeCore: 1, artisanCore: 1, shadow_essence: 6, bone: 8 },
+        drops: { trophy_rune_wraith: 1, runeCore: 1, artisanCore: 1, shadow_essence: 6, bone: 8 },
         unlockMessage: 'Sait Riimumestarin Kiven! Rakenna Sulatto & Ahjo ja sulata legendaarista Mustaa Metallia.'
       },
       {
@@ -113,7 +121,7 @@ export default class BossManager {
         color: 0x110e14,
         glowColor: 0xff3838,
         type: 'dragon',
-        drops: { dragonCrown: 1, dragonTears: 3, shadow_essence: 10 },
+        drops: { trophy_shadow_dragon: 1, dragonCrown: 1, dragonTears: 3, shadow_essence: 10 },
         unlockMessage: '👑 Olet alistanut kaikki Pohjolan 5 Muinaista Petoa! Sait Lohikäärmeen Kyyneleet jumalvarusteisiin!'
       }
     ];
@@ -1160,6 +1168,17 @@ export default class BossManager {
       }
     }
 
+    // Auto-discover hidden bosses when exploring near their sanctuary
+    if (playerPos) {
+      for (const def of this.bossDefs) {
+        if (!this.revealedBossIds.has(def.id)) {
+          if (Math.hypot(playerPos.x - def.arenaPos.x, playerPos.z - def.arenaPos.z) < 70) {
+            this.revealBoss(def.id);
+          }
+        }
+      }
+    }
+
     // Update projectiles & particles
     this.updateProjectiles(delta, playerPos);
     this.updateParticles(delta);
@@ -1272,10 +1291,40 @@ export default class BossManager {
     return this.bosses.filter(b => b.isAlive).map(b => b.mesh);
   }
 
-  // Returns all 5 boss info for the World Map & Minimap (with strict progression statuses)
+  revealBoss(bossId, hintSource = '') {
+    if (!bossId) return;
+    const def = this.bossDefs.find(b => b.id === bossId);
+    if (!def) return;
+    if (this.revealedBossIds.has(bossId)) return;
+
+    this.revealedBossIds.add(bossId);
+    try {
+      localStorage.setItem('tikapoo_revealed_boss_ids', JSON.stringify([...this.revealedBossIds]));
+    } catch (e) {}
+
+    const isFi = (typeof Localization !== 'undefined' && Localization.lang === 'en') ? false : true;
+    if (this.hud && this.hud.showNotification) {
+      const msg = hintSource
+        ? (isFi ? `📜 ${hintSource} merkitsi päävihollisen (${def.name}) sijainnin kartallesi!` : `📜 ${hintSource} revealed boss location (${def.name}) on your map!`)
+        : (isFi ? `📜 Löysit vihjeen: ${def.name} paljastui kartallesi!` : `📜 Clue discovered: ${def.name} revealed on your map!`);
+      this.hud.showNotification(msg, 5500);
+    }
+    if (this.audioManager && this.audioManager.playLevelUp) {
+      this.audioManager.playLevelUp();
+    }
+  }
+
+  // Returns all revealed & defeated boss info for the World Map & Minimap (hides undiscovered bosses)
   getBossMarkers() {
     return this.bossDefs.map((def, index) => {
       const isDefeated = this.defeatedBossIds.has(def.id) || (index < this.unlockedBossIndex);
+      const isRevealed = isDefeated || this.revealedBossIds.has(def.id);
+
+      // Undiscovered and unrevealed bosses remain hidden from player's map
+      if (!isRevealed) {
+        return null;
+      }
+
       let status = 'locked';
       if (isDefeated) {
         status = 'defeated';
@@ -1292,6 +1341,6 @@ export default class BossManager {
         status,
         index
       };
-    });
+    }).filter(Boolean);
   }
 }
