@@ -484,11 +484,21 @@ export default class AssetLoader {
 
       // KayKit Nature Pack Assets
       { name: 'Tree_1_A', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_1_A_Color1.gltf' },
+      { name: 'Tree_1_B', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_1_B_Color1.gltf' },
       { name: 'Tree_2_A', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_2_A_Color1.gltf' },
+      { name: 'Tree_2_B', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_2_B_Color1.gltf' },
       { name: 'Tree_3_A', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_3_A_Color1.gltf' },
+      { name: 'Tree_3_B', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_3_B_Color1.gltf' },
+      { name: 'Tree_Bare_1_A', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_Bare_1_A_Color1.gltf' },
+      { name: 'Tree_Bare_1_B', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_Bare_1_B_Color1.gltf' },
+      { name: 'Tree_Bare_2_A', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_Bare_2_A_Color1.gltf' },
+      { name: 'Tree_Bare_2_B', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Tree_Bare_2_B_Color1.gltf' },
       { name: 'Bush_1_A', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Bush_1_A_Color1.gltf' },
+      { name: 'Bush_1_B', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Bush_1_B_Color1.gltf' },
       { name: 'Rock_1_A', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_1_A_Color1.gltf' },
+      { name: 'Rock_1_B', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_1_B_Color1.gltf' },
       { name: 'Rock_2_A', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_2_A_Color1.gltf' },
+      { name: 'Rock_2_B', url: '/assets/KayKit_Forest_Nature_Pack_1.0_FREE/Assets/gltf/Rock_2_B_Color1.gltf' },
 
       // Trees
       { name: 'Pine_1', url: '/assets/nature/Pine_1.gltf' },
@@ -599,10 +609,40 @@ export default class AssetLoader {
       { name: 'HexRockA', url: '/assets/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Assets/gltf/decoration/nature/rock_single_A.gltf' }
     ];
 
+    // KayKit Dungeon Pack: modular rooms, props and treasure used by streamed dungeons.
+    const dungeonModels = [
+      ['DungeonFloor', 'floor_tile_large.gltf'],
+      ['DungeonCeiling', 'ceiling_tile.gltf'],
+      ['DungeonWall', 'wall.gltf'],
+      ['DungeonWallDoorway', 'wall_doorway.gltf'],
+      ['DungeonWallCorner', 'wall_corner.gltf'],
+      ['DungeonFloorBroken', 'floor_tile_small_broken_A.gltf'],
+      ['DungeonFoundation', 'floor_foundation_allsides.gltf'],
+      ['DungeonColumn', 'column.gltf'],
+      ['DungeonPillar', 'pillar_decorated.gltf'],
+      ['DungeonStairs', 'stairs_long.gltf'],
+      ['DungeonChest', 'chest.gltf'],
+      ['DungeonGoldChest', 'chest_gold.gltf'],
+      ['DungeonBarrel', 'barrel_large_decorated.gltf'],
+      ['DungeonCrates', 'crates_stacked.gltf'],
+      ['DungeonTorch', 'torch_lit.gltf'],
+      ['DungeonLantern', 'torch_mounted.gltf']
+    ];
+    dungeonModels.forEach(([name, file]) => {
+      modelManifest.push({
+        name,
+        url: `/assets/KayKit_Dungeon_Pack_1.1_FREE/Assets/gltf/${file}`
+      });
+    });
+
     const textureManifest = [
       { name: 'Grass', url: '/assets/textures/Grass.png', wrap: true, rx: 60, ry: 60 },
       { name: 'Rocks', url: '/assets/textures/Rocks_Diffuse.png', wrap: true, rx: 20, ry: 20 },
-      { name: 'Noise_Terrain', url: '/assets/textures/T_Noise_Terrain.png', wrap: true, rx: 90, ry: 90 }
+      { name: 'Noise_Terrain', url: '/assets/textures/T_Noise_Terrain.png', wrap: true, rx: 90, ry: 90 },
+      { name: 'TerrainGrass', url: '/assets/Free/Grass/Grass_03/Grass_03_basecolor.png', wrap: true, rx: 110, ry: 110 },
+      { name: 'TerrainGrassNormal', url: '/assets/Free/Grass/Grass_03/Grass_03_normal.png', wrap: true, rx: 110, ry: 110 },
+      { name: 'TerrainDirt', url: '/assets/Free/Dirt/Dirt_02/Dirt_02_basecolor.png', wrap: true, rx: 90, ry: 90 },
+      { name: 'TerrainDirtNormal', url: '/assets/Free/Dirt/Dirt_02/Dirt_02_normal.png', wrap: true, rx: 90, ry: 90 }
     ];
 
     const objManifest = [
@@ -647,7 +687,14 @@ export default class AssetLoader {
         'Floor_WoodDark', 'Prop_WoodenFence_Single', 'Prop_Crate', 'Stairs_Exterior_Straight',
         // Placeable village buildings
         'HexHomeAGreen', 'HexHomeBRed', 'HexBlacksmithBlue', 'HexTavernYellow',
-        'HexChurchBlue', 'HexArcheryGreen', 'HexLumbermillRed', 'HexWellYellow'
+        'HexChurchBlue', 'HexArcheryGreen', 'HexLumbermillRed', 'HexWellYellow',
+        'Tree_1_A', 'Tree_1_B', 'Tree_2_A', 'Tree_2_B', 'Tree_3_A', 'Tree_3_B',
+        'Tree_Bare_1_A', 'Tree_Bare_1_B', 'Tree_Bare_2_A', 'Tree_Bare_2_B',
+        'Bush_1_A', 'Bush_1_B', 'Rock_1_A', 'Rock_1_B', 'Rock_2_A', 'Rock_2_B'
+        , 'DungeonFloor', 'DungeonFloorBroken', 'DungeonFoundation', 'DungeonColumn',
+        'DungeonPillar', 'DungeonStairs', 'DungeonChest', 'DungeonGoldChest',
+        'DungeonCeiling', 'DungeonWall', 'DungeonWallDoorway', 'DungeonWallCorner',
+        'DungeonBarrel', 'DungeonCrates', 'DungeonTorch', 'DungeonLantern'
       ]);
       activeModelManifest = modelManifest.filter(m => mobileModelNames.has(m.name));
       // Completely eliminate heavy OBJ models and duplicate palettes on mobile (zero OBJ parsing & zero extra texture loads)

@@ -25,6 +25,7 @@ export default class NPC {
     this.dialogueCloseBtn = document.getElementById('npc-dialogue-close');
     this.activeNPC = null;
     this._ePressed = false;
+    this._updateDistanceSq = 11 * 11;
 
     this._setupNPCs();
     this._setupListeners();
@@ -427,14 +428,14 @@ export default class NPC {
     this.npcs.forEach(npc => {
       npc.animTime += delta;
 
-      if (npc.mixer) {
-        npc.mixer.update(delta);
-      }
-
       // Smooth turning towards player when approached
       const dx = camPos.x - npc.mesh.position.x;
       const dz = camPos.z - npc.mesh.position.z;
-      const distToPlayer = Math.sqrt(dx * dx + dz * dz);
+      const distSq = dx * dx + dz * dz;
+      if (npc.mixer && distSq <= this._updateDistanceSq) {
+        npc.mixer.update(delta);
+      }
+      const distToPlayer = Math.sqrt(distSq);
 
       if (distToPlayer < 7.5) {
         const targetAngle = Math.atan2(dx, dz);

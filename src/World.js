@@ -1,6 +1,12 @@
 import * as THREE from 'three';
 import { getBiomeKey } from './EnemyManager.js';
 
+const DUNGEON_SITES = [
+  { x: -58, z: -54 },
+  { x: 148, z: 72 },
+  { x: 32, z: 176 }
+];
+
 const isMobileDevice = (
   typeof window !== 'undefined' && (
     'ontouchstart' in window ||
@@ -26,11 +32,14 @@ export default class World {
     this.mushrooms = [];
     this.wildChests = []; // Hidden lootable treasure chests across forests and ruins
     this.remoteBuildings = []; // Named asset buildings discovered in streamed chunks
+    this.dungeons = []; // KayKit dungeon entrances and their encounter/loot metadata
+    this.activeDungeon = null;
     this.tombstones = []; // Player death gravestones (recover lost items)
     this.colliders = []; // World wall and obstacle colliders (prevents walking through buildings)
     this.workbenches = []; // Registered artisan crafting workbenches across the world
 
     this.windTime = 0;
+    this._environmentUpdateTimer = 0;
     this._fireflyUpdateTimer = 0;
     this.instancedGrass = null;
     this.instancedFerns = null;
@@ -85,6 +94,7 @@ export default class World {
     this.generateMushrooms();
     this.generateDecorations();
     this.generateWildChests();
+    this.generateDungeons();
   }
 
   // --- Multi-frequency Scandinavian Terrain Elevation Formula ---
@@ -175,7 +185,49 @@ export default class World {
       landHeight = Math.max(landHeight, 1.42);
     }
 
+    // Sink the dungeon chambers into the terrain while leaving a readable
+    // surface opening and a single approach from the south.
+    for (const site of DUNGEON_SITES) {
+      const tunnelDistance = Math.abs(x - site.x);
+      const tunnelProgress = (z - (site.z - 18.0)) / 11.0;
+      if (tunnelDistance < 2.0 && tunnelProgress >= 0 && tunnelProgress <= 1) {
+        const smoothProgress = tunnelProgress * tunnelProgress * (3 - 2 * tunnelProgress);
+        landHeight -= smoothProgress * 9.0;
+      }
+    }
+
+    if (this.activeDungeon) {
+      const dungeon = this.activeDungeon;
+      if (Math.abs(x - dungeon.position.x) < 14 && Math.abs(z - dungeon.position.z) < 14) {
+        return dungeon.position.y;
+      }
+    }
+
     return landHeight;
+  }
+
+  enterDungeon(dungeon) {
+    if (!dungeon || !dungeon.position || !dungeon.entrance) return null;
+    this.activeDungeon = dungeon;
+    if (this.groundMesh) this.groundMesh.visible = false;
+    if (this.waterMesh) this.waterMesh.visible = false;
+    if (this.instancedGrass) this.instancedGrass.visible = false;
+    if (this.instancedFerns) this.instancedFerns.visible = false;
+    if (this.fireflies) this.fireflies.visible = false;
+    return dungeon.interiorExit
+      ? dungeon.interiorExit.clone().add(new THREE.Vector3(0, 0.15, 0))
+      : new THREE.Vector3(dungeon.position.x, dungeon.position.y + 0.35, dungeon.position.z - 10);
+  }
+
+  exitDungeon() {
+    const dungeon = this.activeDungeon;
+    this.activeDungeon = null;
+    if (this.groundMesh) this.groundMesh.visible = true;
+    if (this.waterMesh) this.waterMesh.visible = true;
+    if (this.instancedGrass) this.instancedGrass.visible = true;
+    if (this.instancedFerns) this.instancedFerns.visible = true;
+    if (this.fireflies) this.fireflies.visible = true;
+    return dungeon ? dungeon.entrance.clone().add(new THREE.Vector3(0, 0.4, -2.5)) : null;
   }
 
   // --- Procedural High-Definition Seamless Scandinavian Forest Floor & Rock Textures ---
@@ -551,10 +603,22 @@ export default class World {
 
     // High-definition seamless organic Scandinavian terrain textures
     const { groundTex, normalTex } = this._generateGroundTextures();
+    const assetGroundTex = this.assetLoader?.getTexture('TerrainGrass');
+    const assetGroundNormal = this.assetLoader?.getTexture('TerrainGrassNormal');
+    if (assetGroundTex) {
+      assetGroundTex.wrapS = THREE.RepeatWrapping;
+      assetGroundTex.wrapT = THREE.RepeatWrapping;
+      assetGroundTex.repeat.set(110, 110);
+    }
+    if (assetGroundNormal) {
+      assetGroundNormal.wrapS = THREE.RepeatWrapping;
+      assetGroundNormal.wrapT = THREE.RepeatWrapping;
+      assetGroundNormal.repeat.set(110, 110);
+    }
 
     this.groundMat = new THREE.MeshStandardMaterial({
-      map: groundTex,
-      normalMap: normalTex,
+      map: assetGroundTex || groundTex,
+      normalMap: assetGroundNormal || normalTex,
       normalScale: new THREE.Vector2(0.35, 0.35),
       vertexColors: true,
       roughness: 0.96,
@@ -621,9 +685,9 @@ export default class World {
       grassMat.shadowSide = THREE.DoubleSide;
     }
 
-    const count = isMobileDevice ? 1600 : 7000;
+    const count = isMobileDevice ? 900 : 3200;
     this.instancedGrass = new THREE.InstancedMesh(grassGeo, grassMat, count);
-    this.instancedGrass.receiveShadow = true;
+    this.instancedGrass.receiveShadow = false;
 
     const dummy = new THREE.Object3D();
     const tempColor = new THREE.Color();
@@ -716,9 +780,9 @@ export default class World {
       fernMat.shadowSide = THREE.DoubleSide;
     }
 
-    const count = isMobileDevice ? 500 : 3500;
+    const count = isMobileDevice ? 260 : 1400;
     this.instancedFerns = new THREE.InstancedMesh(fernGeo, fernMat, count);
-    this.instancedFerns.receiveShadow = true;
+    this.instancedFerns.receiveShadow = false;
 
     const dummy = new THREE.Object3D();
     const tempColor = new THREE.Color();
@@ -902,8 +966,9 @@ export default class World {
 
     model.traverse((child) => {
       if (child.isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
+        const naturalAsset = /tree|pine|birch|bush|rock|flower|grass|fern|mushroom|stump|clover/i.test(name);
+        child.castShadow = !naturalAsset;
+        child.receiveShadow = !naturalAsset;
       }
     });
 
@@ -950,12 +1015,65 @@ export default class World {
     return model;
   }
 
+  _placeModelAtY(name, x, y, z, scale = 1.0, rotation = 0) {
+    if (!this.assetLoader) return null;
+    const model = this.assetLoader.get(name);
+    if (!model) return null;
+    model.position.set(x, y, z);
+    model.scale.setScalar(scale);
+    model.rotation.y = rotation;
+    model.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    this.scene.add(model);
+    return model;
+  }
+
+  _createDungeonWall(x, y, z, rotation = 0) {
+    const geometry = new THREE.BoxGeometry(3.2, 3.0, 0.32);
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x4c5661,
+      roughness: 0.88,
+      metalness: 0.08
+    });
+    const wall = new THREE.Mesh(geometry, material);
+    wall.position.set(x, y + 1.5, z);
+    wall.rotation.y = rotation;
+    wall.castShadow = true;
+    wall.receiveShadow = true;
+    this.scene.add(wall);
+    return wall;
+  }
+
+  _normalizeNatureScale(mesh, modelName, minimumHeight) {
+    if (!mesh || !modelName) return;
+    const name = modelName.toLowerCase();
+    const isNatureAsset = ((name.includes('tree') || name.includes('pine') || name.includes('birch') ||
+      name.includes('commontree') || name.includes('dead') || name.includes('twisted')) && !name.includes('stump')) ||
+      name.includes('bush') || name.includes('rock');
+    if (!isNatureAsset) return;
+    const bounds = new THREE.Box3().setFromObject(mesh);
+    const height = bounds.max.y - bounds.min.y;
+    if (height > 0 && height < minimumHeight) {
+      mesh.scale.multiplyScalar(minimumHeight / height);
+    }
+  }
+
   spawnTree(x, z, modelName = 'Pine_1', scale = null, rot = null, customId = null) {
     const y = this.getGroundHeight(x, z);
-    const chosenScale = scale || (modelName.includes('Birch') ? 2.2 : 2.6);
+    const lowerModelName = modelName.toLowerCase();
+    const isForestNatureTree = modelName.startsWith('Tree_') ||
+      lowerModelName.includes('pine') || lowerModelName.includes('birch') ||
+      lowerModelName.includes('commontree') || lowerModelName.includes('dead') ||
+      lowerModelName.includes('twisted');
+    const chosenScale = (scale || (modelName.includes('Birch') ? 2.2 : 2.6)) * (isForestNatureTree ? 3.8 : 1.35);
     const chosenRot = rot !== null ? rot : Math.random() * Math.PI * 2;
     const treeMesh = this._placeModel(modelName, x, z, chosenScale, chosenRot, true);
     if (!treeMesh) return null;
+    this._normalizeNatureScale(treeMesh, modelName, 10.0);
 
     const treeNode = {
       mesh: treeMesh,
@@ -965,7 +1083,10 @@ export default class World {
       health: 100,
       maxHealth: 100,
       harvested: false,
-      name: modelName.includes('Birch') ? 'Koivupuu' : 'Mäntypuu',
+      name: modelName.includes('Birch') ? 'Koivupuu' : modelName.includes('Tree_Bare') ? 'Kelopuu' : 'Mäntypuu',
+      woodType: modelName.includes('Birch') ? 'Koivu' : modelName.includes('Tree_Bare') ? 'Kelo' : 'Mänty',
+      harvestTool: 'axe',
+      harvestYield: modelName.includes('Tree_Bare') ? [3, 6] : [4, 7],
       customId: customId || null
     };
     treeMesh.userData.resourceNode = treeNode;
@@ -976,17 +1097,19 @@ export default class World {
     });
 
     this.trees.push(treeNode);
-    this.addCircleCollider(x, z, 0.45, 'tree', treeNode);
+    this.addCircleCollider(x, z, 0.85, 'tree', treeNode);
     return treeNode;
   }
 
   spawnStone(x, z, modelName = 'Rock_1', scale = null, rot = null, customId = null) {
     const y = this.getGroundHeight(x, z);
     const isLoose = modelName === 'Pebble_Round_1';
-    const chosenScale = scale || (isLoose ? 1.4 : 1.2);
+    const isForestNatureRock = modelName.startsWith('Rock_');
+    const chosenScale = (scale || (isLoose ? 1.4 : 1.2)) * (isForestNatureRock ? 2.2 : 1);
     const chosenRot = rot !== null ? rot : Math.random() * Math.PI * 2;
     const rockMesh = this._placeModel(modelName, x, z, chosenScale, chosenRot, true);
     if (!rockMesh) return null;
+    this._normalizeNatureScale(rockMesh, modelName, 3.0);
 
     const stoneNode = {
       mesh: rockMesh,
@@ -1686,29 +1809,18 @@ export default class World {
       if (y < 1.1) return;
       if (Math.hypot(x, z) < 18) return; // Keep spawn center clear
 
-      const rot = Math.random() * Math.PI * 2;
-      const treeMesh = this._placeModel(name, x, z, scale, rot);
-      if (treeMesh) {
-        const treeNode = {
-          mesh: treeMesh,
-          position: new THREE.Vector3(x, y, z),
-          type: 'tree',
-          health: 100,
-          maxHealth: 100,
-          harvested: false,
-          name: typeName
-        };
-        treeMesh.userData.resourceNode = treeNode;
-        treeMesh.traverse((child) => {
-          child.userData.resourceNode = treeNode;
-        });
-        this.trees.push(treeNode);
-        this.addCircleCollider(x, z, 0.45, 'tree', treeNode);
+      const treeNode = this.spawnTree(x, z, name, scale, Math.random() * Math.PI * 2);
+      if (treeNode) {
+        treeNode.name = typeName;
+        treeNode.woodType = name.includes('Pine') ? 'Mänty' :
+          name.includes('Dead') || name.includes('Twisted') ? 'Kelo' : 'Lehtipuu';
+        treeNode.harvestTool = 'axe';
+        treeNode.harvestYield = name.includes('Pine') ? [4, 7] : [3, 6];
       }
     };
 
     // 1. Dedicated Black Forest Grove: 110 dense ancient pines on desktop, 45 on mobile
-    const bfCount = isMobileDevice ? 45 : 110;
+    const bfCount = isMobileDevice ? 24 : 60;
     for (let i = 0; i < bfCount; i++) {
       const x = -165 + Math.random() * 80;
       const z = -165 + Math.random() * 80;
@@ -1718,7 +1830,7 @@ export default class World {
     }
 
     // 2. Dedicated Swamp Bog: 85 eerie twisted trees on desktop, 35 on mobile
-    const swampCount = isMobileDevice ? 35 : 85;
+    const swampCount = isMobileDevice ? 18 : 45;
     for (let i = 0; i < swampCount; i++) {
       const x = -195 + Math.random() * 100;
       const z = 90 + Math.random() * 105;
@@ -1728,7 +1840,7 @@ export default class World {
     }
 
     // 3. Dedicated Mountain Alpine Pines: 75 alpine pines on desktop, 30 on mobile
-    const mountainCount = isMobileDevice ? 30 : 75;
+    const mountainCount = isMobileDevice ? 16 : 40;
     for (let i = 0; i < mountainCount; i++) {
       const x = 95 + Math.random() * 100;
       const z = -195 + Math.random() * 110;
@@ -1740,7 +1852,7 @@ export default class World {
     }
 
     // 4. Dedicated Rune Plains: 50 broadleaf oaks on desktop, 25 on mobile
-    const plainsCount = isMobileDevice ? 25 : 50;
+    const plainsCount = isMobileDevice ? 12 : 28;
     for (let i = 0; i < plainsCount; i++) {
       const x = 135 + Math.random() * 100;
       const z = -65 + Math.random() * 110;
@@ -1750,7 +1862,7 @@ export default class World {
     }
 
     // 5. Dedicated Ashlands: 65 charred dead trees on desktop, 25 on mobile
-    const ashCount = isMobileDevice ? 25 : 65;
+    const ashCount = isMobileDevice ? 14 : 35;
     for (let i = 0; i < ashCount; i++) {
       const x = -60 + Math.random() * 120;
       const z = 190 + Math.random() * 110;
@@ -1760,7 +1872,7 @@ export default class World {
     }
 
     // 6. Remaining trees distributed across the expansive wilderness (240 on mobile, 950 on desktop)
-    const totalTrees = isMobileDevice ? 240 : 950;
+    const totalTrees = isMobileDevice ? 150 : 500;
     for (let i = 0; i < totalTrees; i++) {
       let x, z, dist;
       do {
@@ -1815,7 +1927,7 @@ export default class World {
   // --- Authentic Finnish Birch Forests (Pohjolan Koivikot) ---
   generateBirchForests() {
     const birchModels = ['BirchTree_1', 'BirchTree_2', 'BirchTree_3'];
-    const totalBirches = isMobileDevice ? 75 : 260;
+    const totalBirches = isMobileDevice ? 45 : 120;
 
     for (let i = 0; i < totalBirches; i++) {
       let x, z;
@@ -1847,25 +1959,12 @@ export default class World {
       const scale = 1.6 + Math.random() * 0.9;
       const rot = Math.random() * Math.PI * 2;
 
-      const treeMesh = this._placeModel(modelName, x, z, scale, rot);
-      if (treeMesh) {
-        const treeNode = {
-          mesh: treeMesh,
-          position: new THREE.Vector3(x, y, z),
-          type: 'tree',
-          health: 100,
-          maxHealth: 100,
-          harvested: false,
-          name: 'Pohjolan Koivu'
-        };
-
-        treeMesh.userData.resourceNode = treeNode;
-        treeMesh.traverse((child) => {
-          child.userData.resourceNode = treeNode;
-        });
-
-        this.trees.push(treeNode);
-        this.addCircleCollider(x, z, 0.45, 'tree', treeNode);
+      const treeNode = this.spawnTree(x, z, modelName, scale, rot);
+      if (treeNode) {
+        treeNode.name = 'Pohjolan Koivu';
+        treeNode.woodType = 'Koivu';
+        treeNode.harvestTool = 'axe';
+        treeNode.harvestYield = [4, 7];
       }
     }
   }
@@ -2025,7 +2124,7 @@ export default class World {
 
   generateRocks() {
     const rockModels = ['Rock_Medium_1', 'Rock_Medium_2', 'Rock_Medium_3', 'Pebble_Round_1', 'Rock_Moss_1', 'Rock_Moss_2'];
-    const count = isMobileDevice ? 25 : 75;
+    const count = isMobileDevice ? 14 : 40;
 
     for (let i = 0; i < count; i++) {
       let x, z, dist;
@@ -2181,7 +2280,7 @@ export default class World {
 
   generateBerryBushes() {
     const bushModels = ['Bush_Common_Flowers', 'Bush_Common', 'BushBerries_1'];
-    const count = isMobileDevice ? 22 : 70;
+    const count = isMobileDevice ? 12 : 36;
 
     for (let i = 0; i < count; i++) {
       let x, z;
@@ -2215,6 +2314,7 @@ export default class World {
 
       const bushMesh = this._placeModel(chosenName, x, z, scale, rot);
       if (bushMesh) {
+        this._normalizeNatureScale(bushMesh, chosenName, 2.2);
         const bushNode = {
           mesh: bushMesh,
           position: new THREE.Vector3(x, y, z),
@@ -2237,7 +2337,7 @@ export default class World {
 
   generateMushrooms() {
     const mushroomModels = ['Mushroom_Common', 'Mushroom_Laetiporus'];
-    const count = isMobileDevice ? 20 : 60;
+    const count = isMobileDevice ? 10 : 30;
 
     for (let i = 0; i < count; i++) {
       let x, z;
@@ -2317,7 +2417,7 @@ export default class World {
       ]
     };
 
-    const count = isMobileDevice ? 220 : 540;
+    const count = isMobileDevice ? 120 : 300;
 
     for (let i = 0; i < count; i++) {
       const x = (Math.random() - 0.5) * 850;
@@ -2411,20 +2511,21 @@ export default class World {
     const biome = getBiomeKey(centerX, centerZ) || 'meadows';
 
     // Model selection based on biome
-    let treeModels = ['Pine_1', 'Pine_2', 'Pine_3', 'Birch_1', 'Birch_2'];
-    if (biome === 'swamp') treeModels = ['Pine_Crooked_1', 'TreeStump_Moss', 'TreeStump'];
-    else if (biome === 'ashlands') treeModels = ['TreeStump', 'Pine_Crooked_1'];
-    else if (biome === 'mountain') treeModels = ['Pine_Snow_1', 'Pine_Snow_2', 'Pine_1'];
+    let treeModels = ['Tree_1_A', 'Tree_1_B', 'Tree_2_A', 'Tree_2_B'];
+    if (biome === 'swamp') treeModels = ['Tree_Bare_1_A', 'Tree_Bare_1_B', 'Tree_3_A'];
+    else if (biome === 'ashlands') treeModels = ['Tree_Bare_2_A', 'Tree_Bare_2_B', 'Tree_3_B'];
+    else if (biome === 'mountain') treeModels = ['Tree_2_A', 'Tree_2_B', 'Tree_1_A'];
+    else if (biome === 'runePlains') treeModels = ['Tree_3_A', 'Tree_3_B', 'Tree_1_B'];
 
     // Keep every explored 80x80 chunk visually alive instead of only dressing
     // the starting area. Biomes get denser tree lines while mobile stays lighter.
     const treeCountByBiome = {
-      meadows: isMobileDevice ? 6 : 14,
-      blackForest: isMobileDevice ? 9 : 20,
-      swamp: isMobileDevice ? 7 : 16,
-      mountain: isMobileDevice ? 5 : 12,
-      runePlains: isMobileDevice ? 4 : 10,
-      ashlands: isMobileDevice ? 6 : 14
+      meadows: isMobileDevice ? 4 : 8,
+      blackForest: isMobileDevice ? 6 : 12,
+      swamp: isMobileDevice ? 5 : 10,
+      mountain: isMobileDevice ? 4 : 8,
+      runePlains: isMobileDevice ? 3 : 6,
+      ashlands: isMobileDevice ? 4 : 8
     };
     const treeCount = treeCountByBiome[biome] || (isMobileDevice ? 6 : 14);
     for (let i = 0; i < treeCount; i++) {
@@ -2435,15 +2536,15 @@ export default class World {
         continue;
       }
       const model = treeModels[Math.floor(Math.random() * treeModels.length)];
-      const scale = biome === 'blackForest' ? 1.5 + Math.random() * 0.8 : 1.0 + Math.random() * 0.55;
+      const scale = biome === 'blackForest' ? 1.7 + Math.random() * 0.9 : 1.25 + Math.random() * 0.65;
       this.spawnTree(tx, tz, model, scale, Math.random() * Math.PI * 2);
     }
 
     // Scatter useful resources as well as scenery in remote wilderness.
     const rockModels = biome === 'mountain'
-      ? ['Rock_Medium_1', 'Rock_Medium_2', 'Rock_Moss_1']
-      : ['Rock_1', 'Rock_Medium_1', 'Rock_Moss_1'];
-    const rockCount = isMobileDevice ? 3 : 7;
+      ? ['Rock_2_A', 'Rock_2_B', 'Rock_1_A']
+      : ['Rock_1_A', 'Rock_1_B', 'Rock_2_A'];
+    const rockCount = isMobileDevice ? 2 : 4;
     for (let i = 0; i < rockCount; i++) {
       const rx = cx * 80 + 10 + Math.random() * 60;
       const rz = cz * 80 + 10 + Math.random() * 60;
@@ -2452,7 +2553,7 @@ export default class World {
         continue;
       }
       const model = rockModels[Math.floor(Math.random() * rockModels.length)];
-      this.spawnStone(rx, rz, model, 0.8 + Math.random() * 0.5);
+      this.spawnStone(rx, rz, model, 1.0 + Math.random() * 0.65);
     }
 
     this._generateChunkDressing(cx, cz, biome);
@@ -2461,11 +2562,11 @@ export default class World {
   _generateChunkDressing(cx, cz, biome) {
     const dressing = {
       meadows: ['Flower_3_Group', 'Flower_4_Group', 'Clover_1', 'Bush_Common_Flowers'],
-      blackForest: ['WoodLog_Moss', 'TreeStump_Moss', 'Mushroom_Common', 'Rock_Moss_1', 'Fern_1'],
-      swamp: ['Plant_1', 'Plant_7', 'Mushroom_Laetiporus', 'TreeStump_Moss', 'DeadTree_2'],
-      mountain: ['Pebble_Round_1', 'Rock_Medium_1', 'Rock_Medium_2', 'DeadTree_3'],
-      runePlains: ['Grass_Wispy_Tall', 'Clover_1', 'Flower_3_Group', 'Plant_1'],
-      ashlands: ['DeadTree_1', 'Rock_Medium_3', 'TreeStump']
+      blackForest: ['Bush_1_A', 'Bush_1_B', 'Rock_1_A', 'Rock_1_B', 'Fern_1'],
+      swamp: ['Bush_1_B', 'Rock_2_A', 'Mushroom_Laetiporus', 'TreeStump_Moss', 'Tree_3_A'],
+      mountain: ['Rock_2_A', 'Rock_2_B', 'Rock_1_B', 'DeadTree_3'],
+      runePlains: ['Bush_1_A', 'Bush_1_B', 'Tree_3_A', 'Flower_3_Group'],
+      ashlands: ['Tree_Bare_2_A', 'Rock_2_B', 'Rock_1_A', 'TreeStump']
     };
     const models = dressing[biome] || dressing.meadows;
     const countByBiome = {
@@ -2476,7 +2577,7 @@ export default class World {
       runePlains: isMobileDevice ? 8 : 18,
       ashlands: isMobileDevice ? 8 : 20
     };
-    const count = countByBiome[biome] || (isMobileDevice ? 9 : 22);
+    const count = countByBiome[biome] || (isMobileDevice ? 5 : 10);
     const originX = cx * 80;
     const originZ = cz * 80;
 
@@ -2490,11 +2591,28 @@ export default class World {
       }
 
       const name = models[Math.floor(Math.random() * models.length)];
-      const scale = name.includes('Mushroom') ? 1.25 + Math.random() * 0.55 : 0.75 + Math.random() * 0.5;
-      const mesh = this._placeModel(name, x, z, scale, Math.random() * Math.PI * 2);
+      const scale = name.includes('Mushroom') ? 1.25 + Math.random() * 0.55
+        : (name.startsWith('Bush_') || name.startsWith('Rock_') || name.startsWith('Tree_')
+          ? 1.15 + Math.random() * 0.65
+          : 0.9 + Math.random() * 0.5);
+      const lowerName = name.toLowerCase();
+      const decorationTree = lowerName.includes('tree') && !lowerName.includes('stump');
+      const decorationTreeNode = decorationTree
+        ? this.spawnTree(x, z, name, scale, Math.random() * Math.PI * 2)
+        : null;
+      const mesh = decorationTreeNode
+        ? decorationTreeNode.mesh
+        : this._placeModel(name, x, z, scale, Math.random() * Math.PI * 2);
       if (mesh) {
+        if (lowerName.includes('tree') && !lowerName.includes('stump')) {
+          if (!decorationTreeNode) this._normalizeNatureScale(mesh, name, 10.0);
+        } else if (lowerName.includes('bush')) {
+          this._normalizeNatureScale(mesh, name, 2.2);
+        } else if (lowerName.includes('rock')) {
+          this._normalizeNatureScale(mesh, name, 3.0);
+        }
         mesh.userData.chunkDecoration = true;
-        this.decorations.push(mesh);
+        if (!decorationTreeNode) this.decorations.push(mesh);
       }
     }
 
@@ -2515,6 +2633,7 @@ export default class World {
       const name = landmarkTrees[Math.floor(Math.random() * landmarkTrees.length)];
       const mesh = this._placeModel(name, x, z, 0.9 + Math.random() * 0.35, Math.random() * Math.PI * 2);
       if (mesh) {
+        this._normalizeNatureScale(mesh, name, 8.5);
         mesh.userData.assetTree = true;
         this.decorations.push(mesh);
       }
@@ -2612,6 +2731,7 @@ export default class World {
       ribbon.material.opacity = 0.035 + (Math.sin(this.atmosphereTime * 0.35 + phase) + 1) * 0.018;
     }
     this.windTime += delta;
+    this._environmentUpdateTimer -= delta;
 
     // Infinite / Seamless Open World dynamic centering & chunk generation
     if (playerPos) {
@@ -2619,24 +2739,24 @@ export default class World {
     }
 
     // Track sun shadow frustum tightly on player position for crisp, soft PCF shadows
-    if (playerPos && this.sun) {
+    if (playerPos && this.sun && this.windTime % 0.05 < delta) {
       this.sun.position.set(playerPos.x + 85, playerPos.y + 120, playerPos.z + 65);
       this.sun.target.position.set(playerPos.x, playerPos.y, playerPos.z);
     }
 
     // Dynamic water ripples
-    if (this.waterNormal) {
+    if (this.waterNormal && this._environmentUpdateTimer <= 0) {
       this.waterNormal.offset.x = (this.windTime * 0.02) % 1;
       this.waterNormal.offset.y = (this.windTime * 0.015) % 1;
     }
 
-    if (this.waterMesh) {
+    if (this.waterMesh && this._environmentUpdateTimer <= 0) {
       this.waterMesh.position.y = -1.0 + Math.sin(this.windTime * 1.5) * 0.04;
     }
 
     this._fireflyUpdateTimer -= delta;
     if (this.fireflies && this._fireflyUpdateTimer <= 0) {
-      this._fireflyUpdateTimer = 0.033;
+      this._fireflyUpdateTimer = 0.1;
       const pos = this.fireflies.geometry.attributes.position;
       const phase = this.fireflies.geometry.attributes.phase;
       for (let i = 0; i < pos.count; i++) {
@@ -2655,13 +2775,16 @@ export default class World {
       }
     }
 
-    for (const camp of this.campfires) {
-      const flicker = Math.sin(this.windTime * 14 + camp.baseX) * 0.4 +
-                      Math.cos(this.windTime * 23 + camp.baseZ) * 0.25;
-      camp.light.intensity = 2.8 + flicker;
-      const s = 1.0 + flicker * 0.12;
-      if (camp.mesh && camp.mesh.scale && camp.mesh.scale.set) {
-        camp.mesh.scale.set(s, s, s);
+    if (this._environmentUpdateTimer <= 0) {
+      this._environmentUpdateTimer = 0.05;
+      for (const camp of this.campfires) {
+        const flicker = Math.sin(this.windTime * 14 + camp.baseX) * 0.4 +
+                        Math.cos(this.windTime * 23 + camp.baseZ) * 0.25;
+        camp.light.intensity = 2.8 + flicker;
+        const s = 1.0 + flicker * 0.12;
+        if (camp.mesh && camp.mesh.scale && camp.mesh.scale.set) {
+          camp.mesh.scale.set(s, s, s);
+        }
       }
     }
 
@@ -2736,6 +2859,204 @@ export default class World {
       child.userData.wildChest = chestObj;
     });
 
+    this.addCircleCollider(x, z, 0.65, 'wildChest');
+    this.wildChests.push(chestObj);
+    return chestObj;
+  }
+
+  generateDungeons() {
+    const dungeonSites = [
+      { x: -58, z: -54, name: 'Varjokaivokset', theme: 'mine' },
+      { x: 148, z: 72, name: 'Riimukrypta', theme: 'crypt' },
+      { x: 32, z: 176, name: 'Tuhkamaan holvi', theme: 'vault' }
+    ];
+
+    for (const site of dungeonSites) {
+      const surfaceY = this.getGroundHeight(site.x, site.z);
+      const y = surfaceY - 13.0;
+      const dungeon = {
+        ...site,
+        position: new THREE.Vector3(site.x, y, site.z),
+        completed: false,
+        loot: [],
+        entrance: new THREE.Vector3(site.x, this.getGroundHeight(site.x, site.z - 18.0), site.z - 18.0),
+        interiorExit: new THREE.Vector3(site.x, y + 0.4, site.z - 10.0)
+      };
+
+      const layouts = {
+        mine: [
+          [-3, -2], [-2, -2], [-1, -2], [0, -2], [1, -2], [2, -2], [3, -2],
+          [-3, -1], [0, -1], [3, -1], [-3, 0], [0, 0], [3, 0],
+          [-3, 1], [0, 1], [3, 1], [-3, 2], [-2, 2], [-1, 2], [0, 2], [1, 2], [2, 2], [3, 2]
+        ],
+        crypt: [
+          [-2, -3], [-1, -3], [0, -3], [1, -3], [2, -3],
+          [-2, -2], [2, -2], [-2, -1], [2, -1], [-2, 0], [0, 0], [2, 0],
+          [-2, 1], [2, 1], [-2, 2], [2, 2], [-2, 3], [-1, 3], [0, 3], [1, 3], [2, 3]
+        ],
+        vault: [
+          [-3, -3], [-2, -3], [-1, -3], [0, -3], [1, -3], [2, -3], [3, -3],
+          [-3, -2], [3, -2], [-3, -1], [3, -1], [-3, 0], [3, 0],
+          [-3, 1], [3, 1], [-3, 2], [3, 2], [-3, 3], [-2, 3], [-1, 3], [0, 3], [1, 3], [2, 3], [3, 3]
+        ]
+      };
+      const tiles = layouts[site.theme] || layouts.mine;
+      const tileSpacing = 4.0;
+      const minTileX = Math.min(...tiles.map(([ix]) => ix));
+      const maxTileX = Math.max(...tiles.map(([ix]) => ix));
+      const minTileZ = Math.min(...tiles.map(([, iz]) => iz));
+      const maxTileZ = Math.max(...tiles.map(([, iz]) => iz));
+      const occupied = new Set(tiles.map(([ix, iz]) => `${ix},${iz}`));
+      const entryTileZ = minTileZ;
+      const interiorEntryZ = site.z + (entryTileZ + 0.55) * tileSpacing;
+      dungeon.interiorExit.set(site.x, y + 0.4, interiorEntryZ);
+      dungeon.bounds = {
+        minX: site.x + (minTileX - 0.5) * tileSpacing,
+        maxX: site.x + (maxTileX + 0.5) * tileSpacing,
+        minZ: site.z + (minTileZ - 0.5) * tileSpacing,
+        maxZ: site.z + (maxTileZ + 0.5) * tileSpacing
+      };
+      for (const [ix, iz] of tiles) {
+        const model = (ix + iz) % 4 === 0 ? 'DungeonFloorBroken' : 'DungeonFoundation';
+        this._placeModelAtY(model, site.x + ix * tileSpacing, y, site.z + iz * tileSpacing, 1.0, 0);
+        const edges = [
+          [0, -1, 0], [0, 1, 0], [-1, 0, Math.PI / 2], [1, 0, Math.PI / 2]
+        ];
+        edges.forEach(([ox, oz, rotation]) => {
+          if (!occupied.has(`${ix + ox},${iz + oz}`)) {
+            const wallX = site.x + (ix + ox * 0.5) * tileSpacing;
+            const wallZ = site.z + (iz + oz * 0.5) * tileSpacing;
+            const isEntrance = ix === 0 && iz === entryTileZ && oz === -1;
+            if (!isEntrance) {
+              const wallModel = (Math.abs(ix) === 3 && Math.abs(iz) === 3)
+                ? 'DungeonWallCorner'
+                : 'DungeonWall';
+              this._placeModelAtY(wallModel, wallX, y, wallZ, 1.0, rotation);
+            }
+          }
+        });
+      }
+
+      const cornerOffsets = site.theme === 'vault'
+        ? [[-12.0, -12.0], [12.0, -12.0], [-12.0, 12.0], [12.0, 12.0]]
+        : [[-8.0, -8.0], [8.0, -8.0], [-8.0, 8.0], [8.0, 8.0]];
+      for (const [dx, dz] of cornerOffsets) {
+        this._placeModelAtY('DungeonPillar', site.x + dx, y, site.z + dz, 1.1, 0);
+        this.addCircleCollider(site.x + dx, site.z + dz, 0.65, 'dungeonPillar');
+      }
+
+      const propPlan = [
+        ['DungeonTorch', -8.0, 0, 1.0, Math.PI / 2],
+        ['DungeonTorch', 8.0, 0, 1.0, -Math.PI / 2],
+        ['DungeonPillar', -3.0, -10.5, 0.9, 0],
+        ['DungeonPillar', 3.0, -10.5, 0.9, 0],
+        ['DungeonTorch', 0, -10.5, 0.85, 0],
+        ['DungeonColumn', -4.0, 4.0, 1.0, 0],
+        ['DungeonColumn', 4.0, -4.0, 1.0, 0],
+        ['DungeonBarrel', -4.5, -5.0, 0.9, 0.3],
+        ['DungeonCrates', 4.8, 5.0, 0.9, -0.3],
+        ['DungeonTorch', 0, -8.0, 0.85, 0]
+      ];
+      for (const [model, dx, dz, scale, rotation] of propPlan) {
+        this._placeModelAtY(model, site.x + dx, y, site.z + dz, scale, rotation);
+      }
+      const dungeonLight = new THREE.PointLight(0xffc477, 2.4, 24, 1.7);
+      dungeonLight.position.set(site.x, y + 2.4, site.z);
+      this.scene.add(dungeonLight);
+
+      // The only surface opening is a descending stair shaft on the south side.
+      const entranceX = site.x;
+      const entranceZ = site.z - 18.0;
+      this._placeModelAtY('DungeonWallDoorway', entranceX, surfaceY, entranceZ, 1.35, 0);
+      this._placeModelAtY('DungeonPillar', site.x - 2.4, surfaceY, site.z - 18.0, 1.15, 0);
+      this._placeModelAtY('DungeonPillar', site.x + 2.4, surfaceY, site.z - 18.0, 1.15, 0);
+      this._placeModelAtY('DungeonTorch', entranceX, surfaceY + 1.0, entranceZ, 1.0, 0);
+      const entranceLight = new THREE.PointLight(0xff9d3d, 4.5, 28, 1.5);
+      entranceLight.position.set(entranceX, surfaceY + 3.2, entranceZ);
+      this.scene.add(entranceLight);
+      const beacon = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.35, 1),
+        new THREE.MeshBasicMaterial({ color: 0xffb52e })
+      );
+      beacon.position.set(entranceX, surfaceY + 4.4, entranceZ);
+      this.scene.add(beacon);
+      for (let step = 0; step < 8; step++) {
+        const stepY = surfaceY - step * 1.6 - 1.0;
+        const stepZ = entranceZ + step * 1.45;
+        this._placeModelAtY('DungeonStairs', entranceX, stepY, stepZ, 0.9, Math.PI);
+      }
+      // Keep the character outside the decorative stair shaft. Entering is
+      // deliberate through E, which prevents clipping through the stair mesh.
+      this.addBoxCollider(entranceX - 1.55, entranceX + 1.55, entranceZ - 1.25, entranceZ + 0.15, 'dungeon-entrance-gate');
+      this.addBoxCollider(entranceX - 2.25, entranceX - 1.55, entranceZ - 1.25, entranceZ + 10.5, 'dungeon-entrance-rail-left');
+      this.addBoxCollider(entranceX + 1.55, entranceX + 2.25, entranceZ - 1.25, entranceZ + 10.5, 'dungeon-entrance-rail-right');
+
+      const chestPositions = [
+        { dx: -3.2, dz: 0, model: 'DungeonChest' },
+        { dx: 3.2, dz: 3.2, model: 'DungeonGoldChest' }
+      ];
+      for (const chest of chestPositions) {
+        const chestObj = this._spawnDungeonChest(
+          site.x + chest.dx,
+          site.z + chest.dz,
+          chest.model,
+          dungeon
+        );
+        if (chestObj) dungeon.loot.push(chestObj);
+      }
+
+      // Keep one southern doorway traversable while retaining room boundary collision.
+      // Leave a 3.2 m doorway in the south wall.
+      const b = dungeon.bounds;
+      this.addBoxCollider(b.minX, site.x - 2.0, b.minZ, b.minZ + 1.0, 'dungeon-wall');
+      this.addBoxCollider(site.x + 2.0, b.maxX, b.minZ, b.minZ + 1.0, 'dungeon-wall');
+      this.addBoxCollider(b.minX, b.maxX, b.maxZ - 1.0, b.maxZ, 'dungeon-wall');
+      this.addBoxCollider(b.minX, b.minX + 1.0, b.minZ + 1.0, b.maxZ - 1.0, 'dungeon-wall');
+      this.addBoxCollider(b.maxX - 1.0, b.maxX, b.minZ + 1.0, b.maxZ - 1.0, 'dungeon-wall');
+
+      dungeon.enemySpawns = [
+        { x: site.x - 2.0, z: site.z - 2.0 },
+        { x: site.x + 2.0, z: site.z + 0.8 },
+        { x: site.x, z: site.z + 4.0 }
+      ];
+      this.dungeons.push(dungeon);
+      this.dungeonSpawns = (this.dungeonSpawns || []).concat(dungeon.enemySpawns);
+      this.remoteBuildings.push({
+        x: site.x,
+        z: site.z,
+        name: `⚔️ ${site.name}`,
+        biome: getBiomeKey(site.x, site.z),
+        model: 'DungeonFoundation',
+        type: 'dungeon'
+      });
+    }
+  }
+
+  _spawnDungeonChest(x, z, modelName, dungeon) {
+    const y = dungeon.position.y;
+    const mesh = this._placeModelAtY(modelName, x, y, z, 1.1, 0);
+    if (!mesh) return null;
+
+    const glowGeo = new THREE.OctahedronGeometry(0.16, 0);
+    const glowMat = new THREE.MeshBasicMaterial({ color: modelName === 'DungeonGoldChest' ? 0xffc400 : 0x5dade2 });
+    const glowMarker = new THREE.Mesh(glowGeo, glowMat);
+    glowMarker.position.set(x, y + 1.0, z);
+    this.scene.add(glowMarker);
+
+    const chestObj = {
+      mesh,
+      position: new THREE.Vector3(x, y, z),
+      glowMarker,
+      biome: 'dungeon',
+      isOpened: false,
+      customId: `dungeon:${dungeon.name}:${x}:${z}`,
+      dungeon,
+      rewards: modelName === 'DungeonGoldChest'
+        ? [{ item: 'bronze', count: 4 }, { item: 'iron', count: 4 }, { item: 'gold', count: 3 }, { item: 'flametalOre', count: 1 }]
+        : [{ item: 'stone', count: 8 }, { item: 'wood', count: 6 }, { item: 'bone', count: 4 }]
+    };
+    mesh.userData.wildChest = chestObj;
+    mesh.traverse(child => { child.userData.wildChest = chestObj; });
     this.addCircleCollider(x, z, 0.65, 'wildChest');
     this.wildChests.push(chestObj);
     return chestObj;

@@ -367,15 +367,17 @@ export default class EnemyManager {
     meadowSpawns.forEach(sp => this.spawnAt(sp.x, sp.z, 'meadows'));
   }
 
-  spawnAt(x, z, customBiome = null) {
+  spawnAt(x, z, customBiome = null, forcedType = null, forcedY = null, dungeon = null) {
     const biome = customBiome || getBiomeKey(x, z);
     const enemyList = BIOME_ENEMIES[biome] || BIOME_ENEMIES.meadows;
-    const blueprint = enemyList[Math.floor(Math.random() * enemyList.length)];
+    const blueprint = forcedType
+      ? enemyList.find(enemy => enemy.type === forcedType) || enemyList[Math.floor(Math.random() * enemyList.length)]
+      : enemyList[Math.floor(Math.random() * enemyList.length)];
 
     const { group, mixer, actions, bodyMat, flashMaterials, originalColors, hpGroup, hpFill } = this.createEnemyMesh(blueprint);
 
-    const y = this.world ? this.world.getGroundHeight(x, z) : 0;
-    if (y < -0.4) return null;
+    const y = forcedY !== null ? forcedY : (this.world ? this.world.getGroundHeight(x, z) : 0);
+    if (y < -0.4 && forcedY === null) return null;
 
     group.position.set(x, y, z);
     this.scene.add(group);
@@ -408,7 +410,9 @@ export default class EnemyManager {
       isAlive: true,
       hasBeenHit: false,
       isBossMinion: false,
-      isRigMedium: !!blueprint.skeletonModel
+      isRigMedium: !!blueprint.skeletonModel,
+      dungeon,
+      dungeonHome: dungeon ? new THREE.Vector3(x, y, z) : null
     };
 
     if (actions['Zombie_Idle_Loop']) {
@@ -947,6 +951,11 @@ export default class EnemyManager {
               }
             } else {
               enemy.mesh.position.addScaledVector(dir, currentSpeed * delta);
+              if (enemy.dungeon && enemy.dungeon.bounds) {
+                const b = enemy.dungeon.bounds;
+                enemy.mesh.position.x = Math.max(b.minX + 1.4, Math.min(b.maxX - 1.4, enemy.mesh.position.x));
+                enemy.mesh.position.z = Math.max(b.minZ + 1.4, Math.min(b.maxZ - 1.4, enemy.mesh.position.z));
+              }
               enemy.playAnim('Walking_A');
             }
           } else {
@@ -956,7 +965,9 @@ export default class EnemyManager {
           }
         }
 
-        const baseGround = this.world ? this.world.getGroundHeight(enemy.mesh.position.x, enemy.mesh.position.z) : 0;
+        const baseGround = enemy.dungeon
+          ? enemy.dungeon.position.y
+          : (this.world ? this.world.getGroundHeight(enemy.mesh.position.x, enemy.mesh.position.z) : 0);
         const isMoving = distToPlayer > attackRadius * 0.8;
         const stepBob = isMoving ? Math.abs(Math.sin(enemy.animTimer * 8.5)) * 0.05 : 0;
         enemy.mesh.position.y = baseGround + stepBob;
@@ -1014,8 +1025,13 @@ export default class EnemyManager {
         enemy.wanderTimer -= delta;
         if (enemy.wanderTimer <= 0) {
           enemy.wanderTimer = 3 + Math.random() * 4;
-          const rx = enemy.mesh.position.x + (Math.random() * 20 - 10);
-          const rz = enemy.mesh.position.z + (Math.random() * 20 - 10);
+          let rx = enemy.mesh.position.x + (Math.random() * 20 - 10);
+          let rz = enemy.mesh.position.z + (Math.random() * 20 - 10);
+          if (enemy.dungeon && enemy.dungeon.bounds) {
+            const b = enemy.dungeon.bounds;
+            rx = Math.max(b.minX + 1.5, Math.min(b.maxX - 1.5, rx));
+            rz = Math.max(b.minZ + 1.5, Math.min(b.maxZ - 1.5, rz));
+          }
           enemy.wanderTarget.set(rx, 0, rz);
         }
 
@@ -1032,7 +1048,9 @@ export default class EnemyManager {
           enemy.playAnim('Idle_A');
         }
 
-        const baseGround = this.world ? this.world.getGroundHeight(enemy.mesh.position.x, enemy.mesh.position.z) : 0;
+        const baseGround = enemy.dungeon
+          ? enemy.dungeon.position.y
+          : (this.world ? this.world.getGroundHeight(enemy.mesh.position.x, enemy.mesh.position.z) : 0);
         const stepBob = isWandering ? Math.abs(Math.sin(enemy.animTimer * 8.5)) * 0.04 : 0;
         enemy.mesh.position.y = baseGround + stepBob;
 

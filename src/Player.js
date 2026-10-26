@@ -1438,38 +1438,6 @@ export default class Player {
       this.camera.rotation.z = 0;
     }
 
-    // Contextual interaction prompts (Campfires / Beds, Water drinking)
-    const pPos = this.playerPos;
-    let nearCampfire = false;
-    if (world && world.campfires) {
-      for (const cf of world.campfires) {
-        if (cf.position && cf.position.distanceTo(pPos) < 4.0) {
-          nearCampfire = true;
-          break;
-        }
-      }
-    }
-    const bs = this.buildingSystem || (this.inventory && this.inventory.buildingSystem) || null;
-    if (!nearCampfire && bs && bs.placedStructures) {
-      for (const ps of bs.placedStructures) {
-        if ((ps.type === 'campfire' || ps.type === 'bed') && ps.position.distanceTo(pPos) < 4.0) {
-          nearCampfire = true;
-          break;
-        }
-      }
-    }
-
-    const groundH = world ? world.getGroundHeight(pPos.x, pPos.z) : 2;
-    const isNearWater = groundH <= 1.2 || (Math.abs(pPos.x - Math.sin(pPos.z * 0.02) * 20) < 6.0 && Math.abs(pPos.z) < 200);
-
-    if (this.hud && !this.hud.harvestProgressContainer?.style?.display?.includes('flex')) {
-      if (nearCampfire) {
-        this.hud.showTooltip('[Paina E] Lepää leiritulen lämmössä 🔥 (Palauttaa hengen & Levännyt-buffi)');
-      } else if (isNearWater) {
-        this.hud.showTooltip('[Paina E] Juo raikasta järvivettä 💧');
-      }
-    }
-
     // Update HUD bars with full vitals and level data
     if (this.hud && this.hud.updateVitals) {
       this.hud.updateVitals(
@@ -1720,6 +1688,12 @@ export default class Player {
 
     const deathPos = this.playerPos.clone();
 
+    // Death always returns the world to its surface state. Otherwise a dungeon
+    // death leaves the terrain hidden after respawn.
+    if (this.world && this.world.activeDungeon && this.world.exitDungeon) {
+      this.world.exitDungeon();
+    }
+
     // 1. Drop player's inventory items into a recoverable Gravestone
     const droppedItems = {};
     let hasItems = false;
@@ -1787,6 +1761,12 @@ export default class Player {
   }
 
   respawn() {
+    // Defensive cleanup for deaths that occurred while the dungeon state was
+    // already transitioning or before the death handler restored the surface.
+    if (this.world && this.world.activeDungeon && this.world.exitDungeon) {
+      this.world.exitDungeon();
+    }
+
     // 1. Hide death screen
     const deathScreen = document.getElementById('death-screen');
     if (deathScreen) {

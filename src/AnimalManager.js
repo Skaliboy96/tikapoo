@@ -18,6 +18,8 @@ export default class AnimalManager {
     this.deers = [];
     this.rabbits = [];
     this.fishSchools = [];
+    this._fleeDirection = new THREE.Vector3();
+    this._animalDirection = new THREE.Vector3();
 
     this._spawnWildlife();
   }
@@ -353,7 +355,7 @@ export default class AnimalManager {
         deer.state = 'flee';
         deer.fleeTimer = Math.max(0, deer.fleeTimer - delta);
 
-        const fleeDir = new THREE.Vector3().subVectors(deer.mesh.position, playerPos);
+        const fleeDir = this._fleeDirection.subVectors(deer.mesh.position, playerPos);
         fleeDir.y = 0;
         if (fleeDir.lengthSq() > 0.001) {
           fleeDir.normalize();
@@ -379,7 +381,7 @@ export default class AnimalManager {
         }
 
         if (deer.state === 'walk') {
-          const dir = new THREE.Vector3().subVectors(deer.wanderTarget, deer.mesh.position);
+          const dir = this._animalDirection.subVectors(deer.wanderTarget, deer.mesh.position);
           dir.y = 0;
           if (dir.length() > 0.5) {
             dir.normalize();

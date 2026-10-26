@@ -110,7 +110,8 @@ export default class ResourceNode {
     const inv = this.inventory;
     const equipped = inv ? inv.equippedTool : null;
 
-    const isAxe = equipped === 'stoneAxe' || equipped === 'bronzeAxe' || equipped === 'ironAxe' || equipped === 'blackMetalAxe';
+    const isAxe = equipped === 'axe' || equipped === 'stoneAxe' || equipped === 'bronzeAxe' ||
+      equipped === 'ironAxe' || equipped === 'blackMetalAxe';
     const isPickaxe = equipped === 'pickaxe' || equipped === 'antlerPickaxe' || equipped === 'bronzePickaxe' || equipped === 'ironPickaxe' || equipped === 'silverPickaxe';
 
     // 1. Trees require an AXE (Pickaxes cannot chop wood!)
@@ -408,7 +409,10 @@ export default class ResourceNode {
         });
       }
 
-      yieldCount = Math.floor(Math.random() * 3) + 3; // 3 to 5
+      const yieldRange = Array.isArray(node.harvestYield) ? node.harvestYield : [3, 5];
+      const minYield = Math.max(1, Math.round(yieldRange[0]));
+      const maxYield = Math.max(minYield, Math.round(yieldRange[1]));
+      yieldCount = minYield + Math.floor(Math.random() * (maxYield - minYield + 1));
       this.inventory.add('wood', yieldCount);
       if (Math.random() < 0.4) {
         this.inventory.add('resin', 1);

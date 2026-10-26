@@ -117,6 +117,7 @@ export default class MobileControls {
 
     if (this.isTouchDevice) {
       this.container.style.display = anyModalOpen ? 'none' : 'block';
+      document.body.classList.toggle('mobile-paused', anyModalOpen);
     }
 
     this.joystickActive = false;
@@ -381,7 +382,7 @@ export default class MobileControls {
         position: fixed !important;
         top: max(8px, env(safe-area-inset-top, 8px)) !important;
         left: max(8px, env(safe-area-inset-left, 8px)) !important;
-        width: clamp(130px, 20vw, 170px) !important;
+        width: clamp(112px, 28vw, 142px) !important;
         height: auto !important;
         pointer-events: auto !important;
         background: rgba(10, 14, 20, 0.85);
@@ -406,8 +407,38 @@ export default class MobileControls {
 
       body.mobile-mode #hotbar {
         bottom: 10px !important;
-        transform: translateX(-50%) scale(0.85) !important;
+        transform: translateX(-50%) scale(0.68) !important;
         z-index: 104 !important;
+      }
+
+      body.mobile-mode .hud-bars-stack {
+        padding: 4px 6px !important;
+        gap: 2px !important;
+      }
+
+      body.mobile-mode .bar-label {
+        font-size: 7px !important;
+      }
+
+      body.mobile-mode .bar {
+        height: 4px !important;
+      }
+
+      body.mobile-mode .mobile-top-bar {
+        max-width: 46vw;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      body.mobile-mode .mobile-pill-btn {
+        min-width: 34px;
+        min-height: 34px;
+        padding: 5px 7px;
+        font-size: 10px;
+      }
+
+      body.mobile-mode .mobile-pill-btn span {
+        display: none;
       }
     `;
     document.head.appendChild(style);
@@ -619,9 +650,10 @@ export default class MobileControls {
         }
       };
 
-      btnAttack.addEventListener('touchstart', startAttack, { passive: false });
-      btnAttack.addEventListener('touchend', stopAttack, { passive: true });
-      btnAttack.addEventListener('touchcancel', stopAttack, { passive: true });
+      btnAttack.addEventListener('pointerdown', startAttack, { passive: false });
+      btnAttack.addEventListener('pointerup', stopAttack, { passive: true });
+      btnAttack.addEventListener('pointercancel', stopAttack, { passive: true });
+      btnAttack.addEventListener('pointerleave', stopAttack, { passive: true });
     }
 
     // Block
@@ -636,9 +668,9 @@ export default class MobileControls {
         btnBlock.classList.remove('active');
         if (this.player) this.player.stopBlock();
       };
-      btnBlock.addEventListener('touchstart', handleBlockStart, { passive: false });
-      btnBlock.addEventListener('touchend', handleBlockEnd, { passive: true });
-      btnBlock.addEventListener('touchcancel', handleBlockEnd, { passive: true });
+      btnBlock.addEventListener('pointerdown', handleBlockStart, { passive: false });
+      btnBlock.addEventListener('pointerup', handleBlockEnd, { passive: true });
+      btnBlock.addEventListener('pointercancel', handleBlockEnd, { passive: true });
     }
 
     // Jump
@@ -653,9 +685,9 @@ export default class MobileControls {
         btnJump.classList.remove('active');
         if (this.player && this.player.keys) this.player.keys.jump = false;
       };
-      btnJump.addEventListener('touchstart', handleJumpStart, { passive: false });
-      btnJump.addEventListener('touchend', handleJumpEnd, { passive: true });
-      btnJump.addEventListener('touchcancel', handleJumpEnd, { passive: true });
+      btnJump.addEventListener('pointerdown', handleJumpStart, { passive: false });
+      btnJump.addEventListener('pointerup', handleJumpEnd, { passive: true });
+      btnJump.addEventListener('pointercancel', handleJumpEnd, { passive: true });
     }
 
     // Interact
@@ -667,7 +699,7 @@ export default class MobileControls {
         this.performInteractTrigger();
         setTimeout(() => btnInteract.classList.remove('active'), 180);
       };
-      btnInteract.addEventListener('touchstart', handleInteract, { passive: false });
+      btnInteract.addEventListener('pointerdown', handleInteract, { passive: false });
     }
 
     // Camera toggle
@@ -679,7 +711,7 @@ export default class MobileControls {
           this.player.isThirdPerson = !this.player.isThirdPerson;
         }
       };
-      btnCam.addEventListener('touchstart', handleCamToggle, { passive: false });
+      btnCam.addEventListener('pointerdown', handleCamToggle, { passive: false });
     }
 
     // Dedicated Building Mode Button (KORJATTU Avaus ilman estoja)
@@ -705,7 +737,7 @@ export default class MobileControls {
           }
         }
       };
-      btnBuild.addEventListener('touchstart', handleBuild, { passive: false });
+      btnBuild.addEventListener('pointerdown', handleBuild, { passive: false });
     }
 
     // Sprint toggle
@@ -719,7 +751,7 @@ export default class MobileControls {
           this.player.keys.sprint = this.isSprintLocked;
         }
       };
-      btnSprint.addEventListener('touchstart', handleSprint, { passive: false });
+      btnSprint.addEventListener('pointerdown', handleSprint, { passive: false });
     }
 
     // 3. Yläpalkin napit
@@ -847,7 +879,7 @@ export default class MobileControls {
           e.stopPropagation();
           callback();
         };
-        el.addEventListener('touchstart', trigger, { passive: false });
+        el.addEventListener('pointerdown', trigger, { passive: false });
         el.addEventListener('click', trigger);
       }
     };
@@ -861,11 +893,14 @@ export default class MobileControls {
         const isActive = this.pauseMenu.classList.contains('active');
         if (isActive) {
           this.pauseMenu.classList.remove('active');
+          this.pauseMenu.style.display = 'none';
           if (this.controls) this.controls.isLocked = true;
         } else {
+          this.pauseMenu.style.display = '';
           this.pauseMenu.classList.add('active');
           if (this.controls) this.controls.isLocked = false;
         }
+        this.syncUIState();
       }
     });
   }

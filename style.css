@@ -4249,6 +4249,71 @@ canvas {
     z-index: 100 !important;
   }
 
+  /* Stable touch layout for older iOS/Android phones and tablets. Keep controls
+     inside the safe area and scale from the shorter viewport dimension. */
+  @media (max-width: 1024px), (pointer: coarse) {
+    body.mobile-game-active #mobile-controls-root {
+      display: block !important;
+      padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0)
+        env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+    }
+
+    body.mobile-game-active.mobile-paused #mobile-controls-root {
+      display: none !important;
+    }
+
+    #mobile-controls-root .mobile-joystick-container {
+      width: clamp(92px, 17vmin, 132px) !important;
+      height: clamp(92px, 17vmin, 132px) !important;
+      bottom: max(10px, env(safe-area-inset-bottom, 10px)) !important;
+      left: max(10px, env(safe-area-inset-left, 10px)) !important;
+    }
+
+    #mobile-controls-root .mobile-actions-container {
+      width: clamp(184px, 31vmin, 238px) !important;
+      height: clamp(166px, 28vmin, 214px) !important;
+      bottom: max(10px, env(safe-area-inset-bottom, 10px)) !important;
+      right: max(10px, env(safe-area-inset-right, 10px)) !important;
+      transform: scale(clamp(0.72, 100vmin / 620, 1)) !important;
+      transform-origin: bottom right !important;
+    }
+
+    #mobile-controls-root .mobile-top-bar {
+      top: max(6px, env(safe-area-inset-top, 6px)) !important;
+      right: max(6px, env(safe-area-inset-right, 6px)) !important;
+      gap: 4px !important;
+    }
+
+    #mobile-controls-root .mobile-pill-btn {
+      min-width: 32px !important;
+      min-height: 32px !important;
+      padding: 4px 6px !important;
+      font-size: 10px !important;
+    }
+  }
+
+  @media (orientation: landscape) and (max-height: 600px) and (max-width: 1024px) {
+    #mobile-controls-root .mobile-joystick-container {
+      width: 92px !important;
+      height: 92px !important;
+    }
+
+    #mobile-controls-root .mobile-actions-container {
+      transform: scale(0.72) !important;
+    }
+
+    #hotbar {
+      bottom: max(2px, env(safe-area-inset-bottom, 2px)) !important;
+      transform: translateX(-50%) scale(0.52) !important;
+    }
+
+    #tooltip {
+      bottom: 86px !important;
+      max-width: 82vw !important;
+      font-size: 12px !important;
+    }
+  }
+
   /* Top-Left: 4 Stacked Vitals Bars & Chat Circle */
   #hud-vitals-container {
     top: max(8px, env(safe-area-inset-top, 8px)) !important;
@@ -4493,6 +4558,66 @@ canvas {
   #hotbar {
     bottom: max(3px, env(safe-area-inset-bottom, 3px)) !important;
     transform: scale(0.60) !important;
+  }
+}
+
+/* Compact phone HUD: keep gameplay visible and leave room for touch controls. */
+@media (max-width: 480px) {
+  body.mobile-mode #hud-vitals-container {
+    width: 112px !important;
+    max-width: 112px !important;
+    padding: 4px 5px !important;
+  }
+
+  body.mobile-mode .hud-bars-stack {
+    padding: 3px 5px !important;
+    gap: 2px !important;
+  }
+
+  body.mobile-mode .bar-label {
+    font-size: 7px !important;
+  }
+
+  body.mobile-mode .bar {
+    height: 4px !important;
+  }
+
+  body.mobile-mode #hotbar {
+    transform: translateX(-50%) scale(0.58) !important;
+    transform-origin: bottom center !important;
+  }
+
+  body.mobile-mode .hud-bottom-cluster {
+    bottom: max(4px, env(safe-area-inset-bottom, 4px)) !important;
+  }
+
+  body.mobile-mode .mobile-actions-container {
+    transform: scale(0.88);
+    transform-origin: bottom right;
+  }
+
+  body.mobile-mode .mobile-joystick-container {
+    transform: scale(0.88);
+    transform-origin: bottom left;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 900px) {
+  body.mobile-mode #hud-vitals-container {
+    width: 108px !important;
+    max-width: 108px !important;
+  }
+
+  body.mobile-mode #hotbar {
+    transform: translateX(-50%) scale(0.52) !important;
+  }
+
+  body.mobile-mode .mobile-actions-container {
+    transform: scale(0.74);
+  }
+
+  body.mobile-mode .mobile-joystick-container {
+    transform: scale(0.74);
   }
 }
 
@@ -4892,5 +5017,624 @@ body.mobile-mode .shield-block-container.visible {
 
   .menu-footer {
     display: none !important;
+  }
+}
+
+/* Final compact HUD layout. These rules intentionally come last so older
+   breakpoint rules cannot make the groups overlap again. */
+@media (max-width: 900px), (pointer: coarse) {
+  #hud-vitals-container {
+    top: max(6px, env(safe-area-inset-top, 6px)) !important;
+    left: max(6px, env(safe-area-inset-left, 6px)) !important;
+    width: clamp(94px, 24vw, 132px) !important;
+    max-width: 132px !important;
+    gap: 3px !important;
+    transform-origin: top left !important;
+  }
+
+  .hud-top-right-group {
+    top: max(6px, env(safe-area-inset-top, 6px)) !important;
+    right: max(6px, env(safe-area-inset-right, 6px)) !important;
+    gap: 3px !important;
+    align-items: flex-end !important;
+  }
+
+  #minimap-container,
+  #minimap {
+    width: clamp(54px, 14vw, 76px) !important;
+    height: clamp(54px, 14vw, 76px) !important;
+  }
+
+  .mobile-top-bar {
+    top: max(6px, env(safe-area-inset-top, 6px)) !important;
+    right: max(72px, calc(env(safe-area-inset-right, 6px) + 66px)) !important;
+    max-width: min(52vw, 300px) !important;
+    gap: 2px !important;
+    justify-content: flex-end !important;
+  }
+
+  .mobile-top-bar .mobile-pill-btn {
+    min-width: 28px !important;
+    min-height: 28px !important;
+    width: 28px !important;
+    height: 28px !important;
+    padding: 2px !important;
+    font-size: 13px !important;
+    line-height: 1 !important;
+  }
+
+  .mobile-top-bar .mobile-pill-btn span {
+    display: none !important;
+  }
+
+  #game-clock-container {
+    top: max(88px, calc(env(safe-area-inset-top, 6px) + 82px)) !important;
+    right: max(6px, env(safe-area-inset-right, 6px)) !important;
+    font-size: 9px !important;
+    transform: scale(0.82) !important;
+    transform-origin: top right !important;
+  }
+
+  .hud-bottom-cluster {
+    bottom: max(4px, env(safe-area-inset-bottom, 4px)) !important;
+    gap: 1px !important;
+    transform: translateX(-50%) scale(0.72) !important;
+    transform-origin: bottom center !important;
+  }
+
+  #hotbar {
+    bottom: max(2px, env(safe-area-inset-bottom, 2px)) !important;
+    transform: translateX(-50%) scale(0.52) !important;
+    transform-origin: bottom center !important;
+  }
+
+  #mobile-controls-root .mobile-joystick-container {
+    width: 112px !important;
+    height: 112px !important;
+    bottom: max(8px, env(safe-area-inset-bottom, 8px)) !important;
+    left: max(8px, env(safe-area-inset-left, 8px)) !important;
+  }
+
+  #mobile-controls-root .mobile-actions-container {
+    width: 220px !important;
+    height: 194px !important;
+    bottom: max(8px, env(safe-area-inset-bottom, 8px)) !important;
+    right: max(8px, env(safe-area-inset-right, 8px)) !important;
+    transform: scale(0.78) !important;
+    transform-origin: bottom right !important;
+  }
+
+  #tooltip {
+    bottom: 76px !important;
+    max-width: 80vw !important;
+    padding: 6px 10px !important;
+    font-size: 11px !important;
+    white-space: normal !important;
+    text-align: center !important;
+  }
+}
+
+@media (max-width: 600px) {
+  #hud-vitals-container {
+    width: 104px !important;
+  }
+
+  .hud-top-right-group {
+    top: max(44px, calc(env(safe-area-inset-top, 6px) + 38px)) !important;
+  }
+
+  .mobile-top-bar {
+    right: max(6px, env(safe-area-inset-right, 6px)) !important;
+    max-width: 66vw !important;
+  }
+
+  #minimap-container,
+  #minimap {
+    width: 58px !important;
+    height: 58px !important;
+  }
+
+  .hud-bottom-cluster {
+    transform: translateX(-50%) scale(0.58) !important;
+  }
+
+  #hotbar {
+    transform: translateX(-50%) scale(0.42) !important;
+  }
+
+  #mobile-controls-root .mobile-joystick-container {
+    width: 96px !important;
+    height: 96px !important;
+  }
+
+  #mobile-controls-root .mobile-actions-container {
+    transform: scale(0.64) !important;
+  }
+}
+
+@media (max-width: 380px), (max-height: 430px) {
+  #hud-vitals-container {
+    width: 88px !important;
+    transform: scale(0.88) !important;
+  }
+
+  .mobile-top-bar .mobile-pill-btn {
+    min-width: 25px !important;
+    width: 25px !important;
+    height: 25px !important;
+    font-size: 11px !important;
+  }
+
+  #minimap-container,
+  #minimap {
+    width: 50px !important;
+    height: 50px !important;
+  }
+
+  .hud-bottom-cluster {
+    transform: translateX(-50%) scale(0.48) !important;
+  }
+
+  #hotbar {
+    transform: translateX(-50%) scale(0.34) !important;
+  }
+
+  #mobile-controls-root .mobile-joystick-container {
+    width: 84px !important;
+    height: 84px !important;
+  }
+
+  #mobile-controls-root .mobile-actions-container {
+    transform: scale(0.54) !important;
+  }
+}
+
+/* Square phone viewports need their own geometry: the desktop quick-action
+   panel must not consume the narrow right edge, and the touch controls must
+   fit beside the centered hotbar. */
+@media (max-width: 600px) and (min-aspect-ratio: 4 / 5) and (max-aspect-ratio: 5 / 4) {
+  .hud-hotbar-actions,
+  body.mobile-mode .hud-hotbar-actions {
+    display: none !important;
+  }
+
+  #hud-vitals-container {
+    top: max(6px, env(safe-area-inset-top, 6px)) !important;
+    width: 108px !important;
+  }
+
+  .hud-top-right-group {
+    top: max(42px, calc(env(safe-area-inset-top, 6px) + 36px)) !important;
+  }
+
+  #minimap-container,
+  #minimap {
+    width: 72px !important;
+    height: 72px !important;
+  }
+
+  #game-clock-container {
+    top: max(122px, calc(env(safe-area-inset-top, 6px) + 116px)) !important;
+    right: max(6px, env(safe-area-inset-right, 6px)) !important;
+    width: 112px !important;
+    padding: 4px 5px !important;
+    font-size: 8px !important;
+  }
+
+  .mobile-top-bar {
+    top: max(6px, env(safe-area-inset-top, 6px)) !important;
+    right: max(6px, env(safe-area-inset-right, 6px)) !important;
+    max-width: 58vw !important;
+  }
+
+  .hud-bottom-cluster {
+    bottom: max(4px, env(safe-area-inset-bottom, 4px)) !important;
+    transform: translateX(-50%) scale(0.5) !important;
+  }
+
+  #hotbar {
+    bottom: max(2px, env(safe-area-inset-bottom, 2px)) !important;
+    transform: translateX(-50%) scale(0.38) !important;
+  }
+
+  #mobile-controls-root .mobile-joystick-container {
+    width: 92px !important;
+    height: 92px !important;
+    bottom: max(8px, env(safe-area-inset-bottom, 8px)) !important;
+    left: max(8px, env(safe-area-inset-left, 8px)) !important;
+  }
+
+  #mobile-controls-root .mobile-actions-container {
+    width: 200px !important;
+    height: 176px !important;
+    bottom: max(8px, env(safe-area-inset-bottom, 8px)) !important;
+    right: max(8px, env(safe-area-inset-right, 8px)) !important;
+    transform: scale(0.68) !important;
+    transform-origin: bottom right !important;
+  }
+
+  #tooltip {
+    bottom: 70px !important;
+    max-width: 68vw !important;
+  }
+}
+
+/* Compact touch controls for square and near-square phones. The default
+   action cluster is designed for tablets and is too wide for a 480px view. */
+@media (max-width: 600px) and (min-aspect-ratio: 4 / 5) and (max-aspect-ratio: 5 / 4) {
+  .hud-hotbar-actions {
+    display: none !important;
+  }
+
+  .hud-top-right-group {
+    width: 82px !important;
+    gap: 3px !important;
+  }
+
+  .mobile-action-coins {
+    width: 82px !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-end !important;
+    gap: 3px !important;
+  }
+
+  .mobile-action-coin {
+    width: 28px !important;
+    height: 28px !important;
+    border-width: 1px !important;
+    font-size: 13px !important;
+  }
+
+  #mobile-controls-root .mobile-actions-container {
+    width: 154px !important;
+    height: 154px !important;
+    right: max(6px, env(safe-area-inset-right, 6px)) !important;
+    bottom: max(6px, env(safe-area-inset-bottom, 6px)) !important;
+    transform: none !important;
+  }
+
+  #mobile-controls-root .mobile-actions-container .touch-action-btn {
+    box-sizing: border-box !important;
+  }
+
+  #mobile-controls-root #btn-mobile-attack {
+    width: 56px !important;
+    height: 56px !important;
+    right: 0 !important;
+    bottom: 0 !important;
+  }
+
+  #mobile-controls-root #btn-mobile-attack .btn-icon {
+    font-size: 24px !important;
+    line-height: 24px !important;
+  }
+
+  #mobile-controls-root #btn-mobile-attack .btn-sub {
+    font-size: 6px !important;
+  }
+
+  #mobile-controls-root #btn-mobile-block {
+    width: 38px !important;
+    height: 38px !important;
+    right: 62px !important;
+    bottom: 2px !important;
+  }
+
+  #mobile-controls-root #btn-mobile-interact {
+    width: 36px !important;
+    height: 36px !important;
+    right: 104px !important;
+    bottom: 3px !important;
+  }
+
+  #mobile-controls-root #btn-mobile-jump {
+    width: 42px !important;
+    height: 42px !important;
+    right: 5px !important;
+    bottom: 62px !important;
+  }
+
+  #mobile-controls-root #btn-mobile-build {
+    width: 38px !important;
+    height: 38px !important;
+    right: 11px !important;
+    bottom: 110px !important;
+  }
+
+  #mobile-controls-root #btn-mobile-camera {
+    width: 34px !important;
+    height: 34px !important;
+    right: 58px !important;
+    bottom: 64px !important;
+  }
+
+  #mobile-controls-root #btn-mobile-sprint-toggle {
+    width: 34px !important;
+    height: 34px !important;
+    right: 100px !important;
+    bottom: 108px !important;
+  }
+
+  #mobile-controls-root .touch-action-btn .btn-icon {
+    font-size: 15px !important;
+    line-height: 15px !important;
+  }
+
+  #mobile-controls-root .touch-action-btn .btn-sub {
+    font-size: 5px !important;
+    margin-top: 0 !important;
+  }
+}
+
+/* Inventory uses a stacked mobile layout instead of shrinking the desktop
+   two-column panel until the item grid becomes horizontally clipped. */
+@media (max-width: 600px), (pointer: coarse) {
+  #backpack-screen {
+    align-items: flex-start !important;
+    padding: max(8px, env(safe-area-inset-top, 8px))
+      max(6px, env(safe-area-inset-right, 6px))
+      max(8px, env(safe-area-inset-bottom, 8px))
+      max(6px, env(safe-area-inset-left, 6px)) !important;
+    box-sizing: border-box !important;
+  }
+
+  #backpack-screen .backpack-modal {
+    width: 100% !important;
+    max-width: 520px !important;
+    max-height: calc(100vh - 16px) !important;
+    height: calc(100vh - 16px) !important;
+    max-height: calc(100dvh - 16px) !important;
+    height: calc(100dvh - 16px) !important;
+    border-width: 1px !important;
+    border-radius: 8px !important;
+  }
+
+  #backpack-screen .backpack-header {
+    flex: 0 0 auto !important;
+    min-height: 42px !important;
+    padding: 7px 10px !important;
+  }
+
+  #backpack-screen .backpack-title {
+    font-size: 12px !important;
+    letter-spacing: 1px !important;
+    line-height: 1.15 !important;
+    max-width: 62% !important;
+  }
+
+  #backpack-screen .backpack-header-right {
+    gap: 5px !important;
+    font-size: 9px !important;
+  }
+
+  #backpack-screen .backpack-body {
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    flex-direction: column !important;
+  }
+
+  #backpack-screen .backpack-char-panel {
+    width: 100% !important;
+    max-height: 39vh !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+    padding: 7px 8px !important;
+    gap: 5px !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+    overflow: hidden !important;
+  }
+
+  #backpack-screen .backpack-char-title {
+    font-size: 9px !important;
+    padding-bottom: 2px !important;
+  }
+
+  #backpack-screen .bp-equipment-grid {
+    gap: 3px !important;
+  }
+
+  #backpack-screen .bp-paperdoll-wrapper {
+    justify-content: center !important;
+    gap: 4px !important;
+  }
+
+  #backpack-screen .bp-slots-col {
+    width: 42px !important;
+    gap: 3px !important;
+  }
+
+  #backpack-screen .bp-slot-box {
+    min-height: 38px !important;
+    padding: 2px 1px !important;
+  }
+
+  #backpack-screen .bp-slot-type-label {
+    font-size: 6px !important;
+    margin-bottom: 0 !important;
+  }
+
+  #backpack-screen .bp-slot-icon {
+    font-size: 14px !important;
+    line-height: 14px !important;
+  }
+
+  #backpack-screen .bp-slot-item-label {
+    font-size: 6px !important;
+    max-width: 40px !important;
+    margin-top: 0 !important;
+  }
+
+  #backpack-screen .bp-paperdoll-viewport {
+    width: min(30vw, 112px) !important;
+    height: min(34vh, 132px) !important;
+  }
+
+  #backpack-screen .bp-panel-top-row,
+  #backpack-screen .bp-stats-card,
+  #backpack-screen .bp-hints {
+    display: none !important;
+  }
+
+  #backpack-screen .backpack-items-panel {
+    width: 100% !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+    padding: 8px !important;
+    gap: 5px !important;
+    overflow-y: auto !important;
+  }
+
+  #backpack-screen .bp-items-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 5px !important;
+  }
+
+  #backpack-screen .bp-grid-slot {
+    min-width: 0 !important;
+    padding: 2px !important;
+    border-width: 1px !important;
+  }
+
+  #backpack-screen .bp-grid-slot .bp-slot-icon {
+    font-size: 17px !important;
+    line-height: 17px !important;
+  }
+
+  #backpack-screen .bp-slot-name {
+    font-size: 7px !important;
+  }
+
+  #backpack-screen .bp-slot-type {
+    font-size: 6px !important;
+  }
+
+  #backpack-screen .bp-slot-qty {
+    font-size: 8px !important;
+    bottom: 1px !important;
+    right: 2px !important;
+  }
+}
+
+/* Mobile action bar: keep the quick menu reachable at the bottom center
+   instead of leaving it as a desktop-only right-side panel. */
+@media (max-width: 900px), (pointer: coarse) {
+  .hud-hotbar-actions,
+  body.mobile-mode .hud-hotbar-actions {
+    display: flex !important;
+    position: fixed !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: max(6px, env(safe-area-inset-bottom, 6px)) !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: 76vw !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 5px !important;
+    padding: 5px 6px !important;
+    border-width: 1px !important;
+    border-radius: 7px !important;
+    transform: translateX(-50%) scale(0.82) !important;
+    transform-origin: bottom center !important;
+    z-index: 125 !important;
+  }
+
+  .hud-hotbar-actions .hud-btn {
+    width: auto !important;
+    min-width: 62px !important;
+    min-height: 30px !important;
+    padding: 6px 8px !important;
+    justify-content: center !important;
+    gap: 4px !important;
+  }
+
+  .hud-hotbar-actions .hud-btn-text {
+    font-size: 8px !important;
+    white-space: nowrap !important;
+  }
+
+  .hud-hotbar-actions .hud-btn-key {
+    display: none !important;
+  }
+
+  .hud-bottom-cluster {
+    bottom: max(48px, calc(env(safe-area-inset-bottom, 6px) + 42px)) !important;
+  }
+
+  #hotbar {
+    bottom: max(46px, calc(env(safe-area-inset-bottom, 6px) + 40px)) !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .hud-hotbar-actions,
+  body.mobile-mode .hud-hotbar-actions {
+    max-width: 82vw !important;
+    gap: 3px !important;
+    padding: 4px 5px !important;
+    transform: translateX(-50%) scale(0.9) !important;
+  }
+
+  .hud-hotbar-actions .hud-btn {
+    min-width: 58px !important;
+    min-height: 32px !important;
+    padding: 6px 6px !important;
+  }
+
+  .hud-hotbar-actions .hud-btn-text {
+    font-size: 7px !important;
+  }
+
+  .hud-bottom-cluster {
+    bottom: max(54px, calc(env(safe-area-inset-bottom, 6px) + 48px)) !important;
+  }
+
+  #hotbar {
+    bottom: max(52px, calc(env(safe-area-inset-bottom, 6px) + 46px)) !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .hud-hotbar-actions,
+  body.mobile-mode .hud-hotbar-actions {
+    max-width: 92vw !important;
+    transform: translateX(-50%) scale(0.82) !important;
+  }
+
+  .hud-hotbar-actions .hud-btn {
+    min-width: 52px !important;
+    min-height: 29px !important;
+    padding: 5px 4px !important;
+  }
+
+  .hud-bottom-cluster {
+    bottom: max(48px, calc(env(safe-area-inset-bottom, 6px) + 42px)) !important;
+  }
+
+  #hotbar {
+    bottom: max(46px, calc(env(safe-area-inset-bottom, 6px) + 40px)) !important;
+  }
+}
+
+@media (max-width: 380px) {
+  #backpack-screen .backpack-title {
+    font-size: 10px !important;
+  }
+
+  #backpack-screen .backpack-char-panel {
+    max-height: 34vh !important;
+  }
+
+  #backpack-screen .bp-paperdoll-viewport {
+    width: 94px !important;
+    height: 110px !important;
+  }
+
+  #backpack-screen .bp-items-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 }

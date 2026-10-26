@@ -89,10 +89,10 @@ async function init() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   // Keep the 3D image crisp on high-density mobile screens. The previous 1.5 cap
   // made the full-screen canvas visibly soft when it was scaled to the viewport.
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.0));
-  // Enable clean grounded shadows on mobile with high performance
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = isTouchDevice ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isTouchDevice ? 1.25 : 1.5));
+  // Shadow maps are disproportionately expensive on older touch GPUs.
+  renderer.shadowMap.enabled = !isTouchDevice;
+  renderer.shadowMap.type = THREE.BasicShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -138,6 +138,12 @@ async function init() {
   await new Promise((resolve) => setTimeout(resolve, 30));
 
   const world = new World(scene, assetLoader);
+  if (isTouchDevice) {
+    // Keep mobile GPU work bounded even when the saved graphics setting was
+    // created on a desktop machine.
+    if (world.sun) world.sun.castShadow = false;
+    renderer.shadowMap.enabled = false;
+  }
   await new Promise((resolve) => setTimeout(resolve, 30));
 
   // 3D Physical Ragdoll physics simulation for characters and creatures on death
@@ -184,6 +190,41 @@ async function init() {
   enemyManager.achievementManager = achievementManager;
   enemyManager.ragdollManager = ragdollManager;
   enemyManager.buildingSystem = buildingSystem;
+  // Populate discovered KayKit dungeons with deterministic local encounters.
+  if (world.dungeonSpawns) {
+    world.dungeonSpawns.forEach((spawn, index) => {
+      const dungeon = world.dungeons?.find(entry => entry.enemySpawns?.includes(spawn));
+      enemyManager.spawnAt(
+        spawn.x,
+        spawn.z,
+        'blackForest',
+        index % 2 === 0 ? 'forest_greydwarf' : 'forest_shaman',
+        dungeon ? dungeon.position.y : null,
+        dungeon
+      );
+    });
+  }
+  if (world.dungeons) {
+    world.dungeons.forEach((dungeon) => {
+      const dungeonBoss = enemyManager.spawnAt(
+        dungeon.position.x,
+        dungeon.position.z,
+        'blackForest',
+        'forest_brute',
+        dungeon.position.y,
+        dungeon
+      );
+      if (!dungeonBoss) return;
+      dungeonBoss.isDungeonBoss = true;
+      dungeonBoss.name = `${dungeon.name} – Holvinvartija`;
+      dungeonBoss.maxHealth = 720;
+      dungeonBoss.health = dungeonBoss.maxHealth;
+      dungeonBoss.damage = 42;
+      dungeonBoss.speed = 1.8;
+      dungeonBoss.mesh.scale.multiplyScalar(1.75);
+      dungeon.boss = dungeonBoss;
+    });
+  }
   buildingSystem.enemyManager = enemyManager;
   const combat = new Combat(scene, camera, player, enemyManager, inventory, hud, audioManager, assetLoader, animalManager, bossManager);
   combat.buildingSystem = buildingSystem;
@@ -352,6 +393,7 @@ async function init() {
   const startGame = () => {
     audioManager.ensureContext();
     isGameStarted = true;
+    document.body.classList.add('mobile-game-active');
     if (mainMenu) mainMenu.style.display = 'none';
     if (pauseMenu) pauseMenu.classList.remove('active');
     if (hudEl) hudEl.style.display = 'flex';
@@ -690,17 +732,24 @@ async function init() {
   if (shadowQualitySelect) {
     shadowQualitySelect.addEventListener('change', (e) => {
       const val = e.target.value;
+      if (isTouchDevice) {
+        renderer.shadowMap.enabled = false;
+        if (world.sun) world.sun.castShadow = false;
+        renderer.shadowMap.needsUpdate = true;
+        hud.showNotification('Mobiililaitteella varjot on poistettu suorituskyvyn vuoksi');
+        return;
+      }
       if (val === 'very_low') {
         renderer.shadowMap.enabled = false;
         if (world.sun) world.sun.castShadow = false;
       } else {
         renderer.shadowMap.enabled = true;
         if (world.sun) world.sun.castShadow = true;
-        let mapRes = 2048;
+        let mapRes = 1024;
         if (val === 'low') mapRes = 512;
         else if (val === 'medium') mapRes = 1024;
-        else if (val === 'high') mapRes = 2048;
-        else if (val === 'ultra') mapRes = 4096;
+        else if (val === 'high') mapRes = 1024;
+        else if (val === 'ultra') mapRes = 1536;
 
         if (world.sun) {
           world.sun.shadow.mapSize.set(mapRes, mapRes);
@@ -1496,6 +1545,32 @@ async function init() {
     const pPos = player ? player.getPosition() : null;
     if (!pPos) return false;
 
+    if (world && world.activeDungeon) {
+      const exit = world.activeDungeon.interiorExit;
+      if (exit && pPos.distanceTo(exit) < 3.8) {
+        const outside = world.exitDungeon();
+        if (outside) {
+          player.playerPos.copy(outside);
+          if (player.group) player.group.position.copy(outside);
+          if (controls && controls.getObject) controls.getObject().position.copy(outside);
+          if (hud && hud.showNotification) hud.showNotification(isFi ? '🚪 Poistuit luolastosta' : '🚪 You left the dungeon', 2200);
+        }
+        return true;
+      }
+    } else if (world && world.dungeons) {
+      const entrance = world.dungeons.find(dungeon =>
+        pPos.distanceTo(dungeon.entrance) < 6.5
+      );
+      if (entrance) {
+        const inside = world.enterDungeon(entrance);
+        player.playerPos.copy(inside);
+        if (player.group) player.group.position.copy(inside);
+        if (controls && controls.getObject) controls.getObject().position.copy(inside);
+        if (hud && hud.showNotification) hud.showNotification(isFi ? `⬇️ Astuit luolastoon: ${entrance.name}` : `⬇️ Entered: ${entrance.name}`, 2800);
+        return true;
+      }
+    }
+
     // Player-built doors are handled before generic loot and activity prompts.
     if (buildingSystem && buildingSystem.toggleDoor && buildingSystem.toggleDoor(pPos)) {
       return true;
@@ -1579,7 +1654,7 @@ async function init() {
         }
 
         // Generous treasure rewards added in a single clean batch update
-        const chestRewards = [
+        const chestRewards = nearbyChest.rewards || [
           { item: 'bronze', count: 2 },
           { item: 'iron', count: 2 },
           { item: 'cookedMeat', count: 3 },
@@ -1751,7 +1826,7 @@ async function init() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    const maxRatio = (mobileControls && mobileControls.isTouchDevice) ? Math.min(window.devicePixelRatio, 1.5) : Math.min(window.devicePixelRatio, 2.0);
+    const maxRatio = (mobileControls && mobileControls.isTouchDevice) ? Math.min(window.devicePixelRatio, 1.25) : Math.min(window.devicePixelRatio, 1.5);
     renderer.setPixelRatio(maxRatio);
   });
 
@@ -1763,8 +1838,17 @@ async function init() {
   let minimapTimer = 0;
   let explorationTimer = 0;
   let biomeTimer = 0;
+  let lowFrequencyUpdateTimer = 0;
+  let animalUpdateTimer = 0;
+  let npcUpdateTimer = 0;
+  let lowFrequencyElapsed = 0;
+  let animalElapsed = 0;
+  let npcElapsed = 0;
   let cachedBiome = 'meadows';
   let lastAnnouncedBiome = 'meadows';
+  const isTouch = window.isTouchDevice || ('ontouchstart' in window) ||
+    /Android|iPhone|iPad|iPod|Windows Phone|webOS|BlackBerry/i.test(navigator.userAgent) ||
+    window.innerWidth <= 900;
 
   // Reusable vector for camera heading calculation in animate loop (prevents GC allocation churn)
   const _camDirReuse = new THREE.Vector3();
@@ -1802,6 +1886,12 @@ async function init() {
       return;
     }
 
+    // ESC pause is a real simulation pause: keep only the final frame rendered.
+    if (pauseMenu && pauseMenu.classList.contains('active')) {
+      renderer.render(scene, camera);
+      return;
+    }
+
     // Dev Mode Freecam & Simulation Freeze Handling
     if (devMode && devMode.isActive) {
       devMode.update(delta);
@@ -1815,28 +1905,49 @@ async function init() {
 
     // Update modules
     player.update(delta, world, combat);
-    skillTree.update(delta);
-    hotbar.update(delta);
+    lowFrequencyUpdateTimer -= delta;
+    animalUpdateTimer -= delta;
+    npcUpdateTimer -= delta;
+    lowFrequencyElapsed += delta;
+    animalElapsed += delta;
+    npcElapsed += delta;
+    const updateUiSystems = lowFrequencyUpdateTimer <= 0;
+    if (updateUiSystems) {
+      lowFrequencyUpdateTimer = 0.05;
+      const updateDelta = lowFrequencyElapsed;
+      lowFrequencyElapsed = 0;
+      skillTree.update(updateDelta);
+      hotbar.update(updateDelta);
+      fishingSystem.update(updateDelta);
+      farmingSystem.update(updateDelta);
+      resourceNode.update(updateDelta, camera, activeInput);
+      buildingSystem.update(updateDelta, camera, activeInput, world);
+    }
     const playerPos = player.getPosition();
     world.update(delta, playerPos);
     dayNightCycle.update(delta);
     lootManager.update(delta, playerPos);
     ragdollManager.update(delta);
-    animalManager.update(delta, playerPos);
-    fishingSystem.update(delta);
-    farmingSystem.update(delta);
-    resourceNode.update(delta, camera, activeInput);
-    buildingSystem.update(delta, camera, activeInput, world);
+    if (animalUpdateTimer <= 0) {
+      animalUpdateTimer = 0.05;
+      const updateDelta = animalElapsed;
+      animalElapsed = 0;
+      animalManager.update(updateDelta, playerPos);
+    }
     enemyManager.update(delta, playerPos, dayNightCycle, player, camera);
     bossManager.update(delta, playerPos);
     combat.update(delta);
-    npcManager.update(delta, camera, activeInput);
+    if (npcUpdateTimer <= 0) {
+      npcUpdateTimer = 0.05;
+      const updateDelta = npcElapsed;
+      npcElapsed = 0;
+      npcManager.update(updateDelta, camera, activeInput);
+    }
     if (mobileControls) mobileControls.update(delta);
 
     // Contextual interaction tooltips for gravestones, chests, campfire and water
     const pPos = playerPos;
     interactionUiTimer -= delta;
-    const isTouch = window.isTouchDevice || ('ontouchstart' in window) || /Android|iPhone|iPad|iPod|Windows Phone|webOS|BlackBerry/i.test(navigator.userAgent) || window.innerWidth <= 900;
     const isFi = (typeof Localization !== 'undefined' && Localization.lang === 'en') ? false : true;
 
     // Show tooltips whenever no modal is active (don't strictly require desktop pointer lock)
@@ -1867,6 +1978,23 @@ async function init() {
           : (isFi ? '[E] Avaa Aarrearkku 🎁' : '[E] Open Treasure Chest 🎁')
         );
       } else {
+        const activeDungeon = world && world.activeDungeon;
+        const nearbyDungeon = !activeDungeon && world && world.dungeons
+          ? world.dungeons.find(dungeon => pPos.distanceTo(dungeon.entrance) < 6.5)
+          : null;
+        const nearbyDungeonExit = activeDungeon && activeDungeon.interiorExit &&
+          pPos.distanceTo(activeDungeon.interiorExit) < 3.8;
+        if (nearbyDungeon) {
+          hud.showTooltip(isTouch
+            ? `🚪 Astu dungeonin ovesta (napauta): ${nearbyDungeon.name}`
+            : `[E] Avaa dungeonin sisäänkäynti: ${nearbyDungeon.name} 🚪`
+          );
+        } else if (nearbyDungeonExit) {
+          hud.showTooltip(isTouch
+            ? '🚪 Poistu dungeonista (napauta)'
+            : '[E] Poistu dungeonista 🚪'
+          );
+        } else {
         const nearFire = getNearbyCampfire(pPos);
         if (nearFire) {
           const canCook = inventory.has('meat', 1) || inventory.has('trout', 1) || inventory.has('pike', 1) || inventory.has('salmon', 1);
@@ -1888,6 +2016,7 @@ async function init() {
           );
         } else {
           hud.hideTooltip();
+        }
         }
       }
     } else if (!anyModal && (resourceNode.isAimingAtHarvestable() || npcManager.targetedNPC)) {
